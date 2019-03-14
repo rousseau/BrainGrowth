@@ -10,7 +10,7 @@ def importMesh(path):
     for line in inputfile:
       mesh.append(line.strip().split(' '))
     for i in range(len(mesh)):
-      mesh[i] = filter(None, mesh[i])
+      mesh[i] = list(filter(None, mesh[i]))
 
   return mesh
 
