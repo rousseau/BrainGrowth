@@ -18,12 +18,12 @@ from output import *
 from numba import prange
 
 # Parameters to change
-PATH_DIR = "./data/sphere5_3" # Path of results
+PATH_DIR = "./res/sphere5_3" # Path of results
 THICKNESS_CORTEX = 0.042
 GROWTH_RELATIVE = 1.829
 
 # Path of mesh
-mesh_path = "/home/x17wang/Bureau/Brain_growth/sphere5.mesh"
+mesh_path = "./data/sphere5.mesh"
 
 # Import mesh, each line as a list
 mesh = importMesh(mesh_path)
@@ -87,7 +87,7 @@ G = [np.identity(3)]*ne  # Initial tangential growth tensor
 # End of parameters
 
 # Normalize initial mesh coordinates, change mesh information by values normalized
-Ut0, Ut = normalisation(Ut0, Ut, nn)   
+Ut0, Ut = normalisation(Ut0, Ut, nn)
 
 '''# Initialize deformed coordinates
 Ut = Ut0'''
@@ -111,72 +111,71 @@ N0 = normalSurfaces(Ut0, faces, SNb, nf, nsn, N0)
 # Simulation loop
 while t < 1.0:
 
-	# Calculate the relative growth rate
-	at = growthRate(GROWTH_RELATIVE, t)
+# Calculate the relative growth rate
+  at = growthRate(GROWTH_RELATIVE, t)
 
-	# Calculate the longitudinal length of the real brain
-	L = longitLength(t)
+# Calculate the longitudinal length of the real brain
+  L = longitLength(t)
 
-	# Calculate the thickness of growing layer
-	H = cortexThickness(THICKNESS_CORTEX, t)
+# Calculate the thickness of growing layer
+  H = cortexThickness(THICKNESS_CORTEX, t)
 
-	# Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn)
-	Vn0, Vn = volumeNodal(G, A0, Vn0, Vn, tets, Ut, ne, nn)
-	
-	# Initialize elastic energy
-	Ue = 0.0
-	
-	for i in prange(ne):  #......range or prange?
-		
-		# Calculate normals of each deformed tetrahedron
-		#Nt = [pool.apply(tetraNormals, args=(N0, csn, tets, i)) for i in range(ne)]
-		#Nt = Parallel(n_jobs=num_cores)(delayed(tetraNormals)(N0, csn, tets, i) for i in range(ne))
-		#Nt = tetraNormals(N0, csn, tets, i)
+# Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn)
+  Vn0, Vn = volumeNodal(G, A0, Vn0, Vn, tets, Ut, ne, nn)
 
-		# Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
-		gm, mu = shearModulus(d2s, H, tets, i, muw, mug, gr)
+# Initialize elastic energy
+  Ue = 0.0
 
-		# Calculate relative tangential growth factor G
-		#G[i] = growthTensor_tangen(Nt, gm, at, G, i)
-		#G[i] = growthTensor_homo(G, i, GROWTH_RELATIVE, t)  # Calculate homogeneous growth factor G
-		#G[i] = growthTensor_relahomo(gm, G, i, GROWTH_RELATIVE, t)  # Calculate relative homogeneous growth factor G
+  for i in prange(ne):  #......range or prange?
 
-		# Deformed configuration of tetrahedra (At)
-		At = configDeform(Ut, tets, i)
+    # Calculate normals of each deformed tetrahedron
+    #Nt = [pool.apply(tetraNormals, args=(N0, csn, tets, i)) for i in range(ne)]
+    #Nt = Parallel(n_jobs=num_cores)(delayed(tetraNormals)(N0, csn, tets, i) for i in range(ne))
+    #Nt = tetraNormals(N0, csn, tets, i)
 
-		# Calculate elastic forces
-		Ft, Ue = tetraElasticity(At, A0[i], Ft, G[i], K, k, mu, tets, Vn, Vn0, i, eps, Ue)
+    # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
+    gm, mu = shearModulus(d2s, H, tets, i, muw, mug, gr)
 
-		# Calculate normals of each deformed tetrahedron 
-		Nt = tetraNormals(N0, csn, tets, i)
+    # Calculate relative tangential growth factor G
+    #G[i] = growthTensor_tangen(Nt, gm, at, G, i)
+    #G[i] = growthTensor_homo(G, i, GROWTH_RELATIVE, t)  # Calculate homogeneous growth factor G
+    #G[i] = growthTensor_relahomo(gm, G, i, GROWTH_RELATIVE, t)  # Calculate relative homogeneous growth factor G
 
-		# Calculate relative tangential growth factor G
-		G[i] = growthTensor_tangen(Nt, gm, at, G, i)
-		#G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)	
-	
-	# Calculate contact forces	
-	Ft = contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr)
+    # Deformed configuration of tetrahedra (At)
+    At = configDeform(Ut, tets, i)
 
-	# Midplane
-	Ft = midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K)
+    # Calculate elastic forces
+    Ft, Ue = tetraElasticity(At, A0[i], Ft, G[i], K, k, mu, tets, Vn, Vn0, i, eps, Ue)
 
-	# Output
-	if step % di == 0:
+    # Calculate normals of each deformed tetrahedron
+    Nt = tetraNormals(N0, csn, tets, i)
 
-		# Obtain zoom parameter by checking the longitudinal length of the brain model
-		zoom_pos = paraZoom(Ut, SN, L, nsn)
+    # Calculate relative tangential growth factor G
+    G[i] = growthTensor_tangen(Nt, gm, at, G, i)
+    #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
 
-		# Write .pov files and output mesh in .png files
-		writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom, zoom_pos)
-		
-		# Write surface mesh output files in .txt files
-		writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos)
+  # Calculate contact forces
+  Ft = contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr)
 
-		print ('step: ' + str(step) + ' t: ' + str(t) )
-	
-	# Newton dynamics
-	Ft, Ut, Vt = move(nn, Ft, Vt, Ut, gamma, Vn0, rho, dt)
+  # Midplane
+  Ft = midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K)
 
-	t += dt
-	step += 1
+  # Output
+  if step % di == 0:
 
+    # Obtain zoom parameter by checking the longitudinal length of the brain model
+    zoom_pos = paraZoom(Ut, SN, L, nsn)
+
+    # Write .pov files and output mesh in .png files
+    writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom, zoom_pos)
+
+    # Write surface mesh output files in .txt files
+    writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos)
+
+    print ('step: ' + str(step) + ' t: ' + str(t) )
+
+  # Newton dynamics
+  Ft, Ut, Vt = move(nn, Ft, Vt, Ut, gamma, Vn0, rho, dt)
+
+  t += dt
+  step += 1
