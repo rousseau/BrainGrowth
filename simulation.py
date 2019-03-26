@@ -3,7 +3,7 @@ from __future__ import division
 import numpy as np
 import math
 #from sklearn import preprocessing
-from vapory import *
+#from vapory import *
 import re
 import os
 import sys
@@ -15,7 +15,7 @@ from mechanics import *
 from output import *
 #from joblib import Parallel, delayed
 #import multiprocessing as mp
-from numba import prange
+from numba import jit, prange
 
 # Parameters to change
 PATH_DIR = "./res/sphere5_3" # Path of results
@@ -41,7 +41,8 @@ faces, nf = triangleIndices(mesh, nn, ne)
 nsn, SN, SNb = numberSurfaceNodes(faces, nn, nf)
 
 # Calculate the total volume of a tetrahedral mesh
-Vm = volume_mesh(nn, ne, tets, Ut)
+Vn_init = np.zeros(nn, dtype = float)
+Vm = volume_mesh(Vn_init, nn, ne, tets, Ut)
 print ('Volume of mesh is ' + str(Vm))
 
 # Parameters
@@ -74,11 +75,11 @@ d2s = np.zeros(nn, dtype = float)  #Distances to nearest surface nodes for all n
 N0 = np.zeros((nsn,3), dtype = float)  #Normals of surface nodes
 Vt = np.zeros((nn,3), dtype = float)  #Velocities
 Ft = np.zeros((nn,3), dtype = float)  #Forces
-Vn0 = np.zeros(nn, dtype = float) #Nodal volumes in reference state
-Vn = np.zeros(nn, dtype = float)  #Deformed nodal volumes
+#Vn0 = np.zeros(nn, dtype = float) #Nodal volumes in reference state
+#Vn = np.zeros(nn, dtype = float)  #Deformed nodal volumes
 # Ue = 0 #Elastic energy
 
-NNLt = [[] for _ in range(nsn)] #Triangle-proximity lists for surface nodes
+#NNLt = [[] for _ in range(nsn)] #Triangle-proximity lists for surface nodes
 Utold = np.zeros((nsn,3), dtype = float)  #Stores positions when proximity list is updated
 #ub = vb = wb = 0 #Barycentric coordinates of triangles
 G = [np.identity(3)]*ne  # Initial tangential growth tensor
@@ -108,38 +109,14 @@ N0 = normalSurfaces(Ut0, faces, SNb, nf, nsn, N0)
 #pool = mp.Pool(mp.cpu_count())
 #H = THICKNESS_CORTEX
 
-# Simulation loop
-while t < 1.0:
+# Elastic process
+@jit(nopython=True, parallel=True)
+def elasticProccess(d2s, H, tets, muw, mug, gr, Ut, A0, Ft, K, k, Vn, Vn0, eps, Ue, N0, csn, at, G, ne):
 
-# Calculate the relative growth rate
-  at = growthRate(GROWTH_RELATIVE, t)
-
-# Calculate the longitudinal length of the real brain
-  L = longitLength(t)
-
-# Calculate the thickness of growing layer
-  H = cortexThickness(THICKNESS_CORTEX, t)
-
-# Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn)
-  Vn0, Vn = volumeNodal(G, A0, Vn0, Vn, tets, Ut, ne, nn)
-
-# Initialize elastic energy
-  Ue = 0.0
-
-  for i in prange(ne):  #......range or prange?
-
-    # Calculate normals of each deformed tetrahedron
-    #Nt = [pool.apply(tetraNormals, args=(N0, csn, tets, i)) for i in range(ne)]
-    #Nt = Parallel(n_jobs=num_cores)(delayed(tetraNormals)(N0, csn, tets, i) for i in range(ne))
-    #Nt = tetraNormals(N0, csn, tets, i)
+  for i in range(ne):
 
     # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
     gm, mu = shearModulus(d2s, H, tets, i, muw, mug, gr)
-
-    # Calculate relative tangential growth factor G
-    #G[i] = growthTensor_tangen(Nt, gm, at, G, i)
-    #G[i] = growthTensor_homo(G, i, GROWTH_RELATIVE, t)  # Calculate homogeneous growth factor G
-    #G[i] = growthTensor_relahomo(gm, G, i, GROWTH_RELATIVE, t)  # Calculate relative homogeneous growth factor G
 
     # Deformed configuration of tetrahedra (At)
     At = configDeform(Ut, tets, i)
@@ -147,14 +124,41 @@ while t < 1.0:
     # Calculate elastic forces
     Ft, Ue = tetraElasticity(At, A0[i], Ft, G[i], K, k, mu, tets, Vn, Vn0, i, eps, Ue)
 
-    # Calculate normals of each deformed tetrahedron
+    # Calculate normals of each deformed tetrahedron 
     Nt = tetraNormals(N0, csn, tets, i)
 
     # Calculate relative tangential growth factor G
     G[i] = growthTensor_tangen(Nt, gm, at, G, i)
     #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
 
+  return Ft
+
+# Simulation loop
+while t < 1.0:
+
+  # Calculate the relative growth rate
+  at = growthRate(GROWTH_RELATIVE, t)
+
+  # Calculate the longitudinal length of the real brain
+  L = longitLength(t)
+
+  # Calculate the thickness of growing layer
+  H = cortexThickness(THICKNESS_CORTEX, t)
+
+  # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn)
+  Vn0 = np.zeros(nn, dtype = float) #Initialize nodal volumes in reference state
+  Vn = np.zeros(nn, dtype = float)  #Initialize deformed nodal volumes
+  Vn0, Vn = volumeNodal(G, A0, Vn0, Vn, tets, Ut, ne, nn)
+
+  # Initialize elastic energy
+  Ue = 0.0
+
+  # Calculate elastic forces
+  Ft = elasticProccess(d2s, H, tets, muw, mug, gr, Ut, A0, Ft, K, k, Vn, Vn0, eps, Ue, N0, csn, at, G, ne)
+
   # Calculate contact forces
+  NNLt = [[] for _ in range(nsn)] #Triangle-proximity lists for surface nodes
+  NNLt = make_2D_array(NNLt)
   Ft = contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr)
 
   # Midplane

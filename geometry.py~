@@ -10,7 +10,7 @@ def importMesh(path):
     for line in inputfile:
       mesh.append(line.strip().split(' '))
     for i in range(len(mesh)):
-      mesh[i] = list(filter(None, mesh[i]))
+      mesh[i] = filter(None, mesh[i])
 
   return mesh
 
@@ -171,7 +171,6 @@ def volumeNodal(G, A0, Vn0, Vn, tets, Ut, ne, nn):
   #for i in prange(nn):
     #Vn0[i] = 0.0
     #Vn[i] = 0.0
-  At = np.array([[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]])
   for i in range(ne):
     Ar = np.dot(G[i], A0[i])
     vol0 = det(Ar)/6.0

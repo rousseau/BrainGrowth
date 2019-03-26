@@ -117,7 +117,7 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, i, eps, Ue):
   return Ft, Ue
 
 # Newton dynamics (Integrate velocity into displacement)
-@njit(parallel=True)
+@jit
 def move(nn, Ft, Vt, Ut, gamma, Vn0, rho, dt):
   for i in prange(nn):
     Ft[i] -= Vt[i]*gamma*Vn0[i]

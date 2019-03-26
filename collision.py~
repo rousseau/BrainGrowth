@@ -61,7 +61,7 @@ def contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, 
       rc = np.linalg.norm(cc)   # Distance between the closest point in the triangle to the point, sqrt(x*x+y*y+z*z)
       if rc < hc and gr[pt] + gr[faces[tri][0]] > 0.0:  # Calculate contact force if within the contact range
         cc *= 1.0/rc
-        Ntri = cross(Ut[faces[tri][1]] - Ut[faces[tri][0]], Ut[faces[tri][2]] - Ut[faces[tri][0]]) # Triangle normal
+        Ntri = np.cross(Ut[faces[tri][1]] - Ut[faces[tri][0]], Ut[faces[tri][2]] - Ut[faces[tri][0]]) # Triangle normal
         Ntrr = np.linalg.norm(Ntri)
         Ntri *= 1.0/Ntrr
         fn = cc*(rc-hc)/hc*kc*a*a # kc = 10.0*K Contact stiffness
