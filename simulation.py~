@@ -15,7 +15,7 @@ from mathfunc import make_2D_array
 from numba import jit, prange
 
 # Parameters to change
-PATH_DIR = "./res/sphere5" # Path of results
+PATH_DIR = "./res/sphere5_3" # Path of results
 THICKNESS_CORTEX = 0.042
 GROWTH_RELATIVE = 1.829
 

@@ -4,7 +4,7 @@ from numba import jit, njit, prange
 
 # Normalize initial mesh coordinates
 @njit(parallel=True)
-def normalise_coord(Ut0, Ut, nn):
+def normalisation(Ut0, Ut, nn):
   # Find center of mass and dimension of the mesh
   maxx = -1e9
   minx = 1e9

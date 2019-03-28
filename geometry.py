@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from numba import jit, njit, prange
-from mathfunc import *
+from mathfunc import det, cross
 
 # Import mesh, each line as a list
 def importMesh(path):

@@ -1,5 +1,5 @@
 from __future__ import division
-from mathfunc import det, inv, cross, EV, Eigensystem
+from mathfunc import *
 import numpy as np
 import math
 import re
