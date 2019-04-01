@@ -55,10 +55,7 @@ def numberSurfaceNodes(faces, nn, nf):
   SNb = np.zeros(nn, dtype = int) # SNb: Nodal index map from full mesh to surface. Initialization SNb with all 0
   '''for i in range(nn):
   SNb[i] = 0'''
-  for i in range(nf):
-    SNb[faces[i][0]] = 1
-    SNb[faces[i][1]] = 1
-    SNb[faces[i][2]] = 1
+  SNb[faces[:][0]] = SNb[faces[:][1]] = SNb[faces[:][2]] = 1
   for i in range(nn):
     if SNb[i] == 1:
       nsn += 1 # Determine surface nodes
