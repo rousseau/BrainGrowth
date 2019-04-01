@@ -1,5 +1,6 @@
 import numpy as np
 import math
+from math import sqrt
 from numba import jit, njit, prange
 
 # Finds the nearest surface nodes to nodes (csn) and distances to them (d2s) - these are needed to set up the growth of the gray matter
@@ -15,7 +16,7 @@ def dist2surf(Ut0, tets, SN, nn, nsn, csn, d2s):
         d2min = d2
         p = j
     csn[i] = p
-    d2s[i] = np.sqrt(d2min)
+    d2s[i] = sqrt(d2min)
 
   return csn, d2s
 
