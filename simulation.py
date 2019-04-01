@@ -143,9 +143,7 @@ while t < 1.0:
   H = cortexThickness(THICKNESS_CORTEX, t)
 
   # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn)
-  Vn0 = np.zeros(nn, dtype = float) #Initialize nodal volumes in reference state
-  Vn = np.zeros(nn, dtype = float)  #Initialize deformed nodal volumes
-  Vn0, Vn = volumeNodal(G, A0, Vn0, Vn, tets, Ut, ne, nn)
+  Vn0, Vn = volumeNodal(G, A0, tets, Ut, ne, nn)
 
   # Initialize elastic energy
   Ue = 0.0
