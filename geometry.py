@@ -78,7 +78,7 @@ def volume_mesh(Vn_init, nn, ne, tets, Ut):
   #Vn_init = np.zeros(nn, dtype = float)
   #for i in prange(nn):
    #Vn_init[i] = 0.0
-  A_init = np.array([[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]])
+  A_init = np.zeros((3,3), dtype=np.float64)
   for i in range(ne):
     n1 = tets[i][0]
     n2 = tets[i][1]
@@ -121,7 +121,7 @@ def markgrowth(Ut0, nn):
 # Configuration of tetrahedra at reference state (A0)
 @jit(nopython=True, parallel=True)
 def configRefer(Ut0, tets, ne):
-  A0 = np.zeros((ne, 3, 3), dtype = np.float64)
+  A0 = np.zeros((ne,3,3), dtype=np.float64)
   for i in range(ne):
     xr1 = Ut0[tets[i][1]] - Ut0[tets[i][0]]
     xr2 = Ut0[tets[i][2]] - Ut0[tets[i][0]]
@@ -176,14 +176,15 @@ def tetraNormals(N0, csn, tets, i):
 # Calculate undeformed (Vn0) and deformed (Vn) nodal volume
 # Computes the volume measured at each point of a tetrahedral mesh as the sum of 1/4 of the volume of each of the tetrahedra to which it belongs
 @jit(nopython=True, parallel=True)     #(nopython=True, parallel=True)
-def volumeNodal(G, A0, Vn0, Vn, tets, Ut, ne, nn):
+def volumeNodal(G, A0, tets, Ut, ne, nn):
   #for i in prange(nn):
     #Vn0[i] = 0.0
     #Vn[i] = 0.0
-  At = np.array([[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]])
+  Vn0 = np.zeros(nn, dtype=np.float64) #Initialize nodal volumes in reference state
+  Vn = np.zeros(nn, dtype=np.float64)  #Initialize deformed nodal volumes
+  At = np.zeros((3,3), dtype=np.float64)
   for i in range(ne):
-    Ar = np.dot(G[i], A0[i])
-    vol0 = det(Ar)/6.0
+    vol0 = det(np.dot(G[i], A0[i]))/6.0
     #vol0 = np.linalg.det(G[i]*np.array(A0[i]))/6.0
     Vn0[tets[i][0]] += vol0/4.0
     Vn0[tets[i][1]] += vol0/4.0
@@ -198,8 +199,7 @@ def volumeNodal(G, A0, Vn0, Vn, tets, Ut, ne, nn):
     At[1] = x2
     At[2] = x3
     #At = np.array([x1, x2, x3])
-    At = At.transpose()
-    vol = det(At)/6.0
+    vol = det(At.transpose())/6.0
     Vn[tets[i][0]] += vol/4.0
     Vn[tets[i][1]] += vol/4.0
     Vn[tets[i][2]] += vol/4.0
