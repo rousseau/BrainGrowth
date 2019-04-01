@@ -2,6 +2,7 @@ from __future__ import division
 from mathfunc import det, inv, cross, EV, Eigensystem
 import numpy as np
 import math
+from math import sqrt
 import re
 import os
 import sys
@@ -53,9 +54,9 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, i, eps, Ue):
     #u2, w2, v2 = np.linalg.svd(C, full_matrices=True)
     #w2, v2 = np.linalg.eig(C)
 
-    l1 = np.sqrt(w2[0])
-    l2 = np.sqrt(w2[1])
-    l3 = np.sqrt(w2[2])
+    l1 = sqrt(w2[0])
+    l2 = sqrt(w2[1])
+    l3 = sqrt(w2[2])
 
     if det(v2) < 0.0:
       v2[0,0] = -v2[0,0]
