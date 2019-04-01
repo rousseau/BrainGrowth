@@ -11,37 +11,39 @@ def importMesh(path):
       mesh.append(line.strip().split(' '))
     for i in range(len(mesh)):
       mesh[i] = list(filter(None, mesh[i]))
+      mesh[i] = np.array([float(a) for a in mesh[i]])
 
   return mesh
 
 # Read nodes, get undeformed coordinates x y z and save them in Ut0, initialize deformed coordinates Ut
-@jit
+@njit(parallel=True)
 def vertex(mesh):
-  nn = int(mesh[0][0])
-  Ut0 = np.zeros((nn,3), dtype = float) # Undeformed coordinates of nodes
-  Ut = np.zeros((nn,3), dtype = float) # Deformed coordinates of nodes
-  for i in range(nn):
+  nn = np.int64(mesh[0][0])
+  Ut0 = np.zeros((nn,3), dtype=np.float64) # Undeformed coordinates of nodes
+  #Ut = np.zeros((nn,3), dtype = float) # Deformed coordinates of nodes
+  for i in prange(nn):
     Ut0[i] = np.array([float(mesh[i+1][1]),float(mesh[i+1][0]),float(mesh[i+1][2])]) # Change x, y (Netgen?)
-    Ut[i] = Ut0[i] # Initialize deformed coordinates of nodes
-
+    
+  Ut = Ut0 # Initialize deformed coordinates of nodes
+  
   return Ut0, Ut, nn
 
 # Read element indices (tets: index of four vertices of tetrahedra) and get number of elements (ne)
-@jit
+@njit(parallel=True)
 def tetraVerticesIndices(mesh, nn):
-  ne = int(mesh[nn+1][0])
-  tets = np.zeros((ne,4), dtype = int) # Index of four vertices of tetrahedra
-  for i in range(ne):
+  ne = np.int64(mesh[nn+1][0])
+  tets = np.zeros((ne,4), dtype=np.int64) # Index of four vertices of tetrahedra
+  for i in prange(ne):
     tets[i] = np.array([int(mesh[i+nn+2][1])-1,int(mesh[i+nn+2][2])-1,int(mesh[i+nn+2][4])-1,int(mesh[i+nn+2][3])-1])  # Note the switch of handedness (1,2,3,4 -> 1,2,4,3) - the code uses right handed tets
-
+  
   return tets, ne
 
 # Read surface triangle indices (faces: index of three vertices of triangles) and get number of surface triangles (nf)
-@jit
+@njit(parallel=True)
 def triangleIndices(mesh, nn, ne):
-  nf = int(mesh[nn+ne+2][0])
-  faces = np.zeros((nf,3), dtype = int) # Index of three vertices of triangles
-  for i in range(nf):
+  nf = np.int64(mesh[nn+ne+2][0])
+  faces = np.zeros((nf,3), dtype=np.int64) # Index of three vertices of triangles
+  for i in prange(nf):
     faces[i] = np.array([int(mesh[i+nn+ne+3][1])-1,int(mesh[i+nn+ne+3][2])-1,int(mesh[i+nn+ne+3][3])-1])
 
   return faces, nf
