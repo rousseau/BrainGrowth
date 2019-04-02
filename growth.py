@@ -46,7 +46,7 @@ def shearModulus(d2s, H, tets, i, muw, mug, gr):
 # Calculate relative (relates to d2s) tangential growth factor G
 @jit(nopython = True)
 def growthTensor_tangen(Nt, gm, at, G, i):
-  A = np.array([[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]])
+  A = np.zeros((3,3), dtype=np.float64)
   A[0] = [Nt[0]*Nt[0], Nt[0]*Nt[1], Nt[0]*Nt[2]]
   A[1] = [Nt[0]*Nt[1], Nt[1]*Nt[1], Nt[1]*Nt[2]]
   A[2] = [Nt[0]*Nt[2], Nt[1]*Nt[2], Nt[2]*Nt[2]]

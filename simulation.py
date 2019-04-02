@@ -40,7 +40,7 @@ nsn, SN, SNb = numberSurfaceNodes(faces, nn, nf)
 # Calculate the total volume of a tetrahedral mesh
 Vn_init = np.zeros(nn, dtype=np.float64)
 Vm = volume_mesh(Vn_init, nn, ne, tets, Ut)
-print ('Volume of mesh is ' + str(Vm))
+print ('Volume of mesh is ' + str(-Vm))
 
 # Parameters
 H = THICKNESS_CORTEX  #Thickness of growing layer
@@ -77,9 +77,9 @@ Ft = np.zeros((nn,3), dtype = float)  #Forces
 # Ue = 0 #Elastic energy
 
 NNLt = [[] for _ in range(nsn)] #Triangle-proximity lists for surface nodes
-Utold = np.zeros((nsn,3), dtype = float)  #Stores positions when proximity list is updated
+Utold = np.zeros((nsn,3), dtype = np.float64)  #Stores positions when proximity list is updated
 #ub = vb = wb = 0 #Barycentric coordinates of triangles
-G = [np.identity(3)]*ne  # Initial tangential growth tensor
+G = np.array([np.identity(3)]*ne)  # Initial tangential growth tensor
 #G = [1.0]*ne
 #G = [GROWTH_RELATIVE]*ne
 # End of parameters
@@ -108,7 +108,7 @@ N0 = normalSurfaces(Ut0, faces, SNb, nf, nsn, N0)
 
 # Elastic process
 @jit(nopython=True, parallel=True)
-def elasticProccess(d2s, H, tets, muw, mug, gr, Ut, A0, Ft, K, k, Vn, Vn0, eps, Ue, N0, csn, at, G, ne):
+def elasticProccess(d2s, H, tets, muw, mug, gr, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne):
 
   for i in range(ne):
 
@@ -119,7 +119,7 @@ def elasticProccess(d2s, H, tets, muw, mug, gr, Ut, A0, Ft, K, k, Vn, Vn0, eps, 
     At = configDeform(Ut, tets, i)
 
     # Calculate elastic forces
-    Ft, Ue = tetraElasticity(At, A0[i], Ft, G[i], K, k, mu, tets, Vn, Vn0, i, eps, Ue)
+    Ft = tetraElasticity(At, A0[i], Ft, G[i], K, k, mu, tets, Vn, Vn0, i, eps)
 
     # Calculate normals of each deformed tetrahedron 
     Nt = tetraNormals(N0, csn, tets, i)
@@ -146,15 +146,15 @@ while t < 1.0:
   Vn0, Vn = volumeNodal(G, A0, tets, Ut, ne, nn)
 
   # Initialize elastic energy
-  Ue = 0.0
+  #Ue = 0.0
 
   # Calculate elastic forces
-  Ft = elasticProccess(d2s, H, tets, muw, mug, gr, Ut, A0, Ft, K, k, Vn, Vn0, eps, Ue, N0, csn, at, G, ne)
+  Ft = elasticProccess(d2s, H, tets, muw, mug, gr, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne)
 
   # Calculate contact forces
   #NNLt = [[] for _ in range(nsn)] #Triangle-proximity lists for surface nodes
   #NNLt = make_2D_array(NNLt)
-  Ft = contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr)
+  Ft, NNLt = contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr)
 
   # Midplane
   Ft = midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K)

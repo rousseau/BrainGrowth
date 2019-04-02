@@ -1,5 +1,5 @@
 from __future__ import division
-from mathfunc import det, inv, cross, EV, Eigensystem
+from mathfunc import det_dim_2, inv, cross, EV, Eigensystem
 import numpy as np
 import math
 from math import sqrt
@@ -10,10 +10,10 @@ from numba import jit, njit, prange
 
 # Calculate elastic forces
 @jit(nopython=True)
-def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, i, eps, Ue):
+def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, i, eps):
 
   # Deformed volume
-  vol = det(At)/6.0
+  #vol = det(At)/6.0
 
   # Apply growth to reference state
   Ar = np.dot(G, A0)
@@ -27,11 +27,11 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, i, eps, Ue):
   B = np.dot(F, F.transpose())
 
   # Calculate relative volume change and averaged nodal volume change
-  J = det(F) # Relative volume change
-  J1 = Vn[tets[i][0]]/Vn0[tets[i][0]]
-  J2 = Vn[tets[i][1]]/Vn0[tets[i][1]]
-  J3 = Vn[tets[i][2]]/Vn0[tets[i][2]]
-  J4 = Vn[tets[i][3]]/Vn0[tets[i][3]]
+  J = det_dim_2(F) # Relative volume change
+  J1 = Vn[tets[i,0]]/Vn0[tets[i,0]]
+  J2 = Vn[tets[i,1]]/Vn0[tets[i,1]]
+  J3 = Vn[tets[i,2]]/Vn0[tets[i,2]]
+  J4 = Vn[tets[i,3]]/Vn0[tets[i,3]]
   Ja = (J1 + J2 + J3 + J4)/4.0   # Averaged nodal volume change
 
   # Decide if need for SVD or not
@@ -58,7 +58,7 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, i, eps, Ue):
     l2 = sqrt(w2[1])
     l3 = sqrt(w2[2])
 
-    if det(v2) < 0.0:
+    if det_dim_2(v2) < 0.0:
       v2[0,0] = -v2[0,0]
       v2[1,0] = -v2[1,0]
       v2[2,0] = -v2[2,0]
@@ -77,7 +77,7 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, i, eps, Ue):
       U[1,0] = U[2,1]*U[0,2] - U[0,1]*U[2,2]
       U[2,0] = U[0,1]*U[1,2] - U[1,1]*U[0,2]
 
-    if det(F) < 0.0:
+    if det_dim_2(F) < 0.0:
       l1 = -l1
       U[0,0] = -U[0,0]
       U[1,0] = -U[1,0]
@@ -92,8 +92,8 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, i, eps, Ue):
     W = 0.5*mu*((eps*eps + l2*l2 + l3*l3)/pow23 - 3.0) + mu/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23*(l1-eps) + 0.5*k*(l1-eps)*(l1-eps) + 0.5*K*((J1-1.0)*(J1-1.0) + (J2-1.0)*(J2-1.0) + (J3-1.0)*(J3-1.0) + (J4-1.0)*(J4-1.0))/4.0
 
   # Increment total elastic energy
-  if J*J > 1e-50:
-    Ue += W*vol/J
+  #if J*J > 1e-50:
+    #Ue += W*vol/J
 
   # Calculate tetra face negative normals (because traction Ft=-P*n)
   xr1 = np.array([Ar[0,0], Ar[1,0], Ar[2,0]])
@@ -106,16 +106,16 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, i, eps, Ue):
 
   # Distribute forces among tetra vertices
   #Ft[tets[i][0]] += np.array((np.dot(np.array(P), (N1 + N2 + N3)[np.newaxis].T).T/6.0).ravel(), dtype = float)
-  Ft[tets[i][0]] += np.dot(P, (N1 + N2 + N3).T)/6.0
-  Ft[tets[i][1]] += np.dot(P, (N1 + N3 + N4).T)/6.0
-  Ft[tets[i][2]] += np.dot(P, (N2 + N3 + N4).T)/6.0
-  Ft[tets[i][3]] += np.dot(P, (N1 + N2 + N4).T)/6.0
+  Ft[tets[i,0]] += np.dot(P, (N1 + N2 + N3).T)/6.0
+  Ft[tets[i,1]] += np.dot(P, (N1 + N3 + N4).T)/6.0
+  Ft[tets[i,2]] += np.dot(P, (N2 + N3 + N4).T)/6.0
+  Ft[tets[i,3]] += np.dot(P, (N1 + N2 + N4).T)/6.0
   #Ft[tets[i][0]] += (np.dot(np.array(P), (N1 + N2 + N3)[np.newaxis].T).T/6.0).ravel()
   #Ft[tets[i][1]] += (np.dot(np.array(P), (N1 + N3 + N4)[np.newaxis].T).T/6.0).ravel()
   #Ft[tets[i][2]] += (np.dot(np.array(P), (N2 + N3 + N4)[np.newaxis].T).T/6.0).ravel()
   #Ft[tets[i][3]] += (np.dot(np.array(P), (N1 + N2 + N4)[np.newaxis].T).T/6.0).ravel()
 
-  return Ft, Ue
+  return Ft
 
 # Newton dynamics (Integrate velocity into displacement)
 @njit(parallel=True)

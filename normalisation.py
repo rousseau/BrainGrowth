@@ -3,37 +3,31 @@ import math
 from numba import jit, njit, prange
 
 # Normalize initial mesh coordinates
-@njit(parallel=True)
+@jit
 def normalise_coord(Ut0, Ut, nn):
   # Find center of mass and dimension of the mesh
-  maxx = -1e9
-  minx = 1e9
-  maxy = -1e9
-  miny = 1e9
-  maxz = -1e9
-  minz = 1e9
-  #cog = np.array([0.0, 0.0, 0.0])
-  for i in range(nn):
-    maxx = max(maxx, Ut0[i][0])
-    minx = min(minx, Ut0[i][0])
-    maxy = max(maxy, Ut0[i][1])
-    miny = min(miny, Ut0[i][1])
-    maxz = max(maxz, Ut0[i][2])
-    minz = min(minz, Ut0[i][2])
-    #cog += Ut0[i]
-  # The center coordinate cog(x,y,z)
+  maxx = maxy = maxz = -1e9
+  minx = miny = minz = 1e9
+
+  maxx = max(Ut0[:,0])
+  minx = min(Ut0[:,0])
+  maxy = max(Ut0[:,1])
+  miny = min(Ut0[:,1])
+  maxz = max(Ut0[:,2])
+  minz = min(Ut0[:,2])
+
   cog = np.sum(Ut0, axis=0)
-  cog /= nn
+  cog /= nn # The center coordinate(x,y,z)
 
   #print ('minx is ' + str(minx) + ' maxx is ' + str(maxx) + ' miny is ' + str(miny) + ' maxy is ' + str(maxy) + ' minz is ' + str(minz) + ' maxz is ' + str(maxz))
   #print ('center x is ' + str(cog[0]) + ' center y is ' + str(cog[1]) + ' center z is ' + str(cog[2]))
 
-  # Change mesh information by values normalized
+  # Change mesh information by values normalized 
   maxd = max(max(max(abs(maxx-cog[0]), abs(minx-cog[0])), max(abs(maxy-cog[1]), abs(miny-cog[1]))), max(abs(maxz-cog[2]), abs(minz-cog[2])))  # The biggest value of difference between the coordinate(x, y, z) and center(x, y,z) respectively
-  for i in prange(nn):
-    Ut0[i][0] = -(Ut[i][0] - cog[0])/maxd
-    Ut0[i][1] = (Ut[i][1] - cog[1])/maxd
-    Ut0[i][2] = -(Ut[i][2] - cog[2])/maxd
+
+  Ut0[:,0] = -(Ut[:,0] - cog[0])/maxd
+  Ut0[:,1] = (Ut[:,1] - cog[1])/maxd
+  Ut0[:,2] = -(Ut[:,2] - cog[2])/maxd
 
   Ut = Ut0
 

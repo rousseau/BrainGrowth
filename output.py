@@ -38,7 +38,20 @@ def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
   light = LightSource([-14, 3, -14], 'color', [1, 1, 1])
   background = Background('color', [1,1,1])
 
-  vertices = []
+  vertices = np.zeros((nsn,3), dtype = float)
+  normals = np.zeros((nsn,3), dtype = float)
+  f_indices = np.zeros((len(faces),3), dtype = float)
+  vertices[:,0] = Ut[SN[:],0]*zoom_pos
+  vertices[:,1] = Ut[SN[:],1]*zoom_pos
+  vertices[:,2] = Ut[SN[:],2]*zoom_pos
+  normals[:,0] = N[:,0]
+  normals[:,1] = N[:,1]
+  normals[:,2] = N[:,2]
+  f_indices[:,0] = SNb[faces[:,0]]
+  f_indices[:,1] = SNb[faces[:,1]]
+  f_indices[:,2] = SNb[faces[:,2]]
+
+  """vertices = []
   normals = []
   f_indices = []
   for i in range(nsn):
@@ -48,7 +61,7 @@ def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
     normals.append(normal)
   for i in range(len(faces)):
     f_indice = [SNb[faces[i][0]], SNb[faces[i][1]], SNb[faces[i][2]]]
-    f_indices.append(f_indice)
+    f_indices.append(f_indice)"""
 
   Mesh = Mesh2(VertexVectors(nsn, *vertices), NormalVectors(nsn, *normals), FaceIndices(len(faces), *f_indices), 'inside_vector', [0,1,0])
   box = Box([-100, -100, -100], [100, 100, 100])
