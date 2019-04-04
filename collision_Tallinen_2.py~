@@ -2,13 +2,12 @@ from mathfunc import closestPointTriangle, cross_dim_2, norm_dim_3
 import numpy as np
 import math
 from numba import jit, njit, prange
-from sklearn.neighbors import KDTree
 
 # Generates point-triangle proximity lists (NNLt) using the linked cell algorithm
 @jit
 def createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw):
   mx = max(1, int(bw/mw))  # = 40 cells, bw=3.2, mw=0.08
-  head = [-1]*mx*mx*mx  # mx*mx*mx cells nomber, size mx*mx*mx list with all values are -1, 40*40*40 = 64000
+  head = [-1]*mx*mx*mx*mx  # mx*mx*mx cells nomber, size mx*mx*mx list with all values are -1, 40*40*40 = 64000
   lists = [0]*nf
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
   for i in range(nf):  # Divide triangle faces into cells, i index of face
@@ -42,38 +41,32 @@ def createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw):
 
 # Calculate contact forces
 @jit
-def contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a):
+def contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr):
   maxDist = 0.0
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
   maxDist = max(norm_dim_3(Ut[SN[:]] - Utold[:]))
   if maxDist > 0.5*(hs-hc):
-    #NNLt = createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw) # Generates point-triangle proximity lists (NNLt[nsn]) using the linked cell algorithm
-    Utold[:] = Ut[SN[:]]
-    tree = KDTree(Ut[SN[:]])
-    ind = tree.query_radius(Ut[SN[:]], r=hs)
-    ind = [[indice for indice in ind[i] if indice != i] for i in range(len(ind))]
+    NNLt = createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw) # Generates point-triangle proximity lists (NNLt[nsn]) using the linked cell algorithm
     for i in range(nsn):
-      NNLt[i] = [np.where(ind[i][tp] == faces[:,:])[0] for tp in range(len(ind[i]))]
-      NNLt[i] = [item for sublist in NNLt[i] for item in sublist]
-      NNLt[i] = list(set(NNLt[i]))
+      Utold[i] = Ut[SN[i]]
   for i in range(nsn): # Loop through surface points
     for tp in range(len(NNLt[i])):
-      pt = SN[i]
+      pt = SN[i] # A surface point index
       tri = NNLt[i][tp] # A proximity triangle index
-      if pt != faces[tri,0] and pt != faces[tri,1] and pt != faces[tri,2]:
-        pc, ubt, vbt, wbt = closestPointTriangle(Ut[pt], Ut[faces[tri,0]], Ut[faces[tri,1]], Ut[faces[tri,2]], ub, vb, wb) # Find the nearest point to Barycentric
-        cc = pc - Ut[pt] # moinus to all nodes
-        rc = np.linalg.norm(cc)   # Distance between the closest point in the triangle to the point, sqrt(x*x+y*y+z*z)
-        if rc < hc: #and gr[pt] + gr[faces[tri,0]] > 0.0:  # Calculate contact force if within the contact range
-          cc *= 1.0/rc
-          Ntri = cross_dim_2(Ut[faces[tri,1]] - Ut[faces[tri,0]], Ut[faces[tri,2]] - Ut[faces[tri,0]]) # Triangle normal
-          Ntri *= 1.0/np.linalg.norm(Ntri)
-          fn = cc*(rc-hc)/hc*kc*a*a # kc = 10.0*K Contact stiffness
-          if np.dot(fn,Ntri) < 0.0:
-            fn -= Ntri*np.dot(fn,Ntri)*2.0
-          Ft[faces[tri,0]] -= fn*ubt
-          Ft[faces[tri,1]] -= fn*vbt
-          Ft[faces[tri,2]] -= fn*wbt
-          Ft[pt] += fn
+      pc, ubt, vbt, wbt = closestPointTriangle(Ut[pt], Ut[faces[tri,0]], Ut[faces[tri,1]], Ut[faces[tri,2]], ub, vb, wb)  # Find the nearest point to Barycentric
+      cc = pc - Ut[pt] # moinus to all nodes
+      # closestPointTriangle returns the closest point of triangle abc to point p (returns a or b or c, if not, pt projection through the barycenter inside the triangle)
+      rc = np.linalg.norm(cc)   # Distance between the closest point in the triangle to the point, sqrt(x*x+y*y+z*z)
+      if rc < hc and gr[pt] + gr[faces[tri][0]] > 0.0:  # Calculate contact force if within the contact range
+        cc *= 1.0/rc
+        Ntri = cross_dim_2(Ut[faces[tri,1]] - Ut[faces[tri,0]], Ut[faces[tri,2]] - Ut[faces[tri,0]]) # Triangle normal
+        Ntri *= 1.0/np.linalg.norm(Ntri)
+        fn = cc*(rc-hc)/hc*kc*a*a # kc = 10.0*K Contact stiffness
+        if np.dot(fn,Ntri) < 0.0:
+          fn -= Ntri*np.dot(fn,Ntri)*2.0
+        Ft[faces[tri,0]] -= fn*ubt
+        Ft[faces[tri,1]] -= fn*vbt
+        Ft[faces[tri,2]] -= fn*wbt
+        Ft[pt] += fn
 
   return Ft, NNLt
