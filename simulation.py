@@ -51,14 +51,14 @@ K = 5.0 #100.0 Bulk modulus
 a = 0.01 #Mesh spacing - set manually based on the average spacing in the mesh
 rho = 0.01 #0.0001 #Mass density - adjust to run the simulation faster or slower
 gamma = 0.5 #0.1 Damping coefficent
-di = 50 #Output data once every di steps
+di = 500 #Output data once every di steps
 
 bw = 3.2; #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
 mw = 8*a; #Width of a cell in the linked cell algorithm for proximity detection
 hs = 0.6*a; #Thickness of proximity skin
 hc = 0.2*a; #Thickness of repulsive skin
 kc = 10.0*K; #100.0*K Contact stiffness
-dt = 0.5*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
+dt = 0.05*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
 print('dt is: ' + str(dt))
 eps = 0.1 #Epsilon
 k = 0.0
