@@ -110,7 +110,7 @@ N0 = normalSurfaces(Ut0, faces, SNb, nf, nsn, N0)
 #H = THICKNESS_CORTEX
 
 # Elastic process
-@jit(nopython=True)
+"""@jit(nopython=True)
 def elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne):
 
   # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
@@ -129,7 +129,7 @@ def elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, 
   G = growthTensor_tangen(Nt, gm, at, G, ne)
   #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
 
-  return Ft
+  return Ft"""
 
 # Simulation loop
 while t < 1.0:
