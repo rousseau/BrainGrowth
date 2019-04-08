@@ -109,8 +109,13 @@ N0 = normalSurfaces(Ut0, faces, SNb, nf, nsn, N0)
 #pool = mp.Pool(mp.cpu_count())
 #H = THICKNESS_CORTEX
 
+<<<<<<< HEAD
 """# Elastic process
 @jit(nopython=True)
+=======
+# Elastic process
+"""@jit(nopython=True)
+>>>>>>> 1353bfbfca8c6262dfc76d9e4e41154d1dcbcb44
 def elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne):
 
   # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
