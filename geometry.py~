@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from numba import jit, njit, prange
-from mathfunc import det_dim_3, det_dim_2, cross_dim_3, dot_mat_dim_3, transpose_dim_3
+from mathfunc import det_dim_3, det_dim_2, cross_dim_3, dot_mat_dim_3, transpose_dim_3, normalize_dim_3
 
 # Import mesh, each line as a list
 def importMesh(path):
@@ -79,10 +79,7 @@ def volume_mesh(Vn_init, nn, ne, tets, Ut):
   vol_init[:] = det_dim_3(transpose_dim_3(A_init[:]))/6.0
 
   for i in range(ne):
-    Vn_init[tets[i,0]] += vol_init[i]/4.0
-    Vn_init[tets[i,1]] += vol_init[i]/4.0
-    Vn_init[tets[i,2]] += vol_init[i]/4.0
-    Vn_init[tets[i,3]] += vol_init[i]/4.0
+    Vn_init[tets[i,:]] += vol_init[i]/4.0
 
   Vm_init = np.sum(Vn_init)
 
@@ -130,27 +127,27 @@ def normalSurfaces(Ut0, faces, SNb, nf, nsn, N0):
   Ntmp = np.zeros((nf,3), dtype=np.float64)
   Ntmp = cross_dim_3(Ut0[faces[:,1]] - Ut0[faces[:,0]], Ut0[faces[:,2]] - Ut0[faces[:,0]])
   for i in prange(nf):
-    N0[SNb[faces[i,0]]] += Ntmp[i]
-    N0[SNb[faces[i,1]]] += Ntmp[i]
-    N0[SNb[faces[i,2]]] += Ntmp[i]
+    N0[SNb[faces[i,:]]] += Ntmp[i]
   for i in prange(nsn):
     N0[i] *= 1.0/np.linalg.norm(N0[i])
+  #N0 = normalize_dim_3(N0)
 
   return N0
 
 # Calculate normals of each deformed tetrahedron
-@njit(parallel=True)
+@jit
 def tetraNormals(N0, csn, tets, ne):
   Nt = np.zeros((ne,3), dtype=np.float64)
   Nt[:] = N0[csn[tets[:,0]]] + N0[csn[tets[:,1]]] + N0[csn[tets[:,2]]] + N0[csn[tets[:,3]]]
-  for i in prange(ne):
-    Nt[i] *= 1.0/np.linalg.norm(Nt[i])
+  Nt = normalize_dim_3(Nt)
+  """for i in prange(ne):
+    Nt[i] *= 1.0/np.linalg.norm(Nt[i])"""
 
   return Nt
 
 # Calculate undeformed (Vn0) and deformed (Vn) nodal volume
 # Computes the volume measured at each point of a tetrahedral mesh as the sum of 1/4 of the volume of each of the tetrahedra to which it belongs
-@njit(parallel=True)    #(nopython=True, parallel=True)
+@njit(parallel=True)   #(nopython=True, parallel=True)
 def volumeNodal(G, A0, tets, Ut, ne, nn):
   Vn0 = np.zeros(nn, dtype=np.float64) #Initialize nodal volumes in reference state
   Vn = np.zeros(nn, dtype=np.float64)  #Initialize deformed nodal volumes
@@ -162,16 +159,9 @@ def volumeNodal(G, A0, tets, Ut, ne, nn):
   At[:,2] = Ut[tets[:,3]] - Ut[tets[:,0]]
   vol0[:] = det_dim_3(dot_mat_dim_3(G[:], A0[:]))/6.0
   vol[:] = det_dim_3(transpose_dim_3(At[:]))/6.0
-  for i in prange(ne):
-    Vn0[tets[i][0]] += vol0[i]/4.0
-    Vn0[tets[i][1]] += vol0[i]/4.0
-    Vn0[tets[i][2]] += vol0[i]/4.0
-    Vn0[tets[i][3]] += vol0[i]/4.0
-
-    Vn[tets[i][0]] += vol[i]/4.0
-    Vn[tets[i][1]] += vol[i]/4.0
-    Vn[tets[i][2]] += vol[i]/4.0
-    Vn[tets[i][3]] += vol[i]/4.0
+  for i in prange(ne):   
+    Vn0[tets[i,:]] += vol0[i]/4.0
+    Vn[tets[i,:]] += vol[i]/4.0
 
   return Vn0, Vn
 

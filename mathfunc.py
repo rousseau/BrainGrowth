@@ -377,6 +377,12 @@ def norm_dim_3(a):
   return b
 
 @jit
+def normalize_dim_3(a):
+  b = np.transpose([a[:,0],a[:,1],a[:,2]]/np.sqrt(a[:,0]*a[:,0] + a[:,1]*a[:,1] + a[:,2]*a[:,2]))
+
+  return b
+
+@jit
 def dot_vec(a, b):
 
   return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]
@@ -394,6 +400,13 @@ def dot_mat_dim_3(a, b):
   c[:,2,1] = a[:,2,0]*b[:,0,1]+a[:,2,1]*b[:,1,1]+a[:,2,2]*b[:,2,1]
   c[:,2,2] = a[:,2,0]*b[:,0,2]+a[:,2,1]*b[:,1,2]+a[:,2,2]*b[:,2,2]
 
+  return c
+
+@jit
+def dot_vec_dim_3(a, b):
+  c = np.zeros(len(a), dtype=np.float64)
+  c[:] = a[:,0]*b[:,0]+a[:,1]*b[:,1]+a[:,2]*b[:,2]
+  
   return c
 
 @jit

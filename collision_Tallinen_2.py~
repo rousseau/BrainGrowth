@@ -38,7 +38,6 @@ def createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw):
 
   return NNLt
 
-
 # Calculate contact forces
 @jit
 def contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr):

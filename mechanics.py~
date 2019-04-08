@@ -44,10 +44,12 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, ne, eps):
 
   # Decide if need for SVD or not
   for i in prange(ne):
+
     ll1, ll2, ll3 = EV(B[i])
+
     if ll3 >= eps**2 and J[i] > 0.0: # No need for SVD
 
-    # Calculate the total stress (shear stress + bulk stress)
+     # Calculate the total stress (shear stress + bulk stress)
       powJ23 = np.power(J[i], 2.0/3.0)
       S = (B[i] - np.identity(3)*np.trace(B[i])/3.0)*mu[i]/(J[i]*powJ23) + np.identity(3)*K*(Ja[i]-1.0)
       P = np.dot(S, inv(F[i].transpose()))*J[i]
@@ -132,7 +134,7 @@ def move(nn, Ft, Vt, Ut, gamma, Vn0, rho, dt):
   for i in prange(nn):
     Ft[i] -= Vt[i]*gamma*Vn0[i]
     Vt[i] += Ft[i]/(Vn0[i]*rho)*dt
-    Ut[i] += Vt[i]*dt
-    Ft[i] = np.array([0.0,0.0,0.0])
+  Ut[:] += Vt[:]*dt
+  Ft[:] = np.zeros((nn,3), dtype = np.float64)
 
   return Ft, Ut, Vt

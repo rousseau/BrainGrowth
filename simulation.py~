@@ -16,7 +16,7 @@ from numba import jit, prange
 
 # Parameters to change
 PATH_DIR = "./res/sphere5" # Path of results
-THICKNESS_CORTEX = 0.045
+THICKNESS_CORTEX = 0.042
 GROWTH_RELATIVE = 1.829
 
 # Path of mesh
@@ -51,14 +51,14 @@ K = 5.0 #100.0 Bulk modulus
 a = 0.01 #Mesh spacing - set manually based on the average spacing in the mesh
 rho = 0.01 #0.0001 #Mass density - adjust to run the simulation faster or slower
 gamma = 0.5 #0.1 Damping coefficent
-di = 50 #Output data once every di steps
+di = 500 #Output data once every di steps
 
 bw = 3.2; #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
 mw = 8*a; #Width of a cell in the linked cell algorithm for proximity detection
 hs = 0.6*a; #Thickness of proximity skin
 hc = 0.2*a; #Thickness of repulsive skin
 kc = 10.0*K; #100.0*K Contact stiffness
-dt = 0.5*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
+dt = 0.05*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
 print('dt is: ' + str(dt))
 eps = 0.1 #Epsilon
 k = 0.0
@@ -100,7 +100,7 @@ csn, d2s = dist2surf(Ut0, tets, SN, nn, nsn, csn, d2s)
 A0 = configRefer(Ut0, tets, ne)
 
 # Mark non-growing areas
-#gr = markgrowth(Ut0, nn)
+gr = markgrowth(Ut0, nn)
 
 # Calculate normals of each surface triangle and apply these normals to surface nodes
 N0 = normalSurfaces(Ut0, faces, SNb, nf, nsn, N0)
@@ -109,7 +109,7 @@ N0 = normalSurfaces(Ut0, faces, SNb, nf, nsn, N0)
 #pool = mp.Pool(mp.cpu_count())
 #H = THICKNESS_CORTEX
 
-# Elastic process
+"""# Elastic process
 @jit(nopython=True)
 def elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne):
 
@@ -129,7 +129,7 @@ def elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, 
   G = growthTensor_tangen(Nt, gm, at, G, ne)
   #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
 
-  return Ft
+  return Ft"""
 
 # Simulation loop
 while t < 1.0:
@@ -153,7 +153,7 @@ while t < 1.0:
   #Ft = elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne)
 
   # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
-  gm, mu = shearModulus(d2s, H, tets, ne, muw, mug)
+  gm, mu = shearModulus(d2s, H, tets, ne, muw, mug, gr)
 
   # Deformed configuration of tetrahedra (At)
   At = configDeform(Ut, tets, ne)
@@ -169,7 +169,7 @@ while t < 1.0:
   #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
 
   # Calculate contact forces
-  Ft, NNLt = contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a)
+  Ft, NNLt = contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr)
 
   # Midplane
   Ft = midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K)

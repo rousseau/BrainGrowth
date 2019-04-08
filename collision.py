@@ -8,7 +8,7 @@ from sklearn.neighbors import KDTree
 @jit
 def createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw):
   mx = max(1, int(bw/mw))  # = 40 cells, bw=3.2, mw=0.08
-  head = [-1]*mx*mx*mx  # mx*mx*mx cells nomber, size mx*mx*mx list with all values are -1, 40*40*40 = 64000
+  head = [-1]*mx*mx*mx*mx  # mx*mx*mx cells nomber, size mx*mx*mx list with all values are -1, 40*40*40 = 64000
   lists = [0]*nf
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
   for i in range(nf):  # Divide triangle faces into cells, i index of face
@@ -42,29 +42,29 @@ def createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw):
 
 # Calculate contact forces
 @jit
-def contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a):
+def contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr):
   maxDist = 0.0
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
   maxDist = max(norm_dim_3(Ut[SN[:]] - Utold[:]))
   if maxDist > 0.5*(hs-hc):
     #NNLt = createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw) # Generates point-triangle proximity lists (NNLt[nsn]) using the linked cell algorithm
-    Utold[:] = Ut[SN[:]]
+    Utold[:] = Ut[SN[:]]  
     tree = KDTree(Ut[SN[:]])
-    ind = tree.query_radius(Ut[SN[:]], r=hs)
-    ind = [[indice for indice in ind[i] if indice != i] for i in range(len(ind))]
+    ind = tree.query_radius(Ut[SN[:]], r=hs)  # Generates point-points proximity index arrays (ind) using the Kd-Tree algorithm (looks up the nearest neighbors of any point)
+    ind = [[indice for indice in ind[i] if indice != i] for i in range(len(ind))]  # Remove the index of the point itself
     for i in range(nsn):
-      NNLt[i] = [np.where(ind[i][tp] == faces[:,:])[0] for tp in range(len(ind[i]))]
-      NNLt[i] = [item for sublist in NNLt[i] for item in sublist]
-      NNLt[i] = list(set(NNLt[i]))
+      NNLt[i] = [np.where(ind[i][tp] == faces[:,:])[0] for tp in range(len(ind[i]))]  # Find corresponding proximity triangle indexes by the nearest neighbouring points indexes of a point
+      NNLt[i] = [item for sublist in NNLt[i] for item in sublist] # Merge all proximity triangle indexes for a point
+      NNLt[i] = list(set(NNLt[i]))  # Remove the same proximity triangle indexes for a point
   for i in range(nsn): # Loop through surface points
-    for tp in range(len(NNLt[i])):
+    for tp in range(len(NNLt[i])): # Loop through corresponding proximity triangles
       pt = SN[i]
       tri = NNLt[i][tp] # A proximity triangle index
       if pt != faces[tri,0] and pt != faces[tri,1] and pt != faces[tri,2]:
-        pc, ubt, vbt, wbt = closestPointTriangle(Ut[pt], Ut[faces[tri,0]], Ut[faces[tri,1]], Ut[faces[tri,2]], ub, vb, wb) # Find the nearest point to Barycentric
-        cc = pc - Ut[pt] # moinus to all nodes
+        pc, ubt, vbt, wbt = closestPointTriangle(Ut[pt], Ut[faces[tri,0]], Ut[faces[tri,1]], Ut[faces[tri,2]], ub, vb, wb) # Find the closest point in the triangle to the point and barycentric coordinates of the triangle
+        cc = pc - Ut[pt] # The closest point in the triangle subtracts to the point
         rc = np.linalg.norm(cc)   # Distance between the closest point in the triangle to the point, sqrt(x*x+y*y+z*z)
-        if rc < hc: #and gr[pt] + gr[faces[tri,0]] > 0.0:  # Calculate contact force if within the contact range
+        if rc < hc and gr[pt] + gr[faces[tri,0]] > 0.0:  # Calculate contact force if within the contact range
           cc *= 1.0/rc
           Ntri = cross_dim_2(Ut[faces[tri,1]] - Ut[faces[tri,0]], Ut[faces[tri,2]] - Ut[faces[tri,0]]) # Triangle normal
           Ntri *= 1.0/np.linalg.norm(Ntri)
