@@ -53,6 +53,7 @@ def contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, 
     ind = tree.query_radius(Ut[SN[:]], r=hs)  # Generates point-points proximity index arrays (ind) using the Kd-Tree algorithm (looks up the nearest neighbors of any point)
     ind = [[indice for indice in ind[i] if indice != i] for i in range(len(ind))]  # Remove the index of the point itself
     for i in range(nsn):
+      ind[i] = [SN[ind[i][j]] for j in range(len(ind[i]))] # Find the corresponding surface node index for "ind"
       NNLt[i] = [np.where(ind[i][tp] == faces[:,:])[0] for tp in range(len(ind[i]))]  # Find corresponding proximity triangle indexes by the nearest neighbouring points indexes of a point
       NNLt[i] = [item for sublist in NNLt[i] for item in sublist] # Merge all proximity triangle indexes for a point
       NNLt[i] = list(set(NNLt[i]))  # Remove the same proximity triangle indexes for a point
