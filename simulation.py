@@ -109,7 +109,10 @@ N0 = normalSurfaces(Ut0, faces, SNb, nf, nsn, N0)
 #pool = mp.Pool(mp.cpu_count())
 #H = THICKNESS_CORTEX
 
+<<<<<<< HEAD
 # Elastic process
+=======
+>>>>>>> b64c96e6ed1947da6180ab161f13d571a981f040
 @jit(nopython=True)
 def elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne):
 
@@ -130,8 +133,11 @@ def elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, 
   #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
 
   return Ft
+<<<<<<< HEAD
 
 #myfile = open("/home/x17wang/Codes/BrainGrowth/Force_contact_NNLt.txt", "w")
+=======
+>>>>>>> b64c96e6ed1947da6180ab161f13d571a981f040
 
 # Simulation loop
 while t < 1.0:
