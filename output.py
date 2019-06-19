@@ -4,7 +4,10 @@ import math
 import os
 from vapory import *
 from geometry import normalSurfaces
-
+import nibabel as nib
+from scipy import ndimage
+from scipy.interpolate import RegularGridInterpolator
+from stl import mesh
 
 # Writes POV-Ray source files and output in .png files
 def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom, zoom_pos):
@@ -31,7 +34,7 @@ def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
 
   vertices = np.zeros((nsn,3), dtype = float)
   normals = np.zeros((nsn,3), dtype = float)
-  f_indices = np.zeros((len(faces),3), dtype = float)
+  f_indices = np.zeros((len(faces),3), dtype = int)
   vertices[:,:] = Ut[SN[:],:]*zoom_pos
   normals[:,:] = N[:,:]
   f_indices[:,0] = SNb[faces[:,0]]
@@ -61,8 +64,8 @@ def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
   scene = Scene(camera, objects= [light, background, intersection], included = ["colors.inc"])
   #scene.render(povname, width=400, height=300, quality = 9, antialiasing = 1e-5 )
   scene.render(povname, width=800, height=600, quality = 9)
-
-
+  
+# Writes POV-Ray source files
 def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom, zoom_pos):
 
   povname = "B%d.pov"%(step)
@@ -114,7 +117,6 @@ def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, 
 
   filepov.close()
 
-
 # Write surface mesh in .txt files
 def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos):
 
@@ -137,3 +139,75 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
   for i in range(len(faces)):
     filetxt.write(str(SNb[faces[i][0]]+1) + " " + str(SNb[faces[i][1]]+1) + " " + str(SNb[faces[i][2]]+1) + "\n")
   filetxt.close()
+
+# Convert mesh to .stl format
+def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb):
+
+  stlname = "B%d.stl"%(step)
+
+  foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+
+  save_path = os.path.join(foldname, stlname)
+
+  # Transform coordinates (because the coordinates are normalized at the beginning)
+  vertices = np.zeros((nsn,3), dtype = float)
+  f_indices = np.zeros((len(faces),3), dtype = int)
+  vertices_seg = np.zeros((nsn,3), dtype = float)
+
+  vertices[:,:] = Ut[SN[:],:]*zoom_pos
+  vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd
+  vertices_seg[:,0] = vertices[:,1]*maxd + cog[1]
+  vertices_seg[:,2] = cog[2] - vertices[:,2]*maxd
+
+  f_indices[:,0] = SNb[faces[:,0]]
+  f_indices[:,1] = SNb[faces[:,1]]
+  f_indices[:,2] = SNb[faces[:,2]]
+
+  # Create the .stl mesh
+  brain = mesh.Mesh(np.zeros(f_indices.shape[0], dtype=mesh.Mesh.dtype))
+  for i, f in enumerate(f_indices):
+    for j in range(3):
+        brain.vectors[i][j] = vertices_seg[f[j],:]
+
+  # Write the mesh to file ".stl"
+  brain.save(save_path)
+
+
+# Convert mesh to binary .nii.gz image
+def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nn):
+
+  nifname = "B%d.nii.gz"%(step)
+
+  foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+
+  # Transform coordinates (because the coordinates are normalized at the beginning)
+  vertices = np.zeros((nn,3), dtype = float)
+  vertices_seg = np.zeros((nn,3), dtype = float)
+  vertices[:,:] = Ut[:,:]*zoom_pos
+  vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd
+  vertices_seg[:,0] = vertices[:,1]*maxd + cog[1]
+  vertices_seg[:,2] = cog[2] - vertices[:,2]*maxd
+
+  # Calculate the center coordinate(x,y,z) of the mesh to define the binary image size
+  cog = np.sum(vertices_seg, axis=0)
+  cog /= nn 
+
+  # Convert mesh to binary image
+  outimage = np.zeros((2*int(round(cog[0]))+1, 2*int(round(cog[1]))+1, 2*int(round(cog[2]))+1), dtype=np.int16)
+  for i in range(nn):
+    outimage[int(round(vertices_seg[i,0])), int(round(vertices_seg[i,1])), int(round(vertices_seg[i,2]))] = 1
+
+  # Save binary image in a nifti file
+  try:
+    if not os.path.exists(foldname):
+      os.makedirs(foldname)
+  except OSError:
+    print ('Error: Creating directory. ' + foldname)
+
+  nii = nib.load('/home/x17wang/Exp/London/London-23weeks/brain_crisp_2_refilled.nii.gz')
+  #out_inter = ndimage.morphology.binary_fill_holes(out1).astype(out1.dtype)
+  #out_inter = ndimage.morphology.binary_dilation(out1, iterations=2).astype(out1.dtype)
+  img = nib.Nifti1Image(outimage, nii.affine)
+  save_path = os.path.join(foldname, nifname)
+  nib.save(img, save_path)
+

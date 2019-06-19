@@ -6,9 +6,9 @@ from mathfunc import dot_vec_dim_3
 
 # Finds the nearest surface nodes to nodes (csn) and distances to them (d2s) - these are needed to set up the growth of the gray matter
 @njit(parallel=True)
-def dist2surf(Ut0, tets, SN, nn, nsn, csn, d2s):
+def dist2surf(Ut0, SN, nn, csn, d2s):
   #csn = np.zeros(nn)  # Nearest surface nodes
-  #d2s = np.zeros(nn)  # Distances to nearest surface nodes
+  #d2s = np.zeros(nn)  # Distances to nearest surface node
   for i in prange(nn):
     d2 = dot_vec_dim_3(Ut0[SN[:]] - Ut0[i], Ut0[SN[:]] - Ut0[i])
     csn[i] = np.argmin(d2)
@@ -19,14 +19,21 @@ def dist2surf(Ut0, tets, SN, nn, nsn, csn, d2s):
 # Calculate the relative growth rate
 @jit
 def growthRate(GROWTH_RELATIVE, t):
+  #if t < 0.0:
   at = GROWTH_RELATIVE*t
+    #at = GROWTH_RELATIVE + 7.4*t
+  #if t >= 0.0: 
+    #at = GROWTH_RELATIVE - GROWTH_RELATIVE*t
 
   return at
 
 # Calculate the thickness of growing layer
 @jit
 def cortexThickness(THICKNESS_CORTEX, t):
+  #if t < 0.0:
   H = THICKNESS_CORTEX + 0.01*t
+  #if t >= 0.0:
+    #H = THICKNESS_CORTEX + THICKNESS_CORTEX*t
 
   return H
 

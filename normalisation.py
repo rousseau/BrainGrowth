@@ -31,4 +31,4 @@ def normalise_coord(Ut0, Ut, nn):
 
   Ut = Ut0
 
-  return Ut0, Ut
+  return Ut0, Ut, cog, maxd

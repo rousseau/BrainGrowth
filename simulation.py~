@@ -10,17 +10,17 @@ from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthT
 from normalisation import normalise_coord
 from collision import contactProcess
 from mechanics import tetraElasticity, move
-from output import writePov, writePov2, writeTXT
+from output import writePov, writePov2, writeTXT, mesh_to_stl
 from mathfunc import make_2D_array
 from numba import jit, prange
 
 # Parameters to change
 PATH_DIR = "./res/sphere5" # Path of results
-THICKNESS_CORTEX = 0.042
+THICKNESS_CORTEX = 0.04
 GROWTH_RELATIVE = 1.829
 
 # Path of mesh
-mesh_path = "./data/sphere5.mesh" #"/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/week23-3M-tets.mesh"
+mesh_path = "./data/sphere5.mesh" #"/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/week23-3M-tets.mesh"  #"./data/sphere.mesh" #"/home/x17wang/Codes/BrainGrowth/brain_2.mesh"
 
 # Import mesh, each line as a list
 mesh = importMesh(mesh_path)
@@ -53,11 +53,11 @@ rho = 0.01 #0.0001 #Mass density - adjust to run the simulation faster or slower
 gamma = 0.5 #0.1 Damping coefficent
 di = 500 #Output data once every di steps
 
-bw = 3.2; #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
-mw = 8*a; #Width of a cell in the linked cell algorithm for proximity detection
-hs = 0.6*a; #Thickness of proximity skin
-hc = 0.2*a; #Thickness of repulsive skin
-kc = 10.0*K; #100.0*K Contact stiffness
+bw = 3.2 #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
+mw = 8*a #Width of a cell in the linked cell algorithm for proximity detection
+hs = 0.6*a #Thickness of proximity skin
+hc = 0.2*a #Thickness of repulsive skin
+kc = 10.0*K #100.0*K Contact stiffness
 dt = 0.05*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
 print('dt is: ' + str(dt))
 eps = 0.1 #Epsilon
@@ -81,20 +81,20 @@ Utold = np.zeros((nsn,3), dtype = np.float64)  #Stores positions when proximity 
 #ub = vb = wb = 0 #Barycentric coordinates of triangles
 #G = np.array([np.identity(3)]*ne)  
 shape = (ne,3,3)
-G = np.zeros(shape, dtype=np.float64)  # Initial tangential growth tensor
+G = np.zeros(shape, dtype = np.float64)  # Initial tangential growth tensor
 G[:,np.arange(3),np.arange(3)] = 1.0
 #G = [1.0]*ne
 #G = [GROWTH_RELATIVE]*ne
 # End of parameters
 
 # Normalize initial mesh coordinates, change mesh information by values normalized
-Ut0, Ut = normalise_coord(Ut0, Ut, nn)
+Ut0, Ut, cog, maxd = normalise_coord(Ut0, Ut, nn)
 
 '''# Initialize deformed coordinates
 Ut = Ut0'''
 
 # Finds the nearest surface nodes (csn) to nodes and distances to them (d2s)
-csn, d2s = dist2surf(Ut0, tets, SN, nn, nsn, csn, d2s)
+csn, d2s = dist2surf(Ut0, SN, nn, csn, d2s)
 
 # Configuration of tetrahedra at reference state (A0)
 A0 = configRefer(Ut0, tets, ne)
@@ -109,7 +109,7 @@ N0 = normalSurfaces(Ut0, faces, SNb, nf, nsn, N0)
 #pool = mp.Pool(mp.cpu_count())
 #H = THICKNESS_CORTEX
 
-"""# Elastic process
+# Elastic process
 @jit(nopython=True)
 def elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne):
 
@@ -129,7 +129,9 @@ def elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, 
   G = growthTensor_tangen(Nt, gm, at, G, ne)
   #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
 
-  return Ft"""
+  return Ft
+
+#myfile = open("/home/x17wang/Codes/BrainGrowth/Force_contact_NNLt.txt", "w")
 
 # Simulation loop
 while t < 1.0:
@@ -152,6 +154,9 @@ while t < 1.0:
   # Calculate elastic forces
   #Ft = elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne)
 
+  # Calculate contact forces
+  Ft, NNLt = contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr)
+  #myfile.write("%s\n" % NNLt)
   # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
   gm, mu = shearModulus(d2s, H, tets, ne, muw, mug, gr)
 
@@ -168,9 +173,6 @@ while t < 1.0:
   G = growthTensor_tangen(Nt, gm, at, G, ne)
   #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
 
-  # Calculate contact forces
-  Ft, NNLt = contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr)
-
   # Midplane
   Ft = midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K)
 
@@ -186,6 +188,9 @@ while t < 1.0:
     # Write surface mesh output files in .txt files
     writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos)
 
+	# Convert mesh to .stl format
+    mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb)
+
     print ('step: ' + str(step) + ' t: ' + str(t) )
 
   # Newton dynamics
@@ -193,3 +198,5 @@ while t < 1.0:
 
   t += dt
   step += 1
+
+#myfile.close()
