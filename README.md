@@ -74,4 +74,4 @@ For prm001_30w_Rwhite_petit_taille_2.mesh:
 
 **dt**: 0.01*np.sqrt(rho*a*a/K)
 
-In `output.py` and in function `writePov`, we should change `vertices[:,:] = Ut[SN[:],:]*zoom_pos` to `vertices[:,:] = -Ut[SN[:],:]*zoom_pos` in order to output from the right perspective.
+In `output.py` and in function `writePov`, we should change `vertices[:,:] = Ut[SN[:],:]*zoom_pos` to `vertices[:,:] = -Ut[SN[:],:]*zoom_pos` in order to output images from the right perspective.
