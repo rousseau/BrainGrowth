@@ -1,0 +1,7 @@
+nibabel
+numba
+numpy
+scipy
+Vapory
+numpy-stl
+scikit-learn
