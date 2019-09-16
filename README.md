@@ -4,8 +4,7 @@
 
 - [Introduction](#introduction)
 - [Requirements](#requirements)
-- [Run](#run)
-- [Publications](#publications)
+- [Configuration of Parameters and Run](#run)
 
 ## Introduction
 
