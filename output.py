@@ -1,4 +1,3 @@
-# Write output .pov files
 import numpy as np
 import math
 import os
@@ -7,9 +6,24 @@ from geometry import normalSurfaces
 import nibabel as nib
 from scipy import ndimage
 from scipy.interpolate import RegularGridInterpolator
-from stl import mesh
+from stl import mesh, Mode
 
-# Writes POV-Ray source files and output in .png files
+# Calculate surface area and mesh volume
+def area_volume(Ut, faces, gr, Vn):
+
+  Area = 0.0
+
+  for i in range(len(faces)):
+    Ntmp = np.cross(Ut[faces[i,1]] - Ut[faces[i,0]], Ut[faces[i,2]] - Ut[faces[i,0]])
+    Area += 0.5*np.linalg.norm(Ntmp)     #*(gr[faces[i,0]] + gr[faces[i,1]] + gr[faces[i,2]])/3.0
+
+  Volume = 0.0
+
+  Volume = abs(np.sum(Vn[:]))
+
+  return Area, Volume
+
+# Writes POV-Ray source files and then output in .png files
 def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom, zoom_pos):
 
   povname = "%s/pov_H%fAT%f/B%d.png"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step)
@@ -30,7 +44,7 @@ def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
 
   camera = Camera('location', [-3*zoom, 3*zoom, -3*zoom], 'look_at', [0, 0, 0], 'sky', [0, 0, -1], 'focal_point', [-0.55, 0.55, -0.55], 'aperture', 0.055, 'blur_samples', 10)
   light = LightSource([-14, 3, -14], 'color', [1, 1, 1])
-  background = Background('color', [1,1,1])
+  background = Background('color', [1, 1, 1])
 
   vertices = np.zeros((nsn,3), dtype = float)
   normals = np.zeros((nsn,3), dtype = float)
@@ -55,15 +69,15 @@ def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
 
   Mesh = Mesh2(VertexVectors(nsn, *vertices), NormalVectors(nsn, *normals), FaceIndices(len(faces), *f_indices), 'inside_vector', [0,1,0])
   box = Box([-100, -100, -100], [100, 100, 100])
-  pigment = Pigment( 'color', [1, 1, 0.5])
-  normal = Normal( 'bumps', 0.05, 'scale', 0.005)
-  finish = Finish( 'phong', 1, 'reflection', 0.05, 'ambient', 0, 'diffuse', 0.9)
+  pigment = Pigment('color', [1, 1, 0.5])
+  normal = Normal('bumps', 0.05, 'scale', 0.005)
+  finish = Finish('phong', 1, 'reflection', 0.05, 'ambient', 0, 'diffuse', 0.9)
 
   intersection = Intersection(Mesh, box, Texture(pigment, normal, finish))
 
-  scene = Scene(camera, objects= [light, background, intersection], included = ["colors.inc"])
+  scene = Scene(camera, objects=[light, background, intersection], included=["colors.inc"])
   #scene.render(povname, width=400, height=300, quality = 9, antialiasing = 1e-5 )
-  scene.render(povname, width=800, height=600, quality = 9)
+  scene.render(povname, width=800, height=600, quality=9)
   
 # Writes POV-Ray source files
 def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom, zoom_pos):
@@ -134,7 +148,7 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
   filetxt = open(completeName, "w")
   filetxt.write(str(nsn) + "\n")
   for i in range(nsn):
-    filetxt.write(str(Ut[SN[i]][0]*zoom_pos) + " " + str(Ut[SN[i]][1]*zoom_pos) + " " + str(Ut[SN[i]][2]*zoom_pos) + "\n")
+    filetxt.write(str(-Ut[SN[i]][0]*zoom_pos) + " " + str(-Ut[SN[i]][1]*zoom_pos) + " " + str(-Ut[SN[i]][2]*zoom_pos) + "\n")
   filetxt.write(str(len(faces)) + "\n")
   for i in range(len(faces)):
     filetxt.write(str(SNb[faces[i][0]]+1) + " " + str(SNb[faces[i][1]]+1) + " " + str(SNb[faces[i][2]]+1) + "\n")
@@ -155,9 +169,12 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
   vertices_seg = np.zeros((nsn,3), dtype = float)
 
   vertices[:,:] = Ut[SN[:],:]*zoom_pos
-  vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd
+  vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd  
+  #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
   vertices_seg[:,0] = vertices[:,1]*maxd + cog[1]
+  #vertices_seg[:,0] = cog[1] - vertices[:,1]*maxd
   vertices_seg[:,2] = cog[2] - vertices[:,2]*maxd
+  #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
 
   f_indices[:,0] = SNb[faces[:,0]]
   f_indices[:,1] = SNb[faces[:,1]]
@@ -170,10 +187,9 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
         brain.vectors[i][j] = vertices_seg[f[j],:]
 
   # Write the mesh to file ".stl"
-  brain.save(save_path)
+  brain.save(save_path, mode=Mode.ASCII)
 
-
-# Convert mesh to binary .nii.gz image
+'''# Convert mesh to binary .nii.gz image
 def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nn):
 
   nifname = "B%d.nii.gz"%(step)
@@ -209,5 +225,4 @@ def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoo
   #out_inter = ndimage.morphology.binary_dilation(out1, iterations=2).astype(out1.dtype)
   img = nib.Nifti1Image(outimage, nii.affine)
   save_path = os.path.join(foldname, nifname)
-  nib.save(img, save_path)
-
+  nib.save(img, save_path)'''
