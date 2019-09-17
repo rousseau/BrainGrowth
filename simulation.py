@@ -65,7 +65,7 @@ mw = 8*a #Width of a cell in the linked cell algorithm for proximity detection
 hs = 0.6*a #Thickness of proximity skin
 hc = 0.2*a #Thickness of repulsive skin
 kc = 10.0*K #100.0*K Contact stiffness
-dt = 0.01*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
+dt = 0.05*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
 print('dt is ' + str(dt))
 eps = 0.1 #Epsilon
 k = 0.0
