@@ -2,25 +2,22 @@
 from __future__ import division
 import numpy as np
 import math
-import re
-import os
-import sys
-from geometry import importMesh, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom
+from geometry import importMesh, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, edge_length, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom
 from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthTensor_homo, growthTensor_homo_2, growthTensor_relahomo
 from normalisation import normalise_coord
-from collision import contactProcess
+from collision_Tallinen import contactProcess
 from mechanics import tetraElasticity, move
-from output import writePov, writePov2, writeTXT, mesh_to_stl
+from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl
 from mathfunc import make_2D_array
 from numba import jit, prange
 
 # Parameters to change
-PATH_DIR = "./res/sphere5" # Path of results
-THICKNESS_CORTEX = 0.04
+PATH_DIR = "./res/Tallinen_22W_demi_2" # Path of results
+THICKNESS_CORTEX = 0.043
 GROWTH_RELATIVE = 1.829
 
 # Path of mesh
-mesh_path = "./data/sphere5.mesh" #"/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/week23-3M-tets.mesh"  #"./data/sphere.mesh" #"/home/x17wang/Codes/BrainGrowth/brain_2.mesh"
+mesh_path = "./data/Tallinen_22W_demi_2.mesh"  #"./data/Tallinen_22W_demi_2.mesh"  #"/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/week23-3M-tets.mesh" #"/home/x17wang/Codes/BrainGrowth/brain_2.mesh"
 
 # Import mesh, each line as a list
 mesh = importMesh(mesh_path)
@@ -37,19 +34,29 @@ faces, nf = triangleIndices(mesh, nn, ne)
 # Determine surface nodes and index maps (nsn: number of nodes at the surface, SN: Nodal index map from surface to full mesh, SNb: Nodal index map from full mesh to surface)
 nsn, SN, SNb = numberSurfaceNodes(faces, nn, nf)
 
+# Check minimum, maximum and average edge lengths (average mesh spacing) at the surface
+mine, maxe, ave = edge_length(Ut, faces, nf)
+print ('minimum edge lengths: ' + str(mine) + ' maximum edge lengths: ' + str(maxe) + ' average value of edge length: ' + str(ave))
+
 # Calculate the total volume of a tetrahedral mesh
 Vn_init = np.zeros(nn, dtype = np.float64)
 Vm = volume_mesh(Vn_init, nn, ne, tets, Ut)
 print ('Volume of mesh is ' + str(-Vm))
 
+# Calculate the total surface area of a tetrahedral mesh
+Area = 0.0
+for i in range(len(faces)):
+  Ntmp = np.cross(Ut0[faces[i,1]] - Ut0[faces[i,0]], Ut0[faces[i,2]] - Ut0[faces[i,0]])
+  Area += 0.5*np.linalg.norm(Ntmp)
+print ('Area of mesh is ' + str(Area))
+
 # Parameters
-H = THICKNESS_CORTEX  #Thickness of growing layer
-Hcp = THICKNESS_CORTEX #Cortical plate thickness for visualization
+H = THICKNESS_CORTEX  #Cortical plate thickness
 mug = 1.0 #65.0 Shear modulus of gray matter
 muw = 1.167 #75.86 Shear modulus of white matter
 K = 5.0 #100.0 Bulk modulus
-a = 0.01 #Mesh spacing - set manually based on the average spacing in the mesh
-rho = 0.01 #0.0001 #Mass density - adjust to run the simulation faster or slower
+a = 0.01 #0.003 0.01 Mesh spacing - set manually based on the average spacing in the mesh
+rho = 0.01 #0.0001 Mass density - adjust to run the simulation faster or slower
 gamma = 0.5 #0.1 Damping coefficent
 di = 500 #Output data once every di steps
 
@@ -58,13 +65,13 @@ mw = 8*a #Width of a cell in the linked cell algorithm for proximity detection
 hs = 0.6*a #Thickness of proximity skin
 hc = 0.2*a #Thickness of repulsive skin
 kc = 10.0*K #100.0*K Contact stiffness
-dt = 0.05*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
-print('dt is: ' + str(dt))
+dt = 0.01*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
+print('dt is ' + str(dt))
 eps = 0.1 #Epsilon
 k = 0.0
 mpy = -0.004 #Midplane position
 t = 0.0 #Current time
-step = 0 #Current timestep
+step = 0 #Current time step
 zoom = 1.0 #Zoom variable for visualization
 
 csn = np.zeros(nn, dtype = np.int64)  #Nearest surface nodes for all nodes
@@ -84,7 +91,7 @@ shape = (ne,3,3)
 G = np.zeros(shape, dtype = np.float64)  # Initial tangential growth tensor
 G[:,np.arange(3),np.arange(3)] = 1.0
 #G = [1.0]*ne
-#G = [GROWTH_RELATIVE]*ne
+#G = 1.0
 # End of parameters
 
 # Normalize initial mesh coordinates, change mesh information by values normalized
@@ -172,9 +179,10 @@ while t < 1.0:
   # Calculate relative tangential growth factor G
   G = growthTensor_tangen(Nt, gm, at, G, ne)
   #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
+  #G = 1.0 + GROWTH_RELATIVE*t
 
   # Midplane
-  Ft = midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K)
+  #Ft = midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K)
 
   # Output
   if step % di == 0:
@@ -192,6 +200,11 @@ while t < 1.0:
     mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb)
 
     print ('step: ' + str(step) + ' t: ' + str(t) )
+
+    # Calculate surface area and mesh volume
+    Area, Volume = area_volume(Ut, faces, gr, Vn)
+
+    print ('Normalized area: ' + str(Area) + ' Normalized volume: ' + str(Volume) )
 
   # Newton dynamics
   Ft, Ut, Vt = move(nn, Ft, Vt, Ut, gamma, Vn0, rho, dt)
