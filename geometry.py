@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from numba import jit, njit, prange
-from mathfunc import det_dim_3, det_dim_2, cross_dim_3, dot_mat_dim_3, transpose_dim_3, normalize_dim_3
+from mathfunc import det_dim_3, det_dim_2, cross_dim_3, dot_mat_dim_3, transpose_dim_3, normalize_dim_3, dot_const_mat_dim_3
 
 # Import mesh, each line as a list
 def importMesh(path):
@@ -66,6 +66,23 @@ def numberSurfaceNodes(faces, nn, nf):
       p += 1
 
   return nsn, SN, SNb
+
+# Check minimum, maximum and average edge lengths (average mesh spacing) at the surface
+@jit(nopython=True, parallel=True)
+def edge_length(Ut, faces, nf):
+  mine = 1e9
+  maxe = ave = 0.0
+  for i in range(nf):
+    mine = min(np.linalg.norm(Ut[faces[i,1]] - Ut[faces[i,0]]), mine)
+    mine = min(np.linalg.norm(Ut[faces[i,2]] - Ut[faces[i,0]]), mine)
+    mine = min(np.linalg.norm(Ut[faces[i,2]] - Ut[faces[i,1]]), mine)
+    maxe = max(np.linalg.norm(Ut[faces[i,1]] - Ut[faces[i,0]]), maxe)
+    maxe = max(np.linalg.norm(Ut[faces[i,2]] - Ut[faces[i,0]]), maxe)
+    maxe = max(np.linalg.norm(Ut[faces[i,2]] - Ut[faces[i,1]]), maxe)
+    ave += np.linalg.norm(Ut[faces[i,2]] - Ut[faces[i,1]]) + np.linalg.norm(Ut[faces[i,2]] - Ut[faces[i,0]]) + np.linalg.norm(Ut[faces[i,1]] - Ut[faces[i,0]])
+  ave /= 3.0*nf
+
+  return mine, maxe, ave
 
 # Return the total volume of a tetrahedral mesh
 @jit(nopython=True, parallel=True)
@@ -158,6 +175,7 @@ def volumeNodal(G, A0, tets, Ut, ne, nn):
   At[:,1] = Ut[tets[:,2]] - Ut[tets[:,0]]
   At[:,2] = Ut[tets[:,3]] - Ut[tets[:,0]]
   vol0[:] = det_dim_3(dot_mat_dim_3(G[:], A0[:]))/6.0
+  #vol0[:] = det_dim_3(dot_const_mat_dim_3(G, A0[:]))/6.0
   vol[:] = det_dim_3(transpose_dim_3(At[:]))/6.0
   for i in prange(ne):   
     Vn0[tets[i,:]] += vol0[i]/4.0
@@ -180,7 +198,8 @@ def midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K):
 # Calculate the longitudinal length of the real brain
 @jit
 def longitLength(t):
-  L = -0.98153*t**2+3.4214*t+1.9936
+  L = -0.81643*t**2+2.1246*t+1.3475
+  #L = -0.98153*t**2+3.4214*t+1.9936
   #L = -41.6607*t**2+101.7986*t+58.843 #for the case without normalisation
 
   return L
@@ -188,8 +207,8 @@ def longitLength(t):
 # Obtain zoom parameter by checking the longitudinal length of the brain model
 @jit
 def paraZoom(Ut, SN, L, nsn):
-  xmin = ymin = 1.0
-  xmax = ymax = -1.0
+  #xmin = ymin = 1.0
+  #xmax = ymax = -1.0
 
   xmin = min(Ut[SN[:],0])
   xmax = max(Ut[SN[:],0])
