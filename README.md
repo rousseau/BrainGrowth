@@ -65,13 +65,3 @@ In simulation.py, there are certain parameters should be set manually:
 For sphere5.mesh:
 
 **a**: 0.01
-
-**dt**: 0.05*np.sqrt(rho*a*a/K)
-
-For prm001_30w_Rwhite_petit_taille_2.mesh:
-
-**a**: 0.001
-
-**dt**: 0.01*np.sqrt(rho*a*a/K)
-
-In `output.py` and in function `writePov`, we should change `vertices[:,:] = Ut[SN[:],:]*zoom_pos` to `vertices[:,:] = -Ut[SN[:],:]*zoom_pos` in order to output images from the right perspective.
