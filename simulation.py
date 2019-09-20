@@ -182,7 +182,7 @@ while t < 1.0:
   #G = 1.0 + GROWTH_RELATIVE*t
 
   # Midplane
-  #Ft = midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K)
+  Ft = midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K)
 
   # Output
   if step % di == 0:
@@ -196,7 +196,7 @@ while t < 1.0:
     # Write surface mesh output files in .txt files
     writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos)
 
-	# Convert mesh to .stl format
+    # Convert mesh to .stl format
     mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb)
 
     print ('step: ' + str(step) + ' t: ' + str(t) )
