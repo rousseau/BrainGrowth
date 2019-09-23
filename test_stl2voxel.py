@@ -1,3 +1,5 @@
+#python3 test_stl2voxel.py -i inputFilePath(.stl) -o outputFilePath(.nii) -r referenceFilePath(.nii)
+
 import argparse
 import os.path
 import numpy as np
@@ -7,7 +9,7 @@ import perimeter
 from util import padVoxelArray
 import nibabel as nib
 
-def doExport(inputFilePath, outputFilePath, originImagePath, resolution):
+def doExport(inputFilePath, outputFilePath, referenceFilePath, resolution):
     mesh = list(stl_reader.read_stl_verticies(inputFilePath))
     (scale, shift, bounding_box) = slice.calculateScaleAndShift(mesh, resolution)
     mesh = list(slice.scaleAndShiftMesh(mesh, scale, shift))
@@ -43,5 +45,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert STL files to voxels')
     parser.add_argument('-i','--input', help='Input STL file', nargs='?', type=lambda s:file_choices(('.stl'),s))
     parser.add_argument('-o','--output', help='Ouput Nifti image', nargs='?', type=lambda s:file_choices(('.nii'),s))
+    parser.add_argument('-r','--reference', help='Reference Nifti image', nargs='?', type=lambda s:file_choices(('.nii'),s))
     args = parser.parse_args()
-    doExport(args.input, args.output, arg.origin, 100)
+    doExport(args.input, args.output, args.reference, 100)
