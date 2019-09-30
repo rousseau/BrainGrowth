@@ -2,6 +2,9 @@ import numpy as np
 import math
 from numba import jit, njit, prange
 from mathfunc import det_dim_3, det_dim_2, cross_dim_3, dot_mat_dim_3, transpose_dim_3, normalize_dim_3
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
 
 # Import mesh, each line as a list
 def importMesh(path):
