@@ -70,7 +70,6 @@ if __name__ == '__main__':
   muw = 1.167 #75.86 Shear modulus of white matter
   K = 5.0 #100.0 Bulk modulus
   a = 0.005 #0.003 0.01 Mesh spacing - set manually based on the average spacing in the mesh
-  ac = 0.001
   rho = 0.01 #0.0001 Mass density - adjust to run the simulation faster or slower
   gamma = 0.5 #0.1 Damping coefficent
   di = 500 #Output data once every di steps
@@ -156,8 +155,8 @@ if __name__ == '__main__':
   #myfile = open("/home/x17wang/Codes/BrainGrowth/Force_contact_NNLt.txt", "w")
 
   # Tetrahedral indices of lower and upper parts of the objet
-  indices_b = np.where((Ut0[tets[:,0],2]+Ut0[tets[:,1],2]+Ut0[tets[:,2],2]+Ut0[tets[:,3],2])/4 <= -0.1)[0]  #lower part
-  indices_a = np.where((Ut0[tets[:,0],2]+Ut0[tets[:,1],2]+Ut0[tets[:,2],2]+Ut0[tets[:,3],2])/4 >= 0.1)[0]  #upper part
+  #indices_b = np.where((Ut0[tets[:,0],2]+Ut0[tets[:,1],2]+Ut0[tets[:,2],2]+Ut0[tets[:,3],2])/4 <= -0.1)[0]  #lower part
+  #indices_a = np.where((Ut0[tets[:,0],2]+Ut0[tets[:,1],2]+Ut0[tets[:,2],2]+Ut0[tets[:,3],2])/4 >= 0.1)[0]  #upper part
 
   # Simulation loop
   while t < 1.0:
@@ -181,7 +180,7 @@ if __name__ == '__main__':
     #Ft = elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne)
 
     # Calculate contact forces
-    Ft, NNLt = contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, ac, gr)
+    Ft, NNLt = contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr)
     #myfile.write("%s\n" % NNLt)
     # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
     gm, mu = shearModulus(d2s, H, tets, ne, muw, mug, gr)
