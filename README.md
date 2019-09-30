@@ -64,7 +64,7 @@ python simulation.py '-i' './data/sphere5.mesh' '-o' './res/sphere5' '-t' 0.042 
 
 In simulation.py, there are certain parameters should be set manually:
 
-**a**: Average mesh spacing
+**a**: average mesh spacing
 
 For sphere5.mesh:
 
