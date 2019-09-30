@@ -18,10 +18,15 @@ def dist2surf(Ut0, SN, nn, csn, d2s):
 
 # Calculate the relative growth rate
 @jit
-def growthRate(GROWTH_RELATIVE, t):
-  #if t < 0.0:
+def growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets):
+  #at = np.zeros(ne, dtype=np.float64)
+  #at[indices_b[:]] = 1.5*GROWTH_RELATIVE*t   #3.658
+  #at[indices_a[:]] = GROWTH_RELATIVE*t     #1.829
+  #for i in prange(ne):
+    #at[i] = 2.5*GROWTH_RELATIVE*t/(1+math.exp((Ut0[tets[i,0],2]+Ut0[tets[i,1],2]+Ut0[tets[i,2],2]+Ut0[tets[i,3],2])/4))  #~1.829*2max, ~1.829min
   at = GROWTH_RELATIVE*t
-    #at = GROWTH_RELATIVE + 7.4*t
+  #if t < 0.0:
+    #at[i] = GROWTH_RELATIVE + 7.4*t
   #if t >= 0.0: 
     #at = GROWTH_RELATIVE - GROWTH_RELATIVE*t
 
