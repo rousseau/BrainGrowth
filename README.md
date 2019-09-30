@@ -58,7 +58,7 @@ python simulation.py '-i' './data/sphere5.mesh' '-o' './res/sphere5' '-t' 0.042 
 
 **i**: path of input maillage
 
-**o**: path of output maillage
+**o**: path of output
 
 **t**: cortical thickness
 
