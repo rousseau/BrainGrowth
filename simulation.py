@@ -69,7 +69,7 @@ if __name__ == '__main__':
   mug = 1.0 #65.0 Shear modulus of gray matter
   muw = 1.167 #75.86 Shear modulus of white matter
   K = 5.0 #100.0 Bulk modulus
-  a = 0.005 #0.003 0.01 Mesh spacing - set manually based on the average spacing in the mesh
+  a = 0.01 #0.003 0.01 Mesh spacing - set manually based on the average spacing in the mesh
   rho = 0.01 #0.0001 Mass density - adjust to run the simulation faster or slower
   gamma = 0.5 #0.1 Damping coefficent
   di = 500 #Output data once every di steps
