@@ -26,12 +26,12 @@ if __name__ == '__main__':
   args = parser.parse_args()
 
   # Parameters to change
-  PATH_DIR = args.output # Path of results
-  THICKNESS_CORTEX = args.thickness
-  GROWTH_RELATIVE = args.growth
+  PATH_DIR = args.output # Path of output
+  THICKNESS_CORTEX = args.thickness # Cortical thickness
+  GROWTH_RELATIVE = args.growth # Relative growth rate
 
   # Path of mesh
-  mesh_path = args.input
+  mesh_path = args.input # Path of input
 
   # Import mesh, each line as a list
   mesh = importMesh(mesh_path)
