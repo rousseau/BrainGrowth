@@ -31,7 +31,7 @@ if __name__ == '__main__':
   GROWTH_RELATIVE = args.growth
 
   # Path of mesh
-  mesh_path = args.input #"/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/week23-3M-tets.mesh"  # "./data/prm001_25W_Rwhite.mesh" #"/home/x17wang/Bureau/xiaoyu/     Brain_code_and_meshes/week23-3M-tets.mesh" #"/home/x17wang/Codes/BrainGrowth/brain_2.mesh"
+  mesh_path = args.input
 
   # Import mesh, each line as a list
   mesh = importMesh(mesh_path)
