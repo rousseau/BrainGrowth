@@ -12,12 +12,12 @@ from mathfunc import make_2D_array
 from numba import jit, prange
 
 # Parameters to change
-PATH_DIR = "./res/Tallinen_22W_demi_2" # Path of results
-THICKNESS_CORTEX = 0.043
+PATH_DIR = "./res/sphere5" # Path of results
+THICKNESS_CORTEX = 0.042
 GROWTH_RELATIVE = 1.829
 
 # Path of mesh
-mesh_path = "./data/Tallinen_22W_demi_2.mesh"  #"./data/Tallinen_22W_demi_2.mesh"  #"/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/week23-3M-tets.mesh" #"/home/x17wang/Codes/BrainGrowth/brain_2.mesh"
+mesh_path = "./data/sphere5.mesh"  #"./data/Tallinen_22W_demi_2.mesh"  #"/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/week23-3M-tets.mesh" #"/home/x17wang/Codes/BrainGrowth/brain_2.mesh"
 
 # Import mesh, each line as a list
 mesh = importMesh(mesh_path)
