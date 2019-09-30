@@ -1,215 +1,234 @@
 # -*- coding: utf-8 -*-
+"""
+  python simulation.py '-i' './data/sphere5.mesh' '-o' './res/sphere5' '-t' 0.042 '-g' 1.829
+
+"""
+
 from __future__ import division
+import argparse
 import numpy as np
 import math
 from geometry import importMesh, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, edge_length, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom
 from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthTensor_homo, growthTensor_homo_2, growthTensor_relahomo
 from normalisation import normalise_coord
-from collision_Tallinen import contactProcess
+from collision import contactProcess
 from mechanics import tetraElasticity, move
 from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl
 from mathfunc import make_2D_array
 from numba import jit, prange
 
-# Parameters to change
-PATH_DIR = "./res/sphere5" # Path of results
-THICKNESS_CORTEX = 0.042
-GROWTH_RELATIVE = 1.829
+if __name__ == '__main__':
+  parser = argparse.ArgumentParser(description='Dynamic simulations')
+  parser.add_argument('-i', '--input', help='Input maillage', type=str, required=True)
+  parser.add_argument('-o', '--output', help='Output maillage', type=str, required=True)
+  parser.add_argument('-t', '--thickness', help='Cortical thickness', type=float, required=True)
+  parser.add_argument('-g', '--growth', help='Relative growth rate', type=float, required=True)
+  args = parser.parse_args()
 
-# Path of mesh
-mesh_path = "./data/sphere5.mesh"  #"./data/Tallinen_22W_demi_2.mesh"  #"/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/week23-3M-tets.mesh" #"/home/x17wang/Codes/BrainGrowth/brain_2.mesh"
+  # Parameters to change
+  PATH_DIR = args.output # Path of results
+  THICKNESS_CORTEX = args.thickness
+  GROWTH_RELATIVE = args.growth
 
-# Import mesh, each line as a list
-mesh = importMesh(mesh_path)
+  # Path of mesh
+  mesh_path = args.input #"/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/week23-3M-tets.mesh"  # "./data/prm001_25W_Rwhite.mesh" #"/home/x17wang/Bureau/xiaoyu/     Brain_code_and_meshes/week23-3M-tets.mesh" #"/home/x17wang/Codes/BrainGrowth/brain_2.mesh"
 
-# Read nodes, get undeformed coordinates (Ut0) and initialize deformed coordinates (Ut) of all nodes
-Ut0, Ut, nn = vertex(mesh)
+  # Import mesh, each line as a list
+  mesh = importMesh(mesh_path)
 
-# Read element indices (tets: index of four vertices of tetrahedra) and get number of elements (ne)
-tets, ne = tetraVerticesIndices(mesh, nn)
+  # Read nodes, get undeformed coordinates (Ut0) and initialize deformed coordinates (Ut) of all nodes
+  Ut0, Ut, nn = vertex(mesh)
 
-# Read surface triangle indices (faces: index of three vertices of triangles) and get number of surface triangles (nf)
-faces, nf = triangleIndices(mesh, nn, ne)
+  # Read element indices (tets: index of four vertices of tetrahedra) and get number of elements (ne)
+  tets, ne = tetraVerticesIndices(mesh, nn)
 
-# Determine surface nodes and index maps (nsn: number of nodes at the surface, SN: Nodal index map from surface to full mesh, SNb: Nodal index map from full mesh to surface)
-nsn, SN, SNb = numberSurfaceNodes(faces, nn, nf)
+  # Read surface triangle indices (faces: index of three vertices of triangles) and get number of surface triangles (nf)
+  faces, nf = triangleIndices(mesh, nn, ne)
 
-# Check minimum, maximum and average edge lengths (average mesh spacing) at the surface
-mine, maxe, ave = edge_length(Ut, faces, nf)
-print ('minimum edge lengths: ' + str(mine) + ' maximum edge lengths: ' + str(maxe) + ' average value of edge length: ' + str(ave))
+  # Determine surface nodes and index maps (nsn: number of nodes at the surface, SN: Nodal index map from surface to full mesh, SNb: Nodal index map from full mesh to surface)
+  nsn, SN, SNb = numberSurfaceNodes(faces, nn, nf)
 
-# Calculate the total volume of a tetrahedral mesh
-Vn_init = np.zeros(nn, dtype = np.float64)
-Vm = volume_mesh(Vn_init, nn, ne, tets, Ut)
-print ('Volume of mesh is ' + str(-Vm))
+  # Check minimum, maximum and average edge lengths (average mesh spacing) at the surface
+  mine, maxe, ave = edge_length(Ut, faces, nf)
+  print ('minimum edge lengths: ' + str(mine) + ' maximum edge lengths: ' + str(maxe) + ' average value of edge length: ' + str(ave))
 
-# Calculate the total surface area of a tetrahedral mesh
-Area = 0.0
-for i in range(len(faces)):
-  Ntmp = np.cross(Ut0[faces[i,1]] - Ut0[faces[i,0]], Ut0[faces[i,2]] - Ut0[faces[i,0]])
-  Area += 0.5*np.linalg.norm(Ntmp)
-print ('Area of mesh is ' + str(Area))
+  # Calculate the total volume of a tetrahedral mesh
+  Vn_init = np.zeros(nn, dtype = np.float64)
+  Vm = volume_mesh(Vn_init, nn, ne, tets, Ut)
+  print ('Volume of mesh is ' + str(-Vm))
 
-# Parameters
-H = THICKNESS_CORTEX  #Cortical plate thickness
-mug = 1.0 #65.0 Shear modulus of gray matter
-muw = 1.167 #75.86 Shear modulus of white matter
-K = 5.0 #100.0 Bulk modulus
-a = 0.01 #0.003 0.01 Mesh spacing - set manually based on the average spacing in the mesh
-rho = 0.01 #0.0001 Mass density - adjust to run the simulation faster or slower
-gamma = 0.5 #0.1 Damping coefficent
-di = 500 #Output data once every di steps
+  # Calculate the total surface area of a tetrahedral mesh
+  Area = 0.0
+  for i in range(len(faces)):
+    Ntmp = np.cross(Ut0[faces[i,1]] - Ut0[faces[i,0]], Ut0[faces[i,2]] - Ut0[faces[i,0]])
+    Area += 0.5*np.linalg.norm(Ntmp)
+  print ('Area of mesh is ' + str(Area))
 
-bw = 3.2 #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
-mw = 8*a #Width of a cell in the linked cell algorithm for proximity detection
-hs = 0.6*a #Thickness of proximity skin
-hc = 0.2*a #Thickness of repulsive skin
-kc = 10.0*K #100.0*K Contact stiffness
-dt = 0.05*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
-print('dt is ' + str(dt))
-eps = 0.1 #Epsilon
-k = 0.0
-mpy = -0.004 #Midplane position
-t = 0.0 #Current time
-step = 0 #Current time step
-zoom = 1.0 #Zoom variable for visualization
+  # Parameters
+  H = THICKNESS_CORTEX  #Cortical plate thickness
+  mug = 1.0 #65.0 Shear modulus of gray matter
+  muw = 1.167 #75.86 Shear modulus of white matter
+  K = 5.0 #100.0 Bulk modulus
+  a = 0.005 #0.003 0.01 Mesh spacing - set manually based on the average spacing in the mesh
+  ac = 0.001
+  rho = 0.01 #0.0001 Mass density - adjust to run the simulation faster or slower
+  gamma = 0.5 #0.1 Damping coefficent
+  di = 500 #Output data once every di steps
 
-csn = np.zeros(nn, dtype = np.int64)  #Nearest surface nodes for all nodes
-d2s = np.zeros(nn, dtype = np.float64)  #Distances to nearest surface nodes for all nodes
-N0 = np.zeros((nsn,3), dtype = np.float64)  #Normals of surface nodes
-Vt = np.zeros((nn,3), dtype = np.float64)  #Velocities
-Ft = np.zeros((nn,3), dtype = np.float64)  #Forces
-#Vn0 = np.zeros(nn, dtype = float) #Nodal volumes in reference state
-#Vn = np.zeros(nn, dtype = float)  #Deformed nodal volumes
-# Ue = 0 #Elastic energy
+  bw = 3.2 #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
+  mw = 8*a #Width of a cell in the linked cell algorithm for proximity detection
+  hs = 0.6*a #Thickness of proximity skin
+  hc = 0.2*a #Thickness of repulsive skin
+  kc = 10.0*K #100.0*K Contact stiffness
+  dt = 0.05*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
+  print('dt is ' + str(dt))
+  eps = 0.1 #Epsilon
+  k = 0.0
+  mpy = -0.004 #Midplane position
+  t = 0.0 #Current time
+  step = 0 #Current time step
+  zoom = 1.0 #Zoom variable for visualization
 
-NNLt = [[] for _ in range(nsn)] #Triangle-proximity lists for surface nodes
-Utold = np.zeros((nsn,3), dtype = np.float64)  #Stores positions when proximity list is updated
-#ub = vb = wb = 0 #Barycentric coordinates of triangles
-#G = np.array([np.identity(3)]*ne)  
-shape = (ne,3,3)
-G = np.zeros(shape, dtype = np.float64)  # Initial tangential growth tensor
-G[:,np.arange(3),np.arange(3)] = 1.0
-#G = [1.0]*ne
-#G = 1.0
-# End of parameters
+  csn = np.zeros(nn, dtype = np.int64)  #Nearest surface nodes for all nodes
+  d2s = np.zeros(nn, dtype = np.float64)  #Distances to nearest surface nodes for all nodes
+  N0 = np.zeros((nsn,3), dtype = np.float64)  #Normals of surface nodes
+  Vt = np.zeros((nn,3), dtype = np.float64)  #Velocities
+  Ft = np.zeros((nn,3), dtype = np.float64)  #Forces
+  #Vn0 = np.zeros(nn, dtype = float) #Nodal volumes in reference state
+  #Vn = np.zeros(nn, dtype = float)  #Deformed nodal volumes
+  # Ue = 0 #Elastic energy
 
-# Normalize initial mesh coordinates, change mesh information by values normalized
-Ut0, Ut, cog, maxd = normalise_coord(Ut0, Ut, nn)
+  NNLt = [[] for _ in range(nsn)] #Triangle-proximity lists for surface nodes
+  Utold = np.zeros((nsn,3), dtype = np.float64)  #Stores positions when proximity list is updated
+  #ub = vb = wb = 0 #Barycentric coordinates of triangles
+  #G = np.array([np.identity(3)]*ne)  
+  shape = (ne,3,3)
+  G = np.zeros(shape, dtype = np.float64)  # Initial tangential growth tensor
+  G[:,np.arange(3),np.arange(3)] = 1.0
+  #G = [1.0]*ne
+  #G = 1.0
+  # End of parameters
 
-'''# Initialize deformed coordinates
-Ut = Ut0'''
+  # Normalize initial mesh coordinates, change mesh information by values normalized
+  Ut0, Ut, cog, maxd = normalise_coord(Ut0, Ut, nn)
 
-# Finds the nearest surface nodes (csn) to nodes and distances to them (d2s)
-csn, d2s = dist2surf(Ut0, SN, nn, csn, d2s)
+  '''# Initialize deformed coordinates
+  Ut = Ut0'''
 
-# Configuration of tetrahedra at reference state (A0)
-A0 = configRefer(Ut0, tets, ne)
+  # Finds the nearest surface nodes (csn) to nodes and distances to them (d2s)
+  csn, d2s = dist2surf(Ut0, SN, nn, csn, d2s)
 
-# Mark non-growing areas
-gr = markgrowth(Ut0, nn)
+  # Configuration of tetrahedra at reference state (A0)
+  A0 = configRefer(Ut0, tets, ne)
 
-# Calculate normals of each surface triangle and apply these normals to surface nodes
-N0 = normalSurfaces(Ut0, faces, SNb, nf, nsn, N0)
+  # Mark non-growing areas
+  gr = markgrowth(Ut0, nn)
 
-#num_cores = mp.cpu_count()
-#pool = mp.Pool(mp.cpu_count())
-#H = THICKNESS_CORTEX
+  # Calculate normals of each surface triangle and apply these normals to surface nodes
+  N0 = normalSurfaces(Ut0, faces, SNb, nf, nsn, N0)
 
-# Elastic process
-@jit(nopython=True)
-def elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne):
+  #num_cores = mp.cpu_count()
+  #pool = mp.Pool(mp.cpu_count())
+  #H = THICKNESS_CORTEX
 
-  # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
-  gm, mu = shearModulus(d2s, H, tets, ne, muw, mug)
+  # Elastic process
+  @jit(nopython=True)
+  def elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne):
 
-  # Deformed configuration of tetrahedra (At)
-  At = configDeform(Ut, tets, ne)
+    # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
+    gm, mu = shearModulus(d2s, H, tets, ne, muw, mug)
 
-  # Calculate elastic forces
-  Ft = tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, ne, eps)
+    # Deformed configuration of tetrahedra (At)
+    At = configDeform(Ut, tets, ne)
 
-  # Calculate normals of each deformed tetrahedron 
-  Nt = tetraNormals(N0, csn, tets, ne)
+    # Calculate elastic forces
+    Ft = tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, ne, eps)
 
-  # Calculate relative tangential growth factor G
-  G = growthTensor_tangen(Nt, gm, at, G, ne)
-  #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
+    # Calculate normals of each deformed tetrahedron 
+    Nt = tetraNormals(N0, csn, tets, ne)
 
-  return Ft
+    # Calculate relative tangential growth factor G
+    G = growthTensor_tangen(Nt, gm, at, G, ne)
+    #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
 
-#myfile = open("/home/x17wang/Codes/BrainGrowth/Force_contact_NNLt.txt", "w")
+    return Ft
 
-# Simulation loop
-while t < 1.0:
+  #myfile = open("/home/x17wang/Codes/BrainGrowth/Force_contact_NNLt.txt", "w")
 
-  # Calculate the relative growth rate
-  at = growthRate(GROWTH_RELATIVE, t)
+  # Tetrahedral indices of lower and upper parts of the objet
+  indices_b = np.where((Ut0[tets[:,0],2]+Ut0[tets[:,1],2]+Ut0[tets[:,2],2]+Ut0[tets[:,3],2])/4 <= -0.1)[0]  #lower part
+  indices_a = np.where((Ut0[tets[:,0],2]+Ut0[tets[:,1],2]+Ut0[tets[:,2],2]+Ut0[tets[:,3],2])/4 >= 0.1)[0]  #upper part
 
-  # Calculate the longitudinal length of the real brain
-  L = longitLength(t)
+  # Simulation loop
+  while t < 1.0:
 
-  # Calculate the thickness of growing layer
-  H = cortexThickness(THICKNESS_CORTEX, t)
+    # Calculate the relative growth rate
+    at = growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets)
 
-  # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn)
-  Vn0, Vn = volumeNodal(G, A0, tets, Ut, ne, nn)
+    # Calculate the longitudinal length of the real brain
+    L = longitLength(t)
 
-  # Initialize elastic energy
-  #Ue = 0.0
+    # Calculate the thickness of growing layer
+    H = cortexThickness(THICKNESS_CORTEX, t)
 
-  # Calculate elastic forces
-  #Ft = elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne)
+    # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn)
+    Vn0, Vn = volumeNodal(G, A0, tets, Ut, ne, nn)
 
-  # Calculate contact forces
-  Ft, NNLt = contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr)
-  #myfile.write("%s\n" % NNLt)
-  # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
-  gm, mu = shearModulus(d2s, H, tets, ne, muw, mug, gr)
+    # Initialize elastic energy
+    #Ue = 0.0
 
-  # Deformed configuration of tetrahedra (At)
-  At = configDeform(Ut, tets, ne)
+    # Calculate elastic forces
+    #Ft = elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne)
 
-  # Calculate elastic forces
-  Ft = tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, ne, eps)
+    # Calculate contact forces
+    Ft, NNLt = contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, ac, gr)
+    #myfile.write("%s\n" % NNLt)
+    # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
+    gm, mu = shearModulus(d2s, H, tets, ne, muw, mug, gr)
 
-  # Calculate normals of each deformed tetrahedron 
-  Nt = tetraNormals(N0, csn, tets, ne)
+    # Deformed configuration of tetrahedra (At)
+    At = configDeform(Ut, tets, ne)
 
-  # Calculate relative tangential growth factor G
-  G = growthTensor_tangen(Nt, gm, at, G, ne)
-  #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
-  #G = 1.0 + GROWTH_RELATIVE*t
+    # Calculate elastic forces
+    Ft = tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, ne, eps)
 
-  # Midplane
-  Ft = midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K)
+    # Calculate normals of each deformed tetrahedron 
+    Nt = tetraNormals(N0, csn, tets, ne)
 
-  # Output
-  if step % di == 0:
+    # Calculate relative tangential growth factor G
+    G = growthTensor_tangen(Nt, gm, at, G, ne)
+    #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
+    #G = 1.0 + GROWTH_RELATIVE*t
 
-    # Obtain zoom parameter by checking the longitudinal length of the brain model
-    zoom_pos = paraZoom(Ut, SN, L, nsn)
+    # Midplane
+    #Ft = midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K)
 
-    # Write .pov files and output mesh in .png files
-    writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom, zoom_pos)
+    # Output
+    if step % di == 0:
 
-    # Write surface mesh output files in .txt files
-    writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos)
+      # Obtain zoom parameter by checking the longitudinal length of the brain model
+      zoom_pos = paraZoom(Ut, SN, L, nsn)
 
-    # Convert mesh to .stl format
-    mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb)
+      # Write .pov files and output mesh in .png files
+      writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom, zoom_pos)
 
-    print ('step: ' + str(step) + ' t: ' + str(t) )
+      # Write surface mesh output files in .txt files
+      writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos)
 
-    # Calculate surface area and mesh volume
-    Area, Volume = area_volume(Ut, faces, gr, Vn)
+	  # Convert mesh to .stl format
+      mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb)
 
-    print ('Normalized area: ' + str(Area) + ' Normalized volume: ' + str(Volume) )
+      print ('step: ' + str(step) + ' t: ' + str(t) )
+ 
+      # Calculate surface area and mesh volume
+      Area, Volume = area_volume(Ut, faces, gr, Vn)
 
-  # Newton dynamics
-  Ft, Ut, Vt = move(nn, Ft, Vt, Ut, gamma, Vn0, rho, dt)
+      print ('Normalized area: ' + str(Area) + ' Normalized volume: ' + str(Volume) )
 
-  t += dt
-  step += 1
+    # Newton dynamics
+    Ft, Ut, Vt = move(nn, Ft, Vt, Ut, gamma, Vn0, rho, dt)
 
-#myfile.close()
+    t += dt
+    step += 1
+
+  #myfile.close()
