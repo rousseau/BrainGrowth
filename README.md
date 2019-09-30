@@ -50,15 +50,19 @@ conda install --file requirements.txt
 
 ### simulation.py
 
+```
+python simulation.py '-i' './data/sphere5.mesh' '-o' './res/sphere5' '-t' 0.042 '-g' 1.829
+```
+
+**i**: path of input maillage
+
+**o**: path of output maillage
+
+**t**: cortical thickness
+
+**g**: relative growth rate
+
 In simulation.py, there are certain parameters should be set manually:
-
-**PATH_DIR**: Path of output
-
-**mesh_path**: Path of input
-
-**THICKNESS_CORTEX**: Individual cortical thickness
-
-**GROWTH_RELATIVE**: Tangential growth rate
 
 **a**: Average mesh spacing
 
