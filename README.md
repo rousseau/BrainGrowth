@@ -70,6 +70,11 @@ In simulation.py, there are certain parameters should be set manually:
 
 **a**: average mesh spacing
 
+### Running a demo
+
 For sphere5.mesh:
 
 **a**: 0.01
+
+#### Input image, output mesh
+<img src="./docs/B0.png" /><img src="./docs/sphere5.mesh" />
