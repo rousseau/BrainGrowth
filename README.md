@@ -66,15 +66,15 @@ python simulation.py '-i' './data/sphere5.mesh' '-o' './res/sphere5' '-t' 0.042 
 
 **g**: relative growth rate
 
+### Running a demo
+
 In simulation.py, there are certain parameters should be set manually:
 
 **a**: average mesh spacing
 
-### Running a demo
-
 For sphere5.mesh:
 
-**a**: 0.01
+**a** = 0.01
 
 #### Input image, output mesh
-<img src="./docs/B0.png" width = "330px" /><img src="./docs/sphere5.gif" />
+<img src="./docs/B0.png" width = "430px" /><img src="./docs/sphere5.gif" width = "4300px" />
