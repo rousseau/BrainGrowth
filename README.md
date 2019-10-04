@@ -77,4 +77,4 @@ For sphere5.mesh:
 **a**: 0.01
 
 #### Input image, output mesh
-<img src="./docs/B0.png" /><img src="./docs/sphere5.gif" />
+<img src="./docs/B0.png" width = "330px" /><img src="./docs/sphere5.gif" />
