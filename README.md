@@ -76,5 +76,5 @@ For sphere5.mesh:
 
 **a** = 0.01
 
-#### Input image of mesh， output dynamic process
+#### Input mesh image， output dynamic process
 <img src="./docs/B0.png" width = "430px" /><img src="./docs/sphere5.gif" width = "430px" />
