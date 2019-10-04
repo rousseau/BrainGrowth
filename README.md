@@ -46,7 +46,7 @@ pip install -r requirements.txt
 conda install --file requirements.txt
 ```
 
-It is worth noting that the installation of these three libraries (numpy-stl, nibabel and vapory) requires the use of pip. 
+It is worth noting that the installation of these three libraries (numpy-stl, nibabel and Vapory) requires the use of pip. 
 
 ## Configuration of Parameters and Run
 
