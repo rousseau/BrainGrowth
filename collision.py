@@ -5,7 +5,7 @@ from numba import jit, njit, prange
 from sklearn.neighbors import KDTree
 
 # Generates point-triangle proximity lists (NNLt) using the linked cell algorithm
-@jit
+@jit(forceobj=True)
 def createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw):
   mx = max(1, int(bw/mw))  # = 40 cells, bw=3.2, mw=0.08
   head = [-1]*mx*mx*mx  # mx*mx*mx cells number, size mx*mx*mx list with all values are -1, 40*40*40 = 64000
@@ -41,7 +41,7 @@ def createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw):
 
 
 # Calculate contact forces
-@jit
+@jit(forceobj=True)
 def contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr):
   maxDist = 0.0
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
