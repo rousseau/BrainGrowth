@@ -3,8 +3,9 @@ import math
 from numba import jit, njit, prange
 from mathfunc import det_dim_3, det_dim_2, cross_dim_3, dot_mat_dim_3, transpose_dim_3, normalize_dim_3
 import sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
+#from importlib import reload
+#reload(sys)
+#sys.stdout.reconfigure(encoding='utf-8')
 
 # Import mesh, each line as a list
 def importMesh(path):
@@ -19,12 +20,12 @@ def importMesh(path):
   return mesh
 
 # Read nodes, get undeformed coordinates x y z and save them in Ut0, initialize deformed coordinates Ut
-@njit(parallel=True)
+@jit(forceobj=True, parallel=True)
 def vertex(mesh):
   nn = np.int64(mesh[0][0])
   Ut0 = np.zeros((nn,3), dtype=np.float64) # Undeformed coordinates of nodes
   #Ut = np.zeros((nn,3), dtype = float) # Deformed coordinates of nodes
-  for i in prange(nn):
+  for i in range(nn):
     Ut0[i] = np.array([float(mesh[i+1][1]),float(mesh[i+1][0]),float(mesh[i+1][2])]) # Change x, y (Netgen?)
     
   Ut = Ut0 # Initialize deformed coordinates of nodes
@@ -32,35 +33,35 @@ def vertex(mesh):
   return Ut0, Ut, nn
 
 # Read element indices (tets: index of four vertices of tetrahedra) and get number of elements (ne)
-@njit(parallel=True)
+@jit(forceobj=True, parallel=True)
 def tetraVerticesIndices(mesh, nn):
   ne = np.int64(mesh[nn+1][0])
   tets = np.zeros((ne,4), dtype=np.int64) # Index of four vertices of tetrahedra
-  for i in prange(ne):
+  for i in range(ne):
     tets[i] = np.array([int(mesh[i+nn+2][1])-1,int(mesh[i+nn+2][2])-1,int(mesh[i+nn+2][4])-1,int(mesh[i+nn+2][3])-1])  # Note the switch of handedness (1,2,3,4 -> 1,2,4,3) - the code uses right handed tets
   
   return tets, ne
 
 # Read surface triangle indices (faces: index of three vertices of triangles) and get number of surface triangles (nf)
-@njit(parallel=True)
+@jit(forceobj=True, parallel=True)
 def triangleIndices(mesh, nn, ne):
   nf = np.int64(mesh[nn+ne+2][0])
   faces = np.zeros((nf,3), dtype=np.int64) # Index of three vertices of triangles
-  for i in prange(nf):
+  for i in range(nf):
     faces[i] = np.array([int(mesh[i+nn+ne+3][1])-1,int(mesh[i+nn+ne+3][2])-1,int(mesh[i+nn+ne+3][3])-1])
 
   return faces, nf
 
 # Determine surface nodes and index maps
-@jit
+@jit(nopython=True)
 def numberSurfaceNodes(faces, nn, nf):
   nsn = 0 # Number of nodes at the surface
-  SNb = np.zeros(nn, dtype=int) # SNb: Nodal index map from full mesh to surface. Initialization SNb with all 0
+  SNb = np.zeros(nn, dtype=np.int64) # SNb: Nodal index map from full mesh to surface. Initialization SNb with all 0
   SNb[faces[:,0]] = SNb[faces[:,1]] = SNb[faces[:,2]] = 1
   for i in range(nn):
     if SNb[i] == 1:
       nsn += 1 # Determine surface nodes
-  SN = np.zeros(nsn, dtype=int) # SN: Nodal index map from surface to full mesh
+  SN = np.zeros(nsn, dtype=np.int64) # SN: Nodal index map from surface to full mesh
   p = 0 # Iterator
   for i in range(nn):
     if SNb[i] == 1:
@@ -88,7 +89,7 @@ def edge_length(Ut, faces, nf):
   return mine, maxe, ave
 
 # Return the total volume of a tetrahedral mesh
-@jit(nopython=True, parallel=True)
+@jit(forceobj=True, parallel=True) 
 def volume_mesh(Vn_init, nn, ne, tets, Ut):
   A_init = np.zeros((ne,3,3), dtype=np.float64)
   vol_init = np.zeros(ne, dtype=np.float64)
@@ -119,7 +120,7 @@ def markgrowth(Ut0, nn):
   return gr
 
 # Configuration of tetrahedra at reference state (A0)
-@jit
+@jit(forceobj=True)
 def configRefer(Ut0, tets, ne):
   A0 = np.zeros((ne,3,3), dtype=np.float64)
   A0[:,0] = Ut0[tets[:,1]] - Ut0[tets[:,0]] # Reference state
@@ -130,7 +131,7 @@ def configRefer(Ut0, tets, ne):
   return A0
 
 # Configuration of a deformed tetrahedron (At)
-@jit
+@jit(forceobj=True)
 def configDeform(Ut, tets, ne):
   At = np.zeros((ne,3,3), dtype=np.float64)
   At[:,0] = Ut[tets[:,1]] - Ut[tets[:,0]]
@@ -142,32 +143,32 @@ def configDeform(Ut, tets, ne):
   return At
 
 # Calculate normals of each surface triangle and apply these normals to surface nodes
-@njit(parallel=True)
+@jit(forceobj=True, parallel=True)
 def normalSurfaces(Ut0, faces, SNb, nf, nsn, N0):
   Ntmp = np.zeros((nf,3), dtype=np.float64)
   Ntmp = cross_dim_3(Ut0[faces[:,1]] - Ut0[faces[:,0]], Ut0[faces[:,2]] - Ut0[faces[:,0]])
-  for i in prange(nf):
+  for i in range(nf):
     N0[SNb[faces[i,:]]] += Ntmp[i]
-  for i in prange(nsn):
+  for i in range(nsn):
     N0[i] *= 1.0/np.linalg.norm(N0[i])
   #N0 = normalize_dim_3(N0)
 
   return N0
 
 # Calculate normals of each deformed tetrahedron
-@jit
+@jit(forceobj=True)
 def tetraNormals(N0, csn, tets, ne):
   Nt = np.zeros((ne,3), dtype=np.float64)
   Nt[:] = N0[csn[tets[:,0]]] + N0[csn[tets[:,1]]] + N0[csn[tets[:,2]]] + N0[csn[tets[:,3]]]
   Nt = normalize_dim_3(Nt)
-  """for i in prange(ne):
-    Nt[i] *= 1.0/np.linalg.norm(Nt[i])"""
+  #for i in prange(ne):
+    #Nt[i] *= 1.0/np.linalg.norm(Nt[i])
 
   return Nt
 
 # Calculate undeformed (Vn0) and deformed (Vn) nodal volume
 # Computes the volume measured at each point of a tetrahedral mesh as the sum of 1/4 of the volume of each of the tetrahedra to which it belongs
-@njit(parallel=True)   #(nopython=True, parallel=True)
+@jit(forceobj=True, parallel=True)  #(nopython=True, parallel=True)
 def volumeNodal(G, A0, tets, Ut, ne, nn):
   Vn0 = np.zeros(nn, dtype=np.float64) #Initialize nodal volumes in reference state
   Vn = np.zeros(nn, dtype=np.float64)  #Initialize deformed nodal volumes
@@ -180,7 +181,7 @@ def volumeNodal(G, A0, tets, Ut, ne, nn):
   vol0[:] = det_dim_3(dot_mat_dim_3(G[:], A0[:]))/6.0
   #vol0[:] = det_dim_3(dot_const_mat_dim_3(G, A0[:]))/6.0
   vol[:] = det_dim_3(transpose_dim_3(At[:]))/6.0
-  for i in prange(ne):   
+  for i in range(ne):   
     Vn0[tets[i,:]] += vol0[i]/4.0
     Vn[tets[i,:]] += vol[i]/4.0
 
@@ -199,7 +200,7 @@ def midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K):
   return Ft
 
 # Calculate the longitudinal length of the real brain
-@jit
+@jit(forceobj=True)
 def longitLength(t):
   #L = -0.81643*t**2+2.1246*t+1.3475
   L = -0.98153*t**2+3.4214*t+1.9936
@@ -208,7 +209,7 @@ def longitLength(t):
   return L
 
 # Obtain zoom parameter by checking the longitudinal length of the brain model
-@jit
+@jit(forceobj=True)
 def paraZoom(Ut, SN, L, nsn):
   #xmin = ymin = 1.0
   #xmax = ymax = -1.0
