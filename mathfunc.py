@@ -3,7 +3,7 @@ import math
 from numba import jit, njit, prange
 
 # Find the closest point of triangle abc to point p, if not, p projection through the barycenter inside the triangle
-@jit
+@jit(forceobj=True)
 def closestPointTriangle(p, a, b, c, u, v, w):
   ab = b - a
   ac = c - a
@@ -62,7 +62,7 @@ def closestPointTriangle(p, a, b, c, u, v, w):
 
   return a + ab * v + ac * w, u, v, w
 
-@jit
+@jit(forceobj=True)
 def EV(X):
   c1 = X[0,0]*X[1,1] + X[0,0]*X[2,2] + X[1,1]*X[2,2] - X[0,1]*X[0,1] - X[1,2]*X[1,2] - X[0,2]*X[0,2]
   c0 = X[2,2]*X[0,1]*X[0,1] + X[0,0]*X[1,2]*X[1,2] + X[1,1]*X[0,2]*X[0,2] - X[0,0]*X[1,1]*X[2,2] - 2.0*X[0,2]*X[0,1]*X[1,2]
@@ -80,7 +80,7 @@ def EV(X):
 
   return l1, l2, l3
 
-@jit
+@jit(forceobj=True)
 def tred2(n, V, d, e):
   """Symmetric Householder reduction to tridiagonal form.
 
@@ -187,7 +187,7 @@ def tred2(n, V, d, e):
 
   return V, d, e
 
-@jit
+@jit(forceobj=True)
 def hypot(a, b):
   """Computes sqrt(a**2 + b**2) without under/overflow."""
   if abs(a) > abs(b):
@@ -199,7 +199,7 @@ def hypot(a, b):
 
   return r
 
-@jit
+@jit(forceobj=True)
 def tql2(n, V, d, e):
   """Symmetric tridiagonal QL algorithm.
 
@@ -304,7 +304,7 @@ def tql2(n, V, d, e):
 
   return V, d, e
 
-@jit
+@jit(forceobj=True)
 def eigen_decomposition(n, A, V, d):
   e = [0.0]*n
   for i in range(n):
@@ -315,7 +315,7 @@ def eigen_decomposition(n, A, V, d):
 
   return V, d
 
-@jit
+@jit(forceobj=True)
 def Eigensystem(n, A, V, d):
   A_ = np.zeros((n,n))
   V_ = np.zeros((n,n))
@@ -328,13 +328,13 @@ def Eigensystem(n, A, V, d):
 
   return d, V
 
-@jit
+@jit(forceobj=True)
 def cross_dim_2(a, b):
   c = np.array([a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]])
 
   return c
 
-@jit
+@jit(forceobj=True)
 def cross_dim_3(a, b):
   c = np.zeros((len(a),3), dtype=np.float64)
   c[:,0] = a[:,1]*b[:,2] - a[:,2]*b[:,1]
@@ -343,20 +343,20 @@ def cross_dim_3(a, b):
 
   return c
 
-@jit
+@jit(forceobj=True)
 def det_dim_3(a):
   b = np.zeros(len(a), dtype=np.float64)
   b[:] = a[:,0,0]*a[:,1,1]*a[:,2,2] - a[:,0,0]*a[:,1,2]*a[:,2,1] - a[:,0,1]*a[:,1,0]*a[:,2,2] + a[:,0,1]*a[:,1,2]*a[:,2,0] + a[:,0,2]*a[:,1,0]*a[:,2,1] - a[:,0,2]*a[:,1,1]*a[:,2,0]
 
   return b
 
-@jit
+@jit(forceobj=True)
 def det_dim_2(a):
   b = a[0,0]*a[1,1]*a[2,2] - a[0,0]*a[1,2]*a[2,1] - a[0,1]*a[1,0]*a[2,2] + a[0,1]*a[1,2]*a[2,0] + a[0,2]*a[1,0]*a[2,1] - a[0,2]*a[1,1]*a[2,0]
 
   return b
 
-@jit
+@jit(forceobj=True)
 def inv(a):
 
   return np.linalg.inv(a)
@@ -369,25 +369,25 @@ def inv_dim_3(a):
 
   return b
 
-@jit
+@jit(forceobj=True)
 def norm_dim_3(a):
   b = np.zeros(len(a), dtype=np.float64)
   b[:] = np.sqrt(a[:,0]*a[:,0] + a[:,1]*a[:,1] + a[:,2]*a[:,2])
 
   return b
 
-@jit
+@jit(forceobj=True)
 def normalize_dim_3(a):
   b = np.transpose([a[:,0],a[:,1],a[:,2]]/np.sqrt(a[:,0]*a[:,0] + a[:,1]*a[:,1] + a[:,2]*a[:,2]))
 
   return b
 
-@jit
+@jit(forceobj=True)
 def dot_vec(a, b):
 
   return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]
 
-@jit
+@jit(forceobj=True)
 def dot_mat_dim_3(a, b):
   c = np.zeros((len(a),3,3), dtype=np.float64)
   c[:,0,0] = a[:,0,0]*b[:,0,0]+a[:,0,1]*b[:,1,0]+a[:,0,2]*b[:,2,0]
@@ -402,14 +402,14 @@ def dot_mat_dim_3(a, b):
 
   return c
 
-@jit
+@jit(forceobj=True)
 def dot_vec_dim_3(a, b):
   c = np.zeros(len(a), dtype=np.float64)
   c[:] = a[:,0]*b[:,0]+a[:,1]*b[:,1]+a[:,2]*b[:,2]
   
   return c
 
-@jit
+@jit(forceobj=True)
 def transpose_dim_3(a):
   b = np.zeros((len(a),3,3), dtype=np.float64)
   b[:,0,0] = a[:,0,0]
@@ -424,7 +424,7 @@ def transpose_dim_3(a):
 
   return b
 
-@jit
+@jit(forceobj=True)
 def dot_mat_vec(a, b):
 
   return np.array([a[0,0]*b[0]+a[0,1]*b[1]+a[0,2]*b[2], a[1,0]*b[0]+a[1,1]*b[1]+a[1,2]*b[2], a[2,0]*b[0]+a[2,1]*b[1]+a[2,2]*b[2]])
