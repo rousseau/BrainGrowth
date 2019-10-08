@@ -3,7 +3,7 @@ import math
 from numba import jit, njit, prange
 
 # Normalize initial mesh coordinates
-@jit
+@jit(forceobj=True)
 def normalise_coord(Ut0, Ut, nn):
   # Find center of mass and dimension of the mesh
   maxx = maxy = maxz = -1e9
