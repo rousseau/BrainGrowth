@@ -9,7 +9,7 @@ import sys
 from numba import jit, njit, prange
 
 # Calculate elastic forces
-@njit(parallel=True)
+@jit(forceobj=True, parallel=True)
 def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, ne, eps):
 
   # Deformed volume
@@ -43,7 +43,7 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, ne, eps):
   Ja[:] = (J1[:] + J2[:] + J3[:] + J4[:])/4.0   # Averaged nodal volume change
 
   # Decide if need for SVD or not
-  for i in prange(ne):
+  for i in range(ne):
 
     ll1, ll2, ll3 = EV(B[i])
 
