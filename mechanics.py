@@ -1,27 +1,26 @@
 from __future__ import division
-from mathfunc import det_dim_2, det_dim_3, inv, inv_dim_3, cross_dim_2, transpose_dim_3, dot_mat_dim_3, EV, Eigensystem
+from mathfunc import det_dim_2, det_dim_3, inv, inv_dim_3, cross_dim_2, transpose_dim_3, dot_mat_dim_3, EV, Eigensystem, dot_const_mat_dim_3
 import numpy as np
 import math
 from math import sqrt
-import re
-import os
-import sys
 from numba import jit, njit, prange
 
 # Calculate elastic forces
-@jit(forceobj=True, parallel=True)
+@njit(parallel=True)
 def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, ne, eps):
 
   # Deformed volume
   #vol = det(At)/6.0
-  Ar = np.zeros((ne,3,3), dtype=np.float64)
+
   # Apply growth to reference state
+  Ar = np.zeros((ne,3,3), dtype=np.float64)
   Ar[:] = dot_mat_dim_3(G[:], A0[:])
+  #Ar[:] = dot_const_mat_dim_3(G, A0[:])
   #Ar = np.dot(At, G)
   #Ar = G*np.array(A0)
 
-  F = np.zeros((ne,3,3), dtype=np.float64)
   # Calculate deformation gradient
+  F = np.zeros((ne,3,3), dtype=np.float64)
   F[:] = dot_mat_dim_3(At[:], inv_dim_3(Ar[:]))   # Ar: rest tetra, At: material tetra
 
   # Calculate left Cauchy-Green strain tensor
@@ -43,7 +42,7 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, ne, eps):
   Ja[:] = (J1[:] + J2[:] + J3[:] + J4[:])/4.0   # Averaged nodal volume change
 
   # Decide if need for SVD or not
-  for i in range(ne):
+  for i in prange(ne):
 
     ll1, ll2, ll3 = EV(B[i])
 
