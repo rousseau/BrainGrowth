@@ -3,16 +3,21 @@ import nibabel as nib
 from scipy import ndimage
 import numpy as np
 
+# Path of mesh
 inputFIlePath = '/home/x17wang/Data/prm001/prm001_40w_Rwhite_2.stl'
 
+# Load mesh
 m = trimesh.load(inputFIlePath) 
 
+# Voxelize mesh with the specific edge length of a single voxel
 v = m.voxelized(pitch=0.5)  #Return a Voxel object representing the current mesh discretized into voxels at the specified pitch, pitch: float, the edge length of a single voxel
 
+# Fill surface mesh
 v = v.fill(method='holes')
 
+# Center coordinates
 cog = np.sum(v.points, axis=0)
-cog /= np.size(v.points, axis=0) # The center coordinate(x,y,z)
+cog /= np.size(v.points, axis=0) 
 
 # Convert mesh to binary image
 outimage = np.zeros((2*int(np.round(cog[0]))+1, 2*int(np.round(cog[1]))+1, 2*int(np.round(cog[2]))+1), dtype=np.int16)
