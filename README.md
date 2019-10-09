@@ -32,6 +32,7 @@ All scripts were coded in `python 2.7`, but we are working to be compatible to `
 - Vapory==0.1.1
 - mpmath==1.0.0
 - os
+- trimesh
 </details>
 
 The file called `requirements.txt` helps to install all the python libraries.
