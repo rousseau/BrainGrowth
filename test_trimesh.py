@@ -3,7 +3,7 @@ import nibabel as nib
 import numpy as np
 
 # Path of mesh
-inputFIlePath = '/home/x17wang/Data/prm001/prm001_40w_Rwhite_2.stl'
+inputFIlePath = '/home/x17wang/Data/prm001/prm001_40w_Rwhite.stl'
 
 # Load mesh
 m = trimesh.load(inputFIlePath) 
@@ -26,7 +26,7 @@ for i in range(np.size(v.points, axis=0)):
 
 # Save binary image in a nifti file
 nii = nib.load('/home/x17wang/Data/prm001/prm001_40w_Rwhite.nii')
-save_path = '/home/x17wang/Exp/prm001/test_prm001_40w_Rwhite_2.nii.gz'
+save_path = '/home/x17wang/Exp/prm001/test_prm001_40w_Rwhite.nii.gz'
 
 #img = nib.Nifti1Image(outimage, nii.affine)
 aff = np.eye(4)
