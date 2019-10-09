@@ -5,3 +5,4 @@ scipy
 Vapory
 numpy-stl
 scikit-learn
+trimesh
