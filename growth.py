@@ -5,11 +5,11 @@ from numba import jit, njit, prange
 from mathfunc import dot_vec_dim_3
 
 # Finds the nearest surface nodes to nodes (csn) and distances to them (d2s) - these are needed to set up the growth of the gray matter
-@jit(forceobj=True, parallel=True)
+@njit(parallel=True)
 def dist2surf(Ut0, SN, nn, csn, d2s):
   #csn = np.zeros(nn)  # Nearest surface nodes
   #d2s = np.zeros(nn)  # Distances to nearest surface node
-  for i in range(nn):
+  for i in prange(nn):
     d2 = dot_vec_dim_3(Ut0[SN[:]] - Ut0[i], Ut0[SN[:]] - Ut0[i])
     csn[i] = np.argmin(d2)
     d2s[i] = sqrt(np.min(d2))
@@ -17,15 +17,15 @@ def dist2surf(Ut0, SN, nn, csn, d2s):
   return csn, d2s
 
 # Calculate the relative growth rate
-@jit(forceobj=True)
+@jit
 def growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets):
   #at = np.zeros(ne, dtype=np.float64)
+  #if t < 0.0:
   #at[indices_b[:]] = 1.5*GROWTH_RELATIVE*t   #3.658
   #at[indices_a[:]] = GROWTH_RELATIVE*t     #1.829
   #for i in prange(ne):
-    #at[i] = 2.5*GROWTH_RELATIVE*t/(1+math.exp((Ut0[tets[i,0],2]+Ut0[tets[i,1],2]+Ut0[tets[i,2],2]+Ut0[tets[i,3],2])/4))  #~1.829*2max, ~1.829min
+    #at[i] = 2.0*GROWTH_RELATIVE*t/(1+math.exp((Ut0[tets[i,0],2]+Ut0[tets[i,1],2]+Ut0[tets[i,2],2]+Ut0[tets[i,3],2])/4))  #~1.829*2max, ~1.829min
   at = GROWTH_RELATIVE*t
-  #if t < 0.0:
     #at[i] = GROWTH_RELATIVE + 7.4*t
   #if t >= 0.0: 
     #at = GROWTH_RELATIVE - GROWTH_RELATIVE*t
@@ -33,7 +33,7 @@ def growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets):
   return at
 
 # Calculate the thickness of growing layer
-@jit(forceobj=True)
+@jit
 def cortexThickness(THICKNESS_CORTEX, t):
   #if t < 0.0:
   H = THICKNESS_CORTEX + 0.01*t
@@ -55,7 +55,7 @@ def shearModulus(d2s, H, tets, ne, muw, mug, gr):
   return gm, mu
 
 # Calculate relative (relates to d2s) tangential growth factor G
-@jit(forceobj=True)
+@jit
 def growthTensor_tangen(Nt, gm, at, G, ne):
   A = np.zeros((ne,3,3), dtype=np.float64)
   A[:,0,0] = Nt[:,0]*Nt[:,0]
@@ -74,23 +74,26 @@ def growthTensor_tangen(Nt, gm, at, G, ne):
   return G
 
 # Calculate homogeneous growth factor G
-@jit(forceobj=True)
-def growthTensor_homo(G, i, GROWTH_RELATIVE, t):
-  G[i] = 1.0 + GROWTH_RELATIVE*t
+@jit
+def growthTensor_homo(G, ne, GROWTH_RELATIVE, t):
+  for i in prange(ne):
+    G[i] = 1.0 + GROWTH_RELATIVE*t
 
-  return G[i]
+  return G
 
 # Calculate homogeneous growth factor G (2nd version)
-@jit(forceobj=True)
-def growthTensor_homo_2(G, i, GROWTH_RELATIVE):
-  G[i] = GROWTH_RELATIVE
+@jit
+def growthTensor_homo_2(G, ne, GROWTH_RELATIVE):
+  for i in prange(ne):
+    G[i] = GROWTH_RELATIVE
 
-  return G[i]
+  return G
 
 # Calculate cortical layer (relates to d2s) homogeneous growth factor G
-@jit(forceobj=True)
-def growthTensor_relahomo(gm, G, i, GROWTH_RELATIVE, t):
+@jit
+def growthTensor_relahomo(gm, G, ne, GROWTH_RELATIVE, t):
+  for i in prange(ne):
   #G[i] = np.full((3, 3), gm*GROWTH_RELATIVE)
-  G[i] = 1.0 + GROWTH_RELATIVE*t*gm
+    G[i] = 1.0 + GROWTH_RELATIVE*t*gm
 
-  return G[i]
+  return G
