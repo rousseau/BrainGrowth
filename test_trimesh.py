@@ -1,6 +1,5 @@
 import trimesh
 import nibabel as nib
-from scipy import ndimage
 import numpy as np
 
 # Path of mesh
@@ -30,7 +29,7 @@ nii = nib.load('/home/x17wang/Data/prm001/prm001_40w_Rwhite.nii')
 save_path = '/home/x17wang/Exp/prm001/test_prm001_40w_Rwhite_2.nii.gz'
 
 #img = nib.Nifti1Image(outimage, nii.affine)
-aff = np.eye(3)
+aff = np.eye(4)
 aff[0,0] = 0.5
 aff[1,1] = 0.5
 aff[2,2] = 0.5
