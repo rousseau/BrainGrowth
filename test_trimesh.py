@@ -4,7 +4,7 @@ import numpy as np
 #From https://github.com/MahsaShk/MeshProcessing
 from nii_2_mesh_conversion import nii_2_mesh
 
-
+# Path of input image and output mesh
 filename_nii = '/home/x17wang/Exp/prm001/prm001_30w_Lwhite_r05.nii.gz'
 filename_stl = '/home/x17wang/Exp/prm001/prm001_30w_Lwhite_r05.stl'
 
@@ -16,7 +16,6 @@ mat[0,0] = reso
 mat[1,1] = reso
 mat[2,2] = reso
 nib.save(nib.Nifti1Image(arr,mat), filename_nii)
-
 
 ## Transform nifti image to stl mesh
 label = 0
