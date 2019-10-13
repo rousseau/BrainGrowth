@@ -190,7 +190,7 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
   # Write the mesh to file ".stl"
   brain.save(save_path, mode=Mode.ASCII)
 
-# Convert mesh .stl to image
+# Convert mesh .stl to image .nii.gz
 def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso):
 
   stlname = "B%d.stl"%(step)
