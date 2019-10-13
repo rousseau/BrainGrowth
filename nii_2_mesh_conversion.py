@@ -20,16 +20,24 @@ def nii_2_mesh(filename_nii, filename_stl, label):
     # apply marching cube surface generation
     surf = vtk.vtkDiscreteMarchingCubes()
     surf.SetInputConnection(reader.GetOutputPort())
-    surf.SetValue(0, label) # use surf.GenerateValues function if more than one contour is available in the file
+    surf.SetValue(0, label) # use surf.GenerateValues function if more than one contour is available in the file	
     surf.Update()
+    
+    #  auto Orient Normals
+    surf_cor = vtk.vtkPolyDataNormals()
+    surf_cor.SetInputConnection(surf.GetOutputPort())
+    surf_cor.ConsistencyOn()
+    surf_cor.AutoOrientNormalsOn()
+    surf_cor.SplittingOff()
+    surf_cor.Update()
     
     #smoothing the mesh
     smoother= vtk.vtkWindowedSincPolyDataFilter()
     if vtk.VTK_MAJOR_VERSION <= 5:
-        smoother.SetInput(surf.GetOutput())
+        smoother.SetInput(surf_cor.GetOutput())
     else:
-        smoother.SetInputConnection(surf.GetOutputPort())
-    smoother.SetNumberOfIterations(30) 
+        smoother.SetInputConnection(surf_cor.GetOutputPort())
+    smoother.SetNumberOfIterations(60)
     smoother.NonManifoldSmoothingOn()
     #smoother.NormalizeCoordinatesOn() #The positions can be translated and scaled such that they fit within a range of [-1, 1] prior to the smoothing computation
     smoother.GenerateErrorScalarsOn()
