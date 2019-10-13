@@ -7,6 +7,7 @@ import nibabel as nib
 from scipy import ndimage
 from scipy.interpolate import RegularGridInterpolator
 from stl import mesh, Mode
+import trimesh
 
 # Calculate surface area and mesh volume
 def area_volume(Ut, faces, gr, Vn):
@@ -148,14 +149,14 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
   filetxt = open(completeName, "w")
   filetxt.write(str(nsn) + "\n")
   for i in range(nsn):
-    filetxt.write(str(-Ut[SN[i]][0]*zoom_pos) + " " + str(-Ut[SN[i]][1]*zoom_pos) + " " + str(-Ut[SN[i]][2]*zoom_pos) + "\n")
+    filetxt.write(str(Ut[SN[i]][0]*zoom_pos) + " " + str(Ut[SN[i]][1]*zoom_pos) + " " + str(Ut[SN[i]][2]*zoom_pos) + "\n")
   filetxt.write(str(len(faces)) + "\n")
   for i in range(len(faces)):
     filetxt.write(str(SNb[faces[i][0]]+1) + " " + str(SNb[faces[i][1]]+1) + " " + str(SNb[faces[i][2]]+1) + "\n")
   filetxt.close()
 
 # Convert mesh to .stl format
-def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb):
+def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny):
 
   stlname = "B%d.stl"%(step)
 
@@ -169,11 +170,11 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
   vertices_seg = np.zeros((nsn,3), dtype = float)
 
   vertices[:,:] = Ut[SN[:],:]*zoom_pos
-  vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd  
+  vertices_seg[:,1] = cog[0] - Ut[SN[:],0]*maxd
   #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
-  vertices_seg[:,0] = vertices[:,1]*maxd + cog[1]
+  vertices_seg[:,0] = Ut[SN[:],1]*maxd + miny
   #vertices_seg[:,0] = cog[1] - vertices[:,1]*maxd
-  vertices_seg[:,2] = cog[2] - vertices[:,2]*maxd
+  vertices_seg[:,2] = cog[2] - Ut[SN[:],2]*maxd
   #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
 
   f_indices[:,0] = SNb[faces[:,0]]
@@ -188,6 +189,40 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
 
   # Write the mesh to file ".stl"
   brain.save(save_path, mode=Mode.ASCII)
+
+# Convert mesh .stl to image
+def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso):
+
+  stlname = "B%d.stl"%(step)
+
+  foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+
+  file_stl_path = os.path.join(foldname, stlname)
+  
+  # Load stl mesh
+  m = trimesh.load(file_stl_path)
+
+  # Voxelize mesh with the specific edge length of a single voxel
+  v = m.voxelized(pitch=0.25)
+
+  # Fill surface mesh
+  v = v.fill(method='holes')
+  
+  # Convert to binary image
+  arr_reso = nib.load(filename_nii_reso).get_data()
+  outimage = np.zeros(arr_reso.shape)
+  for i in range(np.size(v.points, axis=0)):
+    outimage[int(np.round(v.points[i,0]/reso)), int(np.round(v.points[i,1]/reso)), int(np.round(v.points[i,2]/reso))] = 1
+
+  # Save binary image in a nifti file  
+  niiname = "B%d.nii.gz"%(step)
+  file_nii_path = os.path.join(foldname, niiname)
+  aff = np.eye(4)
+  aff[0,0] = reso
+  aff[1,1] = reso
+  aff[2,2] = reso
+  img = nib.Nifti1Image(outimage, aff)
+  nib.save(img, file_nii_path)
 
 '''# Convert mesh to binary .nii.gz image
 def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nn):
