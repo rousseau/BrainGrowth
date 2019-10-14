@@ -181,16 +181,20 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
   f_indices[:,1] = SNb[faces[:,1]]
   f_indices[:,2] = SNb[faces[:,2]]
 
-  # Create the .stl mesh
+  # Create the .stl mesh par Trimesh and save it
+  mesh = trimesh.Trimesh(vertices=vertices_seg, faces=f_indices)
+  mesh.export(save_path)
+
+  """# Create the .stl mesh
   brain = mesh.Mesh(np.zeros(f_indices.shape[0], dtype=mesh.Mesh.dtype))
   for i, f in enumerate(f_indices):
     for j in range(3):
         brain.vectors[i][j] = vertices_seg[f[j],:]
 
   # Write the mesh to file ".stl"
-  brain.save(save_path, mode=Mode.ASCII)
+  brain.save(save_path, mode=Mode.ASCII)"""
 
-# Convert mesh .stl to image .nii.gz
+# Convert mesh .stl to image
 def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso):
 
   stlname = "B%d.stl"%(step)
