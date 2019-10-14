@@ -56,7 +56,7 @@ It is worth noting that the installation of these three libraries (numpy-stl, ni
 Example of dynamic simulations of a neo-Hookean solid with a tangential differential growth.
 
 ```
-python simulation.py '-i' './data/sphere5.mesh' '-o' './res/sphere5' '-t' 0.042 '-g' 1.829
+python simulation.py -i ./data/sphere5.mesh -o ./res/sphere5 -t 0.042 -g 1.829
 ```
 
 **i**: path of input maillage
