@@ -92,7 +92,7 @@ def image_to_stl(foldname, filename_nii, filename_nii_reso, filename_stl, label,
   file_stl_path = os.path.join(foldname, filename_stl)
   nii_2_mesh(file_nii_reso_path, file_stl_path, label)
 
-# Convert volumetric coordinates to image .nii.gz of a specific resolution
+# Convert 3d coordinates of volumetric mesh to image .nii.gz of a specific resolution
 def mesh_to_image(foldname, vertices, filename_nii_reso, niiname, reso):
    
   """
