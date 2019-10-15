@@ -91,3 +91,37 @@ def image_to_stl(foldname, filename_nii, filename_nii_reso, filename_stl, label,
   # Transform nifti image to stl mesh
   file_stl_path = os.path.join(foldname, filename_stl)
   nii_2_mesh(file_nii_reso_path, file_stl_path, label)
+
+# Convert volumetric coordinates to image .nii.gz of a specific resolution
+def mesh_to_image(foldname, vertices, filename_nii_reso, niiname, reso):
+   
+  """
+  Convert 3d coordinates of volumetric mesh to a nifti file including a binary map.
+  
+  foldname           : Path of the folder
+  vertices           : 3D coordinates of volumetric mesh 
+  filename_nii_reso  : Reference nifti of output nifti binary map
+  niiname            : Output nifti binary map 
+  reso               : Given resolution of output nifti binary map
+  """
+  
+  """mesh = pymesh.form_mesh(vertices, faces, voxels)
+  grid = pymesh.VoxelGrid(cell_size, mesh.dim)
+  grid.insert_mesh(mesh)
+  grid.create_grid()
+  out_mesh = grid.mesh"""
+  
+  # Convert to binary image
+  arr_reso = nib.load(filename_nii_reso).get_data()
+  outimage = np.zeros(arr_reso.shape)
+  for i in range(np.size(vertices, axis=0)):
+    outimage[int(np.round(vertices[i,0]/reso)), int(np.round(vertices[i,1]/reso)), int(np.round(vertices[i,2]/reso))] = 1
+
+  # Save binary image in a nifti file  
+  file_nii_path = os.path.join(foldname, niiname)
+  aff = np.eye(4)
+  aff[0,0] = reso
+  aff[1,1] = reso
+  aff[2,2] = reso
+  img = nib.Nifti1Image(outimage, aff)
+  nib.save(img, file_nii_path)
