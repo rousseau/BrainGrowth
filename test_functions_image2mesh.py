@@ -5,7 +5,7 @@ import trimesh
 #From https://github.com/MahsaShk/MeshProcessing
 from nii_2_mesh_conversion import nii_2_mesh
 
-# Convert mesh structure (from simulations) to .stl format
+# Convert surface mesh structure (from simulations) to .stl format
 def mesh_to_stl(save_path, vertices, f_indices):
     
   """
