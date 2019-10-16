@@ -231,7 +231,7 @@ def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii
   nib.save(img, file_nii_path)
 
 # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
-def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, cog, maxd, nn, miny):
+def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, cog, maxd, nn):
 
   niiname = "B%d_2.nii.gz"%(step)
 
@@ -244,7 +244,7 @@ def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_ni
   vertices[:,:] = Ut[:,:]*zoom_pos
   vertices_seg[:,1] = cog[0] - Ut[:,0]*maxd
   #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
-  vertices_seg[:,0] = Ut[:,1]*maxd + miny
+  vertices_seg[:,0] = Ut[:,1]*maxd + cog[1]
   #vertices_seg[:,0] = cog[1] - vertices[:,1]*maxd
   vertices_seg[:,2] = cog[2] - Ut[:,2]*maxd
   #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
