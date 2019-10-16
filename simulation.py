@@ -13,7 +13,7 @@ from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthT
 from normalisation import normalise_coord
 from collision import contactProcess
 from mechanics import tetraElasticity, move
-from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl
+from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl, stl_to_image, mesh_to_image
 from mathfunc import make_2D_array
 from numba import jit, prange
 
