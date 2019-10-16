@@ -158,6 +158,9 @@ if __name__ == '__main__':
   #indices_b = np.where((Ut0[tets[:,0],2]+Ut0[tets[:,1],2]+Ut0[tets[:,2],2]+Ut0[tets[:,3],2])/4 <= -0.1)[0]  #lower part
   #indices_a = np.where((Ut0[tets[:,0],2]+Ut0[tets[:,1],2]+Ut0[tets[:,2],2]+Ut0[tets[:,3],2])/4 >= 0.1)[0]  #upper part
 
+  #filename_nii_reso = '/home/x17wang/Exp/prm001/prm001_30w_Rwhite_r05.nii.gz'
+  #reso = 0.5
+
   # Simulation loop
   while t < 1.0:
 
@@ -214,8 +217,14 @@ if __name__ == '__main__':
       # Write surface mesh output files in .txt files
       writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos)
 
-	  # Convert mesh to .stl format
+      # Convert mesh to .stl format
       mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb)
+	
+      # Convert mesh .stl to image .nii.gz
+      #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
+
+      # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
+      #mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, cog, maxd, nn)
 
       print ('step: ' + str(step) + ' t: ' + str(t) )
  
