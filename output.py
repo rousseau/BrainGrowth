@@ -8,7 +8,7 @@ from scipy import ndimage
 from scipy.interpolate import RegularGridInterpolator
 from stl import mesh, Mode
 import trimesh
-import mayavi.mlab
+#import mayavi.mlab
 #import pymesh
 
 # Calculate surface area and mesh volume
