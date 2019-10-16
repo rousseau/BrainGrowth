@@ -8,6 +8,8 @@ from scipy import ndimage
 from scipy.interpolate import RegularGridInterpolator
 from stl import mesh, Mode
 import trimesh
+import mayavi.mlab
+#import pymesh
 
 # Calculate surface area and mesh volume
 def area_volume(Ut, faces, gr, Vn):
@@ -155,7 +157,7 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
     filetxt.write(str(SNb[faces[i][0]]+1) + " " + str(SNb[faces[i][1]]+1) + " " + str(SNb[faces[i][2]]+1) + "\n")
   filetxt.close()
 
-# Convert mesh to .stl format
+# Convert surface mesh structure (from simulations) to .stl format file
 def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny):
 
   stlname = "B%d.stl"%(step)
@@ -194,7 +196,7 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
   # Write the mesh to file ".stl"
   brain.save(save_path, mode=Mode.ASCII)"""
 
-# Convert mesh .stl to image
+# Convert mesh .stl to image .nii.gz
 def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso):
 
   stlname = "B%d.stl"%(step)
@@ -219,7 +221,7 @@ def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii
     outimage[int(np.round(v.points[i,0]/reso)), int(np.round(v.points[i,1]/reso)), int(np.round(v.points[i,2]/reso))] = 1
 
   # Save binary image in a nifti file  
-  niiname = "B%d.nii.gz"%(step)
+  niiname = "B%d_1.nii.gz"%(step)
   file_nii_path = os.path.join(foldname, niiname)
   aff = np.eye(4)
   aff[0,0] = reso
@@ -228,6 +230,47 @@ def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii
   img = nib.Nifti1Image(outimage, aff)
   nib.save(img, file_nii_path)
 
+# Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
+def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, cell_size, filename_nii_reso, reso, Ut, zoom_pos, cog, maxd, nn, faces, tets, miny):
+
+  niiname = "B%d_2.nii.gz"%(step)
+
+  foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+
+  # Transform coordinates (because the coordinates are normalized at the beginning)
+  vertices = np.zeros((nn,3), dtype = float)
+  vertices_seg = np.zeros((nn,3), dtype = float)
+
+  vertices[:,:] = Ut[:,:]*zoom_pos
+  vertices_seg[:,1] = cog[0] - Ut[:,0]*maxd
+  #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
+  vertices_seg[:,0] = Ut[:,1]*maxd + miny
+  #vertices_seg[:,0] = cog[1] - vertices[:,1]*maxd
+  vertices_seg[:,2] = cog[2] - Ut[:,2]*maxd
+  #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
+
+  """mesh = pymesh.form_mesh(vertices_seg, faces, tets)
+  grid = pymesh.VoxelGrid(cell_size, mesh.dim)
+  grid.insert_mesh(mesh)
+  grid.create_grid()
+  out_mesh = grid.mesh"""
+  #mayavi.mlab.points3d(vertices_seg, mode="cube", scale_factor=1)
+
+  # Convert to binary image
+  arr_reso = nib.load(filename_nii_reso).get_data()
+  outimage = np.zeros(arr_reso.shape)
+  for i in range(np.size(vertices_seg, axis=0)):
+    outimage[int(np.round(vertices_seg[i,0]/reso)), int(np.round(vertices_seg[i,1]/reso)), int(np.round(vertices_seg[i,2]/reso))] = 1
+
+  # Save binary image in a nifti file  
+  file_nii_path = os.path.join(foldname, niiname)
+  aff = np.eye(4)
+  aff[0,0] = reso
+  aff[1,1] = reso
+  aff[2,2] = reso
+  img = nib.Nifti1Image(outimage, aff)
+  nib.save(img, file_nii_path)
+  
 '''# Convert mesh to binary .nii.gz image
 def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nn):
 
