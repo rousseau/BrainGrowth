@@ -42,13 +42,6 @@ The file called `requirements.txt` helps to install all the python libraries.
 pip install -r requirements.txt
 ```
 
-- Using anaconda:
-```
-conda install --file requirements.txt
-```
-
-It is worth noting that the installation of these three libraries (numpy-stl, nibabel and Vapory) requires the use of pip. 
-
 ## Configuration of Parameters and Run
 
 ### simulation.py
