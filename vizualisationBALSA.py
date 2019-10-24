@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LinearRegression
 from scipy.optimize import curve_fit
+from curvatureCoarse import graph_laplacian
+from scipy.sparse.linalg import eigs
 
 folder='/home/INT/lefevre.j/ownCloud/Documents/Recherche/Data/GarciaPNAS2018_K65Z/'
 mesh_file = 'ATLAS30.L.Fiducial.surf.gii'
@@ -17,19 +19,19 @@ texture_file2 = 'covariateinteraction2.L.noivh.GGnorm.func.gii'
 
 ages = [29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
 Nsteps=len(ages)
-# Visualize
 
+# Visualize growth maps
+step=20
 mesh = sio.load_mesh(folder+mesh_file)
 texture = sio.load_texture2((folder+texture_file))
-#mesh.show()
-splt.pyglet_plot(mesh, texture.darray[20], plot_colormap=False)
+splt.pyglet_plot(mesh, texture.darray[step], plot_colormap=False)
 
 # Compare the two textures = the same !
 
 texture2 = sio.load_texture2((folder+texture_file2))
 
 Correlations=np.zeros((Nsteps,))
-for i in Nsteps:
+for i in range(Nsteps):
     Correlations[i]=np.corrcoef(texture.darray[i],texture2.darray[i])[0,1]
 
 # Plotting the evolution of growth rate
@@ -40,11 +42,21 @@ for i in range(Nsteps):
     plt.plot(ages[i],np.mean(texture.darray[i]),'+w')
 
 # Parcellation in lobes
-# Simple K-means to start simply
 
-n_clusters=10
-kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(np.array(mesh.vertices))
-splt.pyglet_plot(mesh, kmeans.labels_, plot_colormap=False)
+method = 'spectral'
+n_clusters = 10
+if method.__eq__("Kmeans"):
+    # 1) Simple K-means to start simply
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(np.array(mesh.vertices))
+    splt.pyglet_plot(mesh, kmeans.labels_, plot_colormap=False)
+else:
+    # 2) Another method: spectral clustering
+    L, Lsparse = graph_laplacian(mesh)
+    evals, evecs = eigs(Lsparse, k=n_clusters - 1, which='SM')
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(np.real(evecs))
+    splt.pyglet_plot(mesh, kmeans.labels_, plot_colormap=False)
+
+#splt.pyglet_plot(mesh, np.real(evecs[:,3]), plot_colormap=False)
 
 # One temporal model by parcels
 # with Scikit learn
@@ -74,8 +86,7 @@ splt.pyglet_plot(mesh, kmeans.labels_, plot_colormap=False)
 #         y+=parameters[k,o+1]*temporal_interval**o
 #     plt.plot(temporal_interval,y)
 
-# One temporal model (non linear)
-# with scipy
+# One temporal model by parcel (non linear, obtained with scipy)
 
 xdata=np.array(ages)
 #func = lambda x,a,b,sigma: b+a*np.exp(-x**2/sigma)
@@ -115,3 +126,4 @@ for k in range(n_clusters):
 splt.pyglet_plot(mesh, peak_texture, plot_colormap=True)
 splt.pyglet_plot(mesh, amplitude_texture, plot_colormap=True)
 splt.pyglet_plot(mesh, latency_texture, plot_colormap=True)
+
