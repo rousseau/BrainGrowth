@@ -32,7 +32,7 @@ def normalise_coord(Ut0, Ut, nn):
   Ut0[:,2] = (Ut[:,2] - cog[2])/maxd
 
   """Ut0[:,0] = -(Ut[:,0] - cog[0])/maxd
-  Ut0[:,1] = (Ut[:,1] - maxy)/maxd
+  Ut0[:,1] = (Ut[:,1] - miny)/maxd
   Ut0[:,2] = -(Ut[:,2] - cog[2])/maxd"""
 
   print ('normalized minx is ' + str(min(Ut0[:,0])) + ' normalized maxx is ' + str(max(Ut0[:,0])) + ' normalized miny is ' + str(min(Ut0[:,1])) + ' normalized maxy is ' + str(max(Ut0[:,1])) + ' normalized minz is ' + str(min(Ut0[:,2])) + ' normalized maxz is ' + str(max(Ut0[:,2])))
