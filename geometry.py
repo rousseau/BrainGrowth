@@ -7,10 +7,10 @@ import slam.io as sio
 from scipy import spatial
 from scipy.optimize import curve_fit
 from slam import topology as stop
-import scipy.sparse as sp
 from curvatureCoarse import graph_laplacian
 from scipy.sparse.linalg import eigs
 from sklearn.cluster import KMeans
+import scipy.special as spe
 
 # Import mesh, each line as a list
 def importMesh(path):
@@ -178,7 +178,7 @@ def func2(x,a,c,sigma,b,d):
 def skew(X, a, e, w, p):
   X = (p*X-e)/w
   Y = 2*np.exp(-X**2/2)/np.sqrt(2*np.pi)
-  Y *= 1/w * sp.ndtr(a*X)  #ndtr: gaussian cumulative distribution function
+  Y *= 1/w*spe.ndtr(a*X)  #ndtr: gaussian cumulative distribution function
 
   return Y
 
@@ -201,8 +201,8 @@ def Curve_fitting(texture_file, texture_file_2, labels, labels_2, n_clusters):
   for k in range(n_clusters):
     ydata=np.mean(texture.darray[:,np.where(labels == k)[0]], axis=1)
     ydata_2=np.mean(texture_2.darray[:,np.where(labels_2 == k)[0]], axis=1)
-    popt, pcov=curve_fit(skew, tp_model, ydata, p0=[2, 32., 20., 85]) #[0.16, 32, 25.])
-    popt_2, pcov_2=curve_fit(skew, tp_model, ydata_2, p0=[2, 32., 20., 85]) #[0.16, 32, 25.])
+    popt, pcov=curve_fit(func, tp_model, ydata, p0=[0.16, 32, 25.])  #popt, pcov=curve_fit(skew, tp_model, ydata, p0=[2, 32., 20., 85])
+    popt_2, pcov_2=curve_fit(func, tp_model, ydata_2, p0=[0.16, 32, 25.])  #popt, pcov=curve_fit(skew, tp_model, ydata_2, p0=[2, 32., 20., 85])
     peak[k]=popt[1]   
     amplitude[k]=popt[0]
     latency[k]=popt[2]
