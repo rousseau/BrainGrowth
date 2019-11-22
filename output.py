@@ -158,7 +158,7 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
   filetxt.close()
 
 # Convert surface mesh structure (from simulations) to .stl format file
-def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb):
+def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny):
 
   stlname = "B%d.stl"%(step)
 
@@ -197,6 +197,65 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
   brain.save(save_path, mode=Mode.ASCII)"""
 
 # Convert mesh .stl to image .nii.gz
+def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, cog, nn):
+
+  """stlname = "B%d.stl"%(step)
+
+  foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+
+  file_stl_path = os.path.join(foldname, stlname)
+  
+  # Load stl mesh
+  m = trimesh.load(file_stl_path)
+
+  # Voxelize mesh with the specific edge length of a single voxel
+  v = m.voxelized(pitch=0.25)
+
+  # Fill surface mesh
+  v = v.fill(method='holes')"""
+
+  foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+  
+  # Transform coordinates (because the coordinates are normalized at the beginning)
+  vertices = np.zeros((nn,3), dtype = float)
+  vertices_seg = np.zeros((nn,3), dtype = float)
+
+  vertices[:,:] = Ut[:,:]*zoom_pos
+  vertices_seg[:,1] = cog[0] - Ut[:,0]*maxd
+  #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
+  vertices_seg[:,0] = Ut[:,1]*maxd + cog[1]
+  #vertices_seg[:,0] = cog[1] - vertices[:,1]*maxd
+  vertices_seg[:,2] = cog[2] - Ut[:,2]*maxd
+  #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
+
+  # Convert to binary image
+  img = nib.load(filename_nii_reso)
+  data = img.get_fdata()
+  matrix_image_to_world = img.affine[:3, :3]
+  abc = img.affine[:3, 3]
+  image = np.zeros((nn,3), dtype = np.float32)
+  for i in range(nn):
+    image[i] = np.linalg.inv(matrix_image_to_world).dot(np.transpose(vertices_seg[i])-abc)
+  """array_index = np.transpose(np.asarray(np.where(data==1)))
+  tree = spatial.KDTree(array_index)
+  pp = tree.query(image)"""
+  #outimage = np.zeros(data.shape, dtype = np.float32)
+  outimage = np.zeros((int(np.round(np.max(image[:,0])))+1, int(np.round(np.max(image[:,0])))+1, int(np.round(np.max(image[:,0])))+1), dtype = np.float32)
+  for i in range(nn):
+    #outimage[array_index[pp[1][i],0], array_index[pp[1][i],1], array_index[pp[1][i],2]] = 1.0
+    outimage[int(np.round(image[i,0])), int(np.round(image[i,1])), int(np.round(image[i,2]))] = 1.0
+
+  # Save binary image in a nifti file  
+  niiname = "B%d.nii.gz"%(step)
+  file_nii_path = os.path.join(foldname, niiname)
+  """aff = np.eye(4)
+  aff[0,0] = reso
+  aff[1,1] = reso
+  aff[2,2] = reso
+  img = nib.Nifti1Image(outimage, aff)"""
+  nib.save(outimage, file_nii_path)
+
+# Convert mesh .stl to image .nii.gz
 def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso):
 
   stlname = "B%d.stl"%(step)
@@ -231,7 +290,7 @@ def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii
   nib.save(img, file_nii_path)
 
 # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
-def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, cog, maxd, nn):
+def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, cog, maxd, nn, faces, tets, miny):
 
   niiname = "B%d_2.nii.gz"%(step)
 
@@ -244,7 +303,7 @@ def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_ni
   vertices[:,:] = Ut[:,:]*zoom_pos
   vertices_seg[:,1] = cog[0] - Ut[:,0]*maxd
   #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
-  vertices_seg[:,0] = Ut[:,1]*maxd + cog[1]
+  vertices_seg[:,0] = Ut[:,1]*maxd + miny
   #vertices_seg[:,0] = cog[1] - vertices[:,1]*maxd
   vertices_seg[:,2] = cog[2] - Ut[:,2]*maxd
   #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
