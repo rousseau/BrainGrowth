@@ -3,18 +3,32 @@ import math
 from math import sqrt
 from numba import jit, njit, prange
 from mathfunc import dot_vec_dim_3
+from scipy import spatial
 
-# Finds the nearest surface nodes to nodes (csn) and distances to them (d2s) - these are needed to set up the growth of the gray matter
-@njit(parallel=True)
-def dist2surf(Ut0, SN, nn, csn, d2s):
+# Find the nearest surface nodes to nodes (csn) and distances to them (d2s) - these are needed to set up the growth of the gray matter
+@jit
+def dist2surf(Ut0, SN):
   #csn = np.zeros(nn)  # Nearest surface nodes
   #d2s = np.zeros(nn)  # Distances to nearest surface node
-  for i in prange(nn):
+  """for i in prange(nn):
     d2 = dot_vec_dim_3(Ut0[SN[:]] - Ut0[i], Ut0[SN[:]] - Ut0[i])
     csn[i] = np.argmin(d2)
-    d2s[i] = sqrt(np.min(d2))
+    d2s[i] = sqrt(np.min(d2))"""
+  tree = spatial.KDTree(Ut0[SN[:]])
+  pp = tree.query(Ut0)
+  csn = pp[1]  # Nearest surface nodes
+  d2s = pp[0]  # Distances to nearest surface node
 
   return csn, d2s
+
+"""# Find the nearest surface nodes to barycenter of tetahedra (csn_t)
+@njit(parallel=True)
+def dist2surf_2(Ut_barycenter, Ut0, SN, ne, csn_t):
+  for i in prange(ne):
+    d2 = dot_vec_dim_3(Ut0[SN[:]] - Ut_barycenter[i], Ut0[SN[:]] - Ut_barycenter[i])
+    csn_t[i] = np.argmin(d2)
+
+  return csn_t"""
 
 # Calculate the relative growth rate
 @jit
@@ -29,6 +43,16 @@ def growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets):
     #at[i] = GROWTH_RELATIVE + 7.4*t
   #if t >= 0.0: 
     #at = GROWTH_RELATIVE - GROWTH_RELATIVE*t
+
+  return at
+
+# Calculate the relative growth rate function
+@jit
+def growthRate_2(t, ne, n_clusters, labels_volume, labels_volume_2, amplitude, peak, latency, peak_2, amplitude_2, latency_2):
+  at = np.zeros(ne, dtype=np.float64)
+  for i in range(n_clusters):
+    at[np.where(labels_volume == i)[0]] = 10.79*amplitude[i]*np.exp(-(70*t-peak[i])**2/latency[i])-0.38  #10.79 0.38
+    at[np.where(labels_volume_2 == i)[0]] = 10.79*amplitude_2[i]*np.exp(-(70*t-peak_2[i])**2/latency_2[i])-0.38
 
   return at
 
@@ -68,7 +92,7 @@ def growthTensor_tangen(Nt, gm, at, G, ne):
   A[:,2,1] = Nt[:,1]*Nt[:,2]
   A[:,2,2] = Nt[:,2]*Nt[:,2]
   for i in prange(ne):
-    G[i] = np.identity(3) + (np.identity(3) - A[i])*gm[i]*at
+    G[i] = np.identity(3) + (np.identity(3) - A[i])*gm[i]*at[i]
   #G[i] = np.identity(3) + (np.identity(3) - np.matrix([[Nt[0]*Nt[0], Nt[0]*Nt[1], Nt[0]*Nt[2]], [Nt[0]*Nt[1], Nt[1]*Nt[1], Nt[1]*Nt[2]], [Nt[0]*Nt[2], Nt[1]*Nt[2], Nt[2]*Nt[2]]]))*gm*at
 
   return G
