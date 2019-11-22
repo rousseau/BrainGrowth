@@ -3,6 +3,14 @@ import math
 import numba
 from numba import jit, njit, prange
 from mathfunc import det_dim_3, det_dim_2, cross_dim_3, dot_mat_dim_3, transpose_dim_3, normalize_dim_3
+import slam.io as sio
+from scipy import spatial
+from scipy.optimize import curve_fit
+from slam import topology as stop
+import scipy.sparse as sp
+from curvatureCoarse import graph_laplacian
+from scipy.sparse.linalg import eigs
+from sklearn.cluster import KMeans
 
 # Import mesh, each line as a list
 def importMesh(path):
@@ -103,6 +111,106 @@ def volume_mesh(Vn_init, nn, ne, tets, Ut):
   Vm_init = np.sum(Vn_init)
 
   return Vm_init
+
+# Define the label for each surface node
+@jit
+def tetra_labels_surface(mesh_file, mesh_file_2, method, n_clusters, Ut0, SN, tets, indices_a, indices_b):
+  mesh = sio.load_mesh(mesh_file)
+  mesh_2 = sio.load_mesh(mesh_file_2)
+  if method.__eq__("Kmeans"):
+  # 1) Simple K-means to start simply
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(mesh.vertices)
+    kmeans_2 = KMeans(n_clusters=n_clusters, random_state=0).fit(mesh_2.vertices)
+  else:
+  # 2) Another method: spectral clustering
+    Lsparse = graph_laplacian(mesh)
+    Lsparse_2 = graph_laplacian(mesh_2)
+    evals, evecs = eigs(Lsparse, k=n_clusters - 1, which='SM')
+    evals_2, evecs_2 = eigs(Lsparse_2, k=n_clusters - 1, which='SM')
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(np.real(evecs))
+    kmeans_2 = KMeans(n_clusters=n_clusters, random_state=0).fit(np.real(evecs_2))
+  #kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(mesh.vertices)
+  labels = kmeans.labels_
+  labels_2 = kmeans_2.labels_ 
+  # Find the nearest reference surface nodes to our surface nodes (csn) and distribute the labels to our surface nodes (labels_surface)
+  tree_1 = spatial.KDTree(mesh.vertices)
+  tree_2 = spatial.KDTree(mesh_2.vertices)
+  csn = tree_1.query(Ut0[SN[indices_a]])
+  csn_2 = tree_2.query(Ut0[SN[indices_b]])
+  #labels_surface = np.zeros(nsn, dtype = np.int64)
+  #labels_surface_2 = np.zeros(nsn, dtype = np.int64)
+  labels_surface = kmeans.labels_[csn[1]]
+  labels_surface_2 = kmeans_2.labels_[csn_2[1]]
+
+  return labels_surface, labels_surface_2, labels, labels_2
+
+# Define the label for each tetrahedron
+@jit
+def tetra_labels_volume(Ut0, SN, tets, indices_a, indices_b, labels_surface, labels_surface_2):
+  # Find the nearest surface nodes to barycenters of tetahedra (csn_t) and distribute the label to each tetahedra (labels_volume)
+  Ut_barycenter = (Ut0[tets[:,0]] + Ut0[tets[:,1]] + Ut0[tets[:,2]] + Ut0[tets[:,3]])/4.0
+  indices_c = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 >= 0.0)[0]  #lower part
+  indices_d = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 < 0.0)[0]  #upper part
+  tree_3 = spatial.KDTree(Ut0[SN[indices_a]])
+  csn_t = tree_3.query(Ut_barycenter[indices_c,:])
+  tree_4 = spatial.KDTree(Ut0[SN[indices_b]])
+  csn_t_2 = tree_4.query(Ut_barycenter[indices_d,:])
+  #labels_volume = np.zeros(ne, dtype = np.int64)
+  labels_volume = labels_surface[csn_t[1]]
+  labels_volume_2 = labels_surface_2[csn_t_2[1]]
+
+  return labels_volume, labels_volume_2
+
+# Define gaussian function for temporal growth rate
+@jit
+def func(x,a,c,sigma):
+
+  return a*np.exp(-(70*x-c)**2/sigma)
+
+# Define asymmetric gaussian function for temporal growth rate
+@jit
+def func2(x,a,c,sigma,b,d):
+
+  return a*np.exp(-(x-c)**2/(sigma/(1+np.exp(-b*(x-d)))))
+
+# Define asymmetric normal function for temporal growth rate
+@jit
+def skew(X, a, e, w, p):
+  X = (p*X-e)/w
+  Y = 2*np.exp(-X**2/2)/np.sqrt(2*np.pi)
+  Y *= 1/w * sp.ndtr(a*X)  #ndtr: gaussian cumulative distribution function
+
+  return Y
+
+# Curve-fit of temporal growth for each label
+@jit
+def Curve_fitting(texture_file, texture_file_2, labels, labels_2, n_clusters):
+  ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
+  xdata=np.array(ages)
+  tp_model = 6.926*10**(-5)*xdata**3-0.00665*xdata**2+0.250*xdata-3.0189  #time of numerical model
+
+  texture = sio.load_texture(texture_file)
+  texture_2 = sio.load_texture(texture_file_2)
+
+  peak=np.zeros((n_clusters,))
+  amplitude=np.zeros((n_clusters,))
+  latency=np.zeros((n_clusters,))
+  peak_2=np.zeros((n_clusters,))
+  amplitude_2=np.zeros((n_clusters,))
+  latency_2=np.zeros((n_clusters,))
+  for k in range(n_clusters):
+    ydata=np.mean(texture.darray[:,np.where(labels == k)[0]], axis=1)
+    ydata_2=np.mean(texture_2.darray[:,np.where(labels_2 == k)[0]], axis=1)
+    popt, pcov=curve_fit(skew, tp_model, ydata, p0=[2, 32., 20., 85]) #[0.16, 32, 25.])
+    popt_2, pcov_2=curve_fit(skew, tp_model, ydata_2, p0=[2, 32., 20., 85]) #[0.16, 32, 25.])
+    peak[k]=popt[1]   
+    amplitude[k]=popt[0]
+    latency[k]=popt[2]
+    peak_2[k]=popt_2[1]   
+    amplitude_2[k]=popt_2[0]
+    latency_2[k]=popt_2[2]
+
+  return peak, amplitude, latency, peak_2, amplitude_2, latency_2
 
 # Mark non-growing areas
 @njit(parallel=True)
