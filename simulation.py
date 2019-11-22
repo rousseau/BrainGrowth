@@ -8,12 +8,12 @@ from __future__ import division
 import argparse
 import numpy as np
 import math
-from geometry import importMesh, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, edge_length, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom
-from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthTensor_homo, growthTensor_homo_2, growthTensor_relahomo
+from geometry import importMesh, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, edge_length, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom, tetra_labels_surface, tetra_labels_volume, Curve_fitting
+from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthTensor_homo, growthTensor_homo_2, growthTensor_relahomo, growthRate_2
 from normalisation import normalise_coord
 from collision import contactProcess
 from mechanics import tetraElasticity, move
-from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl, stl_to_image, mesh_to_image
+from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl, point3d_to_voxel, mesh_to_image, stl_to_image
 from mathfunc import make_2D_array
 from numba import jit, prange
 
@@ -26,12 +26,12 @@ if __name__ == '__main__':
   args = parser.parse_args()
 
   # Parameters to change
-  PATH_DIR = args.output # Path of output
-  THICKNESS_CORTEX = args.thickness # Cortical thickness
-  GROWTH_RELATIVE = args.growth # Relative growth rate
+  PATH_DIR = args.output # Path of results
+  THICKNESS_CORTEX = args.thickness
+  GROWTH_RELATIVE = args.growth
 
   # Path of mesh
-  mesh_path = args.input # Path of input
+  mesh_path = args.input #"/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/week23-3M-tets.mesh"  # "./data/prm001_25W_Rwhite.mesh" #"/home/x17wang/Bureau/xiaoyu/ Brain_code_and_meshes/week23-3M-tets.mesh" #"/home/x17wang/Codes/BrainGrowth/brain_2.mesh"
 
   # Import mesh, each line as a list
   mesh = importMesh(mesh_path)
@@ -69,7 +69,7 @@ if __name__ == '__main__':
   mug = 1.0 #65.0 Shear modulus of gray matter
   muw = 1.167 #75.86 Shear modulus of white matter
   K = 5.0 #100.0 Bulk modulus
-  a = 0.01 #Mesh spacing - set manually based on the average spacing in the mesh
+  a = 0.01 #0.003 0.01 Mesh spacing - set manually based on the average spacing in the mesh
   rho = 0.01 #0.0001 Mass density - adjust to run the simulation faster or slower
   gamma = 0.5 #0.1 Damping coefficent
   di = 500 #Output data once every di steps
@@ -108,14 +108,23 @@ if __name__ == '__main__':
   #G = 1.0
   # End of parameters
 
+  # Define the label for each surface node
+  mesh_file = '/home/x17wang/Exp/Simulations/FSLike_Database/cut_close_matlab_B0/surf/rh.gii'
+  mesh_file_2 = '/home/x17wang/Exp/Simulations/FSLike_Database/B0_demi_filled/surf/lh.gii'
+  n_clusters = 10
+  method = 'spectral' #Method of parcellation in lobes
+  indices_a = np.where(Ut0[SN[:],1] >= (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #left part
+  indices_b = np.where(Ut0[SN[:],1] < (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #right part
+  labels_surface, labels_surface_2, labels, labels_2 = tetra_labels_surface(mesh_file, mesh_file_2, method, n_clusters, Ut0, SN, tets, indices_a, indices_b)
+
   # Normalize initial mesh coordinates, change mesh information by values normalized
-  Ut0, Ut, cog, maxd = normalise_coord(Ut0, Ut, nn)
+  Ut0, Ut, cog, maxd, miny = normalise_coord(Ut0, Ut, nn)
 
   '''# Initialize deformed coordinates
   Ut = Ut0'''
 
-  # Finds the nearest surface nodes (csn) to nodes and distances to them (d2s)
-  csn, d2s = dist2surf(Ut0, SN, nn, csn, d2s)
+  # Find the nearest surface nodes (csn) to nodes and distances to them (d2s)
+  csn, d2s = dist2surf(Ut0, SN)
 
   # Configuration of tetrahedra at reference state (A0)
   A0 = configRefer(Ut0, tets, ne)
@@ -152,20 +161,68 @@ if __name__ == '__main__':
 
     return Ft
 
-  #myfile = open("/home/x17wang/Codes/BrainGrowth/Force_contact_NNLt.txt", "w")
+  #myfile = open("/home/x17wang/Codes/BrainGrowth/test.txt", "w")
 
+  ## Parcel brain in lobes
+  # Define the label for each tetrahedron
+  labels_volume, labels_volume_2 = tetra_labels_volume(Ut0, SN, tets, indices_a, indices_b, labels_surface, labels_surface_2)
+
+  # Curve-fit of temporal growth for each label
+  texture_file = '/home/x17wang/Data/GarciaPNAS2018_K65Z/covariateinteraction2.R.noivh.ggdot.func.gii'
+  texture_file_2 = '/home/x17wang/Data/GarciaPNAS2018_K65Z/covariateinteraction2.L.noivh.ggdot.func.gii'
+  peak, amplitude, latency, peak_2, amplitude_2, latency_2 = Curve_fitting(texture_file, texture_file_2, labels, labels_2, n_clusters)
+  
+  """mesh_file = '/home/x17wang/Exp/Simulations/FSLike_Database/cut_close_matlab_B0/surf/rh.gii'
+  mesh = sio.load_mesh(mesh_file)
+  #kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(Ut_barycenter)
+  n_clusters = 10
+  kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(mesh.vertices) 
+  tree = spatial.KDTree(mesh.vertices)
+  pp = tree.query(Ut0[SN[:]])
+  labels_surface = np.zeros(nsn, dtype = np.int64)
+  labels_surface = kmeans.labels_[pp[1]]
+  labels_volume = np.zeros(ne, dtype = np.int64)
+  Ut_barycenter = (Ut0[tets[:,0]] + Ut0[tets[:,1]] + Ut0[tets[:,2]] + Ut0[tets[:,3]])/4.0
+  csn_t = np.zeros(ne, dtype = np.int64)
+  csn_t = dist2surf_2(Ut_barycenter, Ut0, SN, ne, csn_t)   # Finds the nearest surface nodes to barycenter of tetahedra (csn_t)
+  labels_volume = labels_surface[csn_t[:]]
+  #labels = kmeans.labels_
+  ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
+  xdata=np.array(ages)
+  tp_model = 6.926*10**(-5)*xdata**3-0.00665*xdata**2+0.250*xdata-3.0189  #time of numerical model
+
+  texture_file = '/home/x17wang/Data/GarciaPNAS2018_K65Z/covariateinteraction2.R.noivh.ggdot.func.gii'
+  texture = sio.load_texture(texture_file)
+
+  def func2(x,a,c,sigma):
+    return a*np.exp(-(70*x-c)**2/sigma)
+
+  peak=np.zeros((n_clusters,))
+  amplitude=np.zeros((n_clusters,))
+  latency=np.zeros((n_clusters,))
+  for k in range(n_clusters):
+    ydata=np.mean(texture.darray[:,np.where(kmeans.labels_ == k)[0]], axis=1)
+    popt, pcov = curve_fit(func2, tp_model, ydata, p0=[0.16, 32, 25.])
+    peak[k]=popt[1]
+    amplitude[k]=popt[0]
+    latency[k]=popt[2]"""
+  
+  #amplitude = np.array([0.14611041,0.15753562,0.155424,0.15821409,0.12946925,0.13027164,0.1469077,0.11374458,0.12887732,0.14332491])
+  #peak = np.array([30.8342257,31.35846557,29.7571079,32.24612982,29.56189258,30.49069391,30.13033302,31.2737798,31.7842408,31.96410735])
+  #latency = np.array([496.0156081,398.15347548,483.78391847,440.61841579,623.4283619,483.67224817,443.79565242,667.65848266,472.73996025,421.61969477])
   # Tetrahedral indices of lower and upper parts of the objet
   #indices_b = np.where((Ut0[tets[:,0],2]+Ut0[tets[:,1],2]+Ut0[tets[:,2],2]+Ut0[tets[:,3],2])/4 <= -0.1)[0]  #lower part
   #indices_a = np.where((Ut0[tets[:,0],2]+Ut0[tets[:,1],2]+Ut0[tets[:,2],2]+Ut0[tets[:,3],2])/4 >= 0.1)[0]  #upper part
 
-  #filename_nii_reso = '/home/x17wang/Exp/prm001/prm001_30w_Rwhite_r05.nii.gz'
+  filename_nii_reso = "/home/x17wang/Exp/London/London-23weeks/brain_crisp_2_refilled.nii.gz"
   #reso = 0.5
 
   # Simulation loop
   while t < 1.0:
 
     # Calculate the relative growth rate
-    at = growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets)
+    #at = growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets)
+    at = growthRate_2(t, ne, n_clusters, labels_volume, labels_volume_2, amplitude, peak, latency, peak_2, amplitude_2, latency_2)
 
     # Calculate the longitudinal length of the real brain
     L = longitLength(t)
@@ -203,7 +260,7 @@ if __name__ == '__main__':
     #G = 1.0 + GROWTH_RELATIVE*t
 
     # Midplane
-    #Ft = midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K)
+    Ft = midPlane(Ut, Ut0, Ft, SN, nsn, mpy, a, hc, K)
 
     # Output
     if step % di == 0:
@@ -217,17 +274,20 @@ if __name__ == '__main__':
       # Write surface mesh output files in .txt files
       writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos)
 
-      # Convert mesh to .stl format
-      mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb)
-	
+	  # Convert surface mesh structure (from simulations) to .stl format file
+      mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny)
+
       # Convert mesh .stl to image .nii.gz
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
 
+      # Convert 3d points to image voxel
+      #point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, cog, nn)
+
       # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
-      #mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, cog, maxd, nn)
+      #mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, cog, maxd, nn, faces, tets, miny)
 
       print ('step: ' + str(step) + ' t: ' + str(t) )
- 
+
       # Calculate surface area and mesh volume
       Area, Volume = area_volume(Ut, faces, gr, Vn)
 
