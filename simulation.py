@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-  python simulation.py '-i' './data/sphere5.mesh' '-o' './res/sphere5' '-t' 0.042 '-g' 1.829
-  python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -t 0.042 -g 1.829 -mr -tx './data/GarciaPNAS2018_K65Z/covariateinteraction2.R.noivh.ggdot.func.gii'
+
+  python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -t 0.042 -g 1.829 -mr './data/rh.gii' -tx './data/covariateinteraction2.R.noivh.ggdot.func.gii'
 
 """
 
