@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 
-  python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -t 0.042 -g 1.829 -mr './data/rh.gii' -tx './data/covariateinteraction2.R.noivh.ggdot.func.gii'
+  python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -t 0.042 -g 1.829 -mr './data/rh.gii' -tx './data/covariateinteraction2.R.noivh.GGnorm.func.gii'
 
 """
 
