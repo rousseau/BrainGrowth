@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
   python simulation.py '-i' './data/sphere5.mesh' '-o' './res/sphere5' '-t' 0.042 '-g' 1.829
+  python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -t 0.042 -g 1.829 -mr -tx './data/GarciaPNAS2018_K65Z/covariateinteraction2.R.noivh.ggdot.func.gii'
 
 """
 
@@ -23,6 +24,8 @@ if __name__ == '__main__':
   parser.add_argument('-o', '--output', help='Output maillage', type=str, required=True)
   parser.add_argument('-t', '--thickness', help='Cortical thickness', type=float, required=True)
   parser.add_argument('-g', '--growth', help='Relative growth rate', type=float, required=True)
+  parser.add_argument('-mr', '--registermesh', help='Mesh after registration', type=str, required=True)
+  parser.add_argument('-tx', '--texture', help='Texture of template', type=str, required=True)
   args = parser.parse_args()
 
   # Parameters to change
@@ -109,7 +112,7 @@ if __name__ == '__main__':
   # End of parameters
  
   # Define the label for each surface node
-  mesh_file = '/home/x17wang/Exp/Simulations/FSLike_Database/cut_close_matlab_B0/surf/rh.gii'
+  mesh_file = args.registermesh
   n_clusters = 10
   method = 'spectral' #Method of parcellation in lobes
   labels_surface, labels = tetra_labels_surface(mesh_file, method, n_clusters, Ut0, SN, tets)
@@ -165,7 +168,7 @@ if __name__ == '__main__':
   labels_volume = tetra_labels_volume(Ut0, SN, tets, labels_surface)
 
   # Curve-fit of temporal growth for each label
-  texture_file = '/home/x17wang/Data/GarciaPNAS2018_K65Z/covariateinteraction2.R.noivh.ggdot.func.gii'
+  texture_file = args.texture
   peak, amplitude, latency = Curve_fitting(texture_file, labels, n_clusters)
 
   #filename_nii_reso = "/home/x17wang/Exp/London/London-23weeks/brain_crisp_2_refilled.nii.gz"
