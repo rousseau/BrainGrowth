@@ -175,9 +175,9 @@ def Curve_fitting(texture_file, labels, n_clusters):
   xdata_new[3]=xdata[25]
   xdata_new[4]=xdata[20]
   tp_model = 6.926*10**(-5)*xdata_new**3-0.00665*xdata_new**2+0.250*xdata_new-3.0189  #time of numerical model
-
-  texture_new = np.zeros((5,np.size(texture,1)))
+ 
   texture = sio.load_texture(texture_file)
+  texture_new = np.zeros((5,np.size(texture.darray,1)))
   texture_new[0, :] = np.zeros(np.size(texture.darray, 1))
   texture_new[1,:] = texture.darray[2]*1.26
   texture_new[2,:] = texture.darray[6]*1.37
