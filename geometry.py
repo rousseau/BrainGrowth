@@ -152,7 +152,7 @@ def tetra_labels_volume(Ut0, SN, tets, labels_surface):
 @jit
 def func(x,a,c,sigma):
 
-  return a*np.exp(-(70*x-c)**2/sigma)
+  return a*np.exp(-(x-c)**2/sigma)
 
 # Define asymmetric normal function for temporal growth rate
 @jit
@@ -168,20 +168,33 @@ def skew(X, a, e, w, p):
 def Curve_fitting(texture_file, labels, n_clusters):
   ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
   xdata=np.array(ages)
-  tp_model = 6.926*10**(-5)*xdata**3-0.00665*xdata**2+0.250*xdata-3.0189  #time of numerical model
+  xdata_new = np.zeros(5)
+  xdata_new[0]=22
+  xdata_new[1]=xdata[2]
+  xdata_new[2]=xdata[6]
+  xdata_new[3]=xdata[25]
+  xdata_new[4]=xdata[20]
+  tp_model = 6.926*10**(-5)*xdata_new**3-0.00665*xdata_new**2+0.250*xdata_new-3.0189  #time of numerical model
 
+  texture_new = np.zeros((5,np.size(texture,1)))
   texture = sio.load_texture(texture_file)
+  texture_new[0, :] = np.zeros(np.size(texture.darray, 1))
+  texture_new[1,:] = texture.darray[2]*1.26
+  texture_new[2,:] = texture.darray[6]*1.37
+  texture_new[3,:] = texture.darray[25]*1.70
+  texture_new[4,:] = texture.darray[20]*2.33  
 
   peak=np.zeros((n_clusters,))
   amplitude=np.zeros((n_clusters,))
   latency=np.zeros((n_clusters,))
   multiple=np.zeros((n_clusters,))
   for k in range(n_clusters):
-    ydata=np.mean(texture.darray[:,np.where(labels == k)[0]], axis=1)
-    popt, pcov=curve_fit(func, tp_model, ydata, [0.16, 32, 25.])  #p0=[2, 32., 20., 85]) 
+    ydata=np.mean(texture_new[:,np.where(labels == k)[0]], axis=1)
+    popt, pcov=curve_fit(func, tp_model, ydata, p0=[1.5, 0.9, 0.09]) #[2, 32., 20., 85])
     peak[k]=popt[1]
     amplitude[k]=popt[0]
     latency[k]=popt[2]
+    #multiple[k]=popt[3]
 
   return peak, amplitude, latency
 
