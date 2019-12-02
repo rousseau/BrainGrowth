@@ -4,6 +4,8 @@ from math import sqrt
 from numba import jit, njit, prange
 from mathfunc import dot_vec_dim_3
 from scipy import spatial
+from scipy import pi,sqrt,exp
+import scipy.special as sp
 
 # Find the nearest surface nodes to nodes (csn) and distances to them (d2s) - these are needed to set up the growth of the gray matter
 @jit
@@ -20,15 +22,6 @@ def dist2surf(Ut0, SN):
   d2s = pp[0]  # Distances to nearest surface node
 
   return csn, d2s
-
-"""# Find the nearest surface nodes to barycenter of tetahedra (csn_t)
-@njit(parallel=True)
-def dist2surf_2(Ut_barycenter, Ut0, SN, ne, csn_t):
-  for i in prange(ne):
-    d2 = dot_vec_dim_3(Ut0[SN[:]] - Ut_barycenter[i], Ut0[SN[:]] - Ut_barycenter[i])
-    csn_t[i] = np.argmin(d2)
-
-  return csn_t"""
 
 # Calculate the relative growth rate
 @jit
@@ -48,11 +41,11 @@ def growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets):
 
 # Calculate the relative growth rate function
 @jit
-def growthRate_2(t, ne, n_clusters, labels_volume, labels_volume_2, amplitude, peak, latency, peak_2, amplitude_2, latency_2):
+def growthRate_2(t, ne, n_clusters, labels, peak, amplitude, latency, multiple):
   at = np.zeros(ne, dtype=np.float64)
   for i in range(n_clusters):
-    at[np.where(labels_volume == i)[0]] = 10.79*amplitude[i]*np.exp(-(70*t-peak[i])**2/latency[i])-0.38  #10.79 0.38
-    at[np.where(labels_volume_2 == i)[0]] = 10.79*amplitude_2[i]*np.exp(-(70*t-peak_2[i])**2/latency_2[i])-0.38
+    at[np.where(labels == i)[0]] = 2*np.exp(-(multiple[i]*t-peak[i])/latency[i]**2/2)/np.sqrt(2*np.pi) * 1/latency[i] * sp.ndtr(amplitude[i]*(multiple[i]*t-peak[i])/latency[i])
+    #at[np.where(labels == i)[0]] = 10.79*amplitude[i]*np.exp(-(70*t-peak[i])**2/latency[i]) - 0.38  #3.658
 
   return at
 
