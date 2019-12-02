@@ -174,7 +174,7 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
   vertices[:,:] = Ut[SN[:],:]*zoom_pos
   vertices_seg[:,1] = cog[0] - Ut[SN[:],0]*maxd
   #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
-  vertices_seg[:,0] = Ut[SN[:],1]*maxd + cog[1]
+  vertices_seg[:,0] = Ut[SN[:],1]*maxd + miny
   #vertices_seg[:,0] = cog[1] - vertices[:,1]*maxd
   vertices_seg[:,2] = cog[2] - Ut[SN[:],2]*maxd
   #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
@@ -197,7 +197,7 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
   brain.save(save_path, mode=Mode.ASCII)"""
 
 # Convert mesh .stl to image .nii.gz
-def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, cog, nn):
+def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, cog, nn, miny):
 
   """stlname = "B%d.stl"%(step)
 
@@ -221,11 +221,11 @@ def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename
   vertices_seg = np.zeros((nn,3), dtype = float)
 
   vertices[:,:] = Ut[:,:]*zoom_pos
-  vertices_seg[:,1] = cog[0] - Ut[:,0]*maxd
+  vertices_seg[:,1] = (cog[0] - Ut[:,0]*maxd)  #/1.396
   #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
-  vertices_seg[:,0] = Ut[:,1]*maxd + cog[1]
+  vertices_seg[:,0] = (Ut[:,1]*maxd + miny)  #/1.564
   #vertices_seg[:,0] = cog[1] - vertices[:,1]*maxd
-  vertices_seg[:,2] = cog[2] - Ut[:,2]*maxd
+  vertices_seg[:,2] = (cog[2] - Ut[:,2]*maxd)  #/1.122
   #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
 
   # Convert to binary image
@@ -235,11 +235,10 @@ def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename
   abc = img.affine[:3, 3]
   image = np.zeros((nn,3), dtype = np.float32)
   for i in range(nn):
-    image[i] = np.linalg.inv(matrix_image_to_world).dot(np.transpose(vertices_seg[i])-abc)
+    image[i] = np.linalg.inv(matrix_image_to_world).dot(np.transpose(vertices_seg[i]) - abc)
   """array_index = np.transpose(np.asarray(np.where(data==1)))
   tree = spatial.KDTree(array_index)
   pp = tree.query(image)"""
-  #outimage = np.zeros(data.shape, dtype = np.float32)
   outimage = np.zeros((int(np.round(np.max(image[:,0])))+1, int(np.round(np.max(image[:,0])))+1, int(np.round(np.max(image[:,0])))+1), dtype = np.float32)
   for i in range(nn):
     #outimage[array_index[pp[1][i],0], array_index[pp[1][i],1], array_index[pp[1][i],2]] = 1.0
