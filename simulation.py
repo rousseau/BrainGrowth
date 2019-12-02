@@ -9,7 +9,7 @@ import argparse
 import numpy as np
 import math
 from geometry import importMesh, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, edge_length, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom, tetra_labels_surface, tetra_labels_volume, Curve_fitting
-from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthTensor_homo, growthTensor_homo_2, growthTensor_relahomo, growthRate_2
+from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthTensor_homo, growthTensor_homo_2, growthTensor_relahomo, growthRate_2, dist2surf_2
 from normalisation import normalise_coord
 from collision import contactProcess
 from mechanics import tetraElasticity, move
@@ -79,7 +79,7 @@ if __name__ == '__main__':
   hs = 0.6*a #Thickness of proximity skin
   hc = 0.2*a #Thickness of repulsive skin
   kc = 10.0*K #100.0*K Contact stiffness
-  dt = 0.05*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
+  dt = 0.01*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
   print('dt is ' + str(dt))
   eps = 0.1 #Epsilon
   k = 0.0
@@ -107,15 +107,12 @@ if __name__ == '__main__':
   #G = [1.0]*ne
   #G = 1.0
   # End of parameters
-
+ 
   # Define the label for each surface node
   mesh_file = '/home/x17wang/Exp/Simulations/FSLike_Database/cut_close_matlab_B0/surf/rh.gii'
-  mesh_file_2 = '/home/x17wang/Exp/Simulations/FSLike_Database/B0_demi_filled/surf/lh.gii'
   n_clusters = 10
   method = 'spectral' #Method of parcellation in lobes
-  indices_a = np.where(Ut0[SN[:],1] >= (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #left part
-  indices_b = np.where(Ut0[SN[:],1] < (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #right part
-  labels_surface, labels_surface_2, labels, labels_2 = tetra_labels_surface(mesh_file, mesh_file_2, method, n_clusters, Ut0, SN, tets, indices_a, indices_b)
+  labels_surface, labels = tetra_labels_surface(mesh_file, method, n_clusters, Ut0, SN, tets)
 
   # Normalize initial mesh coordinates, change mesh information by values normalized
   Ut0, Ut, cog, maxd, miny = normalise_coord(Ut0, Ut, nn)
@@ -165,13 +162,12 @@ if __name__ == '__main__':
 
   ## Parcel brain in lobes
   # Define the label for each tetrahedron
-  labels_volume, labels_volume_2 = tetra_labels_volume(Ut0, SN, tets, indices_a, indices_b, labels_surface, labels_surface_2)
+  labels_volume = tetra_labels_volume(Ut0, SN, tets, labels_surface)
 
   # Curve-fit of temporal growth for each label
   texture_file = '/home/x17wang/Data/GarciaPNAS2018_K65Z/covariateinteraction2.R.noivh.ggdot.func.gii'
-  texture_file_2 = '/home/x17wang/Data/GarciaPNAS2018_K65Z/covariateinteraction2.L.noivh.ggdot.func.gii'
-  peak, amplitude, latency, peak_2, amplitude_2, latency_2 = Curve_fitting(texture_file, texture_file_2, labels, labels_2, n_clusters)
-  
+  peak, amplitude, latency, multiple = Curve_fitting(texture_file, labels, n_clusters)
+
   """mesh_file = '/home/x17wang/Exp/Simulations/FSLike_Database/cut_close_matlab_B0/surf/rh.gii'
   mesh = sio.load_mesh(mesh_file)
   #kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(Ut_barycenter)
@@ -214,7 +210,7 @@ if __name__ == '__main__':
   #indices_b = np.where((Ut0[tets[:,0],2]+Ut0[tets[:,1],2]+Ut0[tets[:,2],2]+Ut0[tets[:,3],2])/4 <= -0.1)[0]  #lower part
   #indices_a = np.where((Ut0[tets[:,0],2]+Ut0[tets[:,1],2]+Ut0[tets[:,2],2]+Ut0[tets[:,3],2])/4 >= 0.1)[0]  #upper part
 
-  filename_nii_reso = "/home/x17wang/Exp/London/London-23weeks/brain_crisp_2_refilled.nii.gz"
+  #filename_nii_reso = "/home/x17wang/Exp/London/London-23weeks/brain_crisp_2_refilled.nii.gz"
   #reso = 0.5
 
   # Simulation loop
@@ -222,7 +218,7 @@ if __name__ == '__main__':
 
     # Calculate the relative growth rate
     #at = growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets)
-    at = growthRate_2(t, ne, n_clusters, labels_volume, labels_volume_2, amplitude, peak, latency, peak_2, amplitude_2, latency_2)
+    at = growthRate_2(t, ne, n_clusters, labels_volume, peak, amplitude, latency, multiple)
 
     # Calculate the longitudinal length of the real brain
     L = longitLength(t)
@@ -281,7 +277,7 @@ if __name__ == '__main__':
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
 
       # Convert 3d points to image voxel
-      #point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, cog, nn)
+      #point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, cog, nn, miny)
 
       # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
       #mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, cog, maxd, nn, faces, tets, miny)
