@@ -150,17 +150,17 @@ def tetra_labels_volume(Ut0, SN, tets, labels_surface):
 
 # Define Gaussian function for temporal growth rate
 @jit
-def func(x,a,c,sigma):
+def func(x, a, c, sigma):
 
   return a*np.exp(-(x-c)**2/sigma)
 
 # Define asymmetric normal function for temporal growth rate
 @jit
-def skew(X, a, e, w, p):
-  X = (p*X-e)/w
+def skew(X, a, e, w):
+  X = (X-e)/w
   Y = 2*np.exp(-X**2/2)/np.sqrt(2*np.pi)
   Y *= 1/w*spe.ndtr(a*X)  #ndtr: gaussian cumulative distribution function
-
+  
   return Y
 
 # Curve-fit of temporal growth for each label
