@@ -50,7 +50,7 @@ pip install -r requirements.txt
 Example of dynamic simulations of a neo-Hookean solid with a tangential differential growth.
 
 ```
-python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -t 0.042 -g 1.829 -mr './data/rh.gii' -tx './data/covariateinteraction2.R.noivh.ggdot.func.gii'
+python simulation.py -i './data/sphere5.mesh' -o './res/sphere5' -t 0.042 -g 1.829
 ```
 
 **i**: path of input maillage
