@@ -33,6 +33,7 @@ All scripts were coded in `python 2.7`, but they are compatible to `python 3.7`.
 - mpmath==1.0.0
 - os
 - trimesh
+- slam
 </details>
 
 The file called `requirements.txt` helps to install all the python libraries.
