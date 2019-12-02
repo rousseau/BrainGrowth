@@ -41,11 +41,11 @@ def growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets):
 
 # Calculate the relative growth rate function
 @jit
-def growthRate_2(t, ne, n_clusters, labels, peak, amplitude, latency, multiple):
+def growthRate_2(t, ne, n_clusters, labels, peak, amplitude, latency):
   at = np.zeros(ne, dtype=np.float64)
   for i in range(n_clusters):
-    at[np.where(labels == i)[0]] = 2*np.exp(-(multiple[i]*t-peak[i])/latency[i]**2/2)/np.sqrt(2*np.pi) * 1/latency[i] * sp.ndtr(amplitude[i]*(multiple[i]*t-peak[i])/latency[i])
-    #at[np.where(labels == i)[0]] = 10.79*amplitude[i]*np.exp(-(70*t-peak[i])**2/latency[i]) - 0.38  #3.658
+    #at[np.where(labels == i)[0]] = 2*np.exp(-(multiple[i]*t-peak[i])/latency[i]**2/2)/np.sqrt(2*np.pi) * 1/latency[i] * sp.ndtr(amplitude[i]*(multiple[i]*t-peak[i])/latency[i])
+    at[np.where(labels == i)[0]] = 10.79*amplitude[i]*np.exp(-(70*t-peak[i])**2/latency[i]) - 0.38  #3.658
 
   return at
 
