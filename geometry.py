@@ -126,8 +126,8 @@ def tetra_labels_surface(mesh_file, method, n_clusters, Ut0, SN, tets):
     kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(np.real(evecs))
   #kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(mesh.vertices)
   labels = kmeans.labels_ 
-  mesh.vertices[:,[0,1]]=mesh.vertices[:,[1,0]]
   # Find the nearest reference surface nodes to our surface nodes (csn) and distribute the labels to our surface nodes (labels_surface)
+  mesh.vertices[:,[0,1]]=mesh.vertices[:,[1,0]]
   tree = spatial.KDTree(mesh.vertices)
   csn = tree.query(Ut0[SN[:]])
   #labels_surface = np.zeros(nsn, dtype = np.int64)
