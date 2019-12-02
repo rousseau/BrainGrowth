@@ -166,7 +166,7 @@ if __name__ == '__main__':
 
   # Curve-fit of temporal growth for each label
   texture_file = '/home/x17wang/Data/GarciaPNAS2018_K65Z/covariateinteraction2.R.noivh.ggdot.func.gii'
-  peak, amplitude, latency, multiple = Curve_fitting(texture_file, labels, n_clusters)
+  peak, amplitude, latency = Curve_fitting(texture_file, labels, n_clusters)
 
   #filename_nii_reso = "/home/x17wang/Exp/London/London-23weeks/brain_crisp_2_refilled.nii.gz"
   #reso = 0.5
@@ -176,7 +176,7 @@ if __name__ == '__main__':
 
     # Calculate the relative growth rate
     #at = growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets)
-    at = growthRate_2(t, ne, n_clusters, labels_volume, peak, amplitude, latency, multiple)
+    at = growthRate_2(t, ne, n_clusters, labels_volume, peak, amplitude, latency)
 
     # Calculate the longitudinal length of the real brain
     L = longitLength(t)
