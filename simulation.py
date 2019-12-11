@@ -22,11 +22,11 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Dynamic simulations')
   parser.add_argument('-i', '--input', help='Input maillage', type=str, required=True)
   parser.add_argument('-o', '--output', help='Output maillage', type=str, required=True)
-  parser.add_argument('-t', '--thickness', help='Cortical thickness', type=float, required=True)
-  parser.add_argument('-g', '--growth', help='Relative growth rate', type=float, required=True)
+  parser.add_argument('-t', '--thickness', help='Cortical thickness', type=float, default=0.042, required=False)
+  parser.add_argument('-g', '--growth', help='Relative growth rate', type=float, default=1.829, required=False)
   parser.add_argument('-mr', '--registermesh', help='Mesh after registration', type=str, required=True)
   parser.add_argument('-tx', '--texture', help='Texture of template', type=str, required=True)
-  parser.add_argument('-sc', '--stepcontrol', help='step length regulation', type=float, required=True)
+  parser.add_argument('-sc', '--stepcontrol', help='step length regulation', type=float, default=0.005, required=False)
   args = parser.parse_args()
 
   # Parameters to change
