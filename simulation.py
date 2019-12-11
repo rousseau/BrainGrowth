@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 
-  python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -t 0.042 -g 1.829 -mr './data/rh.gii' -tx './data/covariateinteraction2.R.noivh.GGnorm.func.gii'
+  python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -t 0.042 -g 1.829 -mr './data/rh.gii' -tx './data/covariateinteraction2.R.noivh.GGnorm.func.gii' -sc 0.005
 
 """
 
@@ -26,6 +26,7 @@ if __name__ == '__main__':
   parser.add_argument('-g', '--growth', help='Relative growth rate', type=float, required=True)
   parser.add_argument('-mr', '--registermesh', help='Mesh after registration', type=str, required=True)
   parser.add_argument('-tx', '--texture', help='Texture of template', type=str, required=True)
+  parser.add_argument('-sc', '--stepcontrol', help='step length regulation', type=float, required=True)
   args = parser.parse_args()
 
   # Parameters to change
@@ -82,7 +83,7 @@ if __name__ == '__main__':
   hs = 0.6*a #Thickness of proximity skin
   hc = 0.2*a #Thickness of repulsive skin
   kc = 10.0*K #100.0*K Contact stiffness
-  dt = 0.01*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
+  dt = args.stepcontrol*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
   print('dt is ' + str(dt))
   eps = 0.1 #Epsilon
   k = 0.0
