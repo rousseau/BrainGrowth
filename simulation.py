@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 
-  python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -t 0.042 -g 1.829 -mr './data/rh.gii' -tx './data/covariateinteraction2.R.noivh.GGnorm.func.gii' -sc 0.005
+  python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -t 0.042 -g 1.829 -mr './data/rh.gii' -tx './data/covariateinteraction2.R.noivh.GGnorm.func.gii' -sc 0.01 -ms 0.005
 
 """
 
@@ -26,7 +26,8 @@ if __name__ == '__main__':
   parser.add_argument('-g', '--growth', help='Relative growth rate', type=float, default=1.829, required=False)
   parser.add_argument('-mr', '--registermesh', help='Mesh after registration', type=str, required=True)
   parser.add_argument('-tx', '--texture', help='Texture of template', type=str, required=True)
-  parser.add_argument('-sc', '--stepcontrol', help='step length regulation', type=float, default=0.005, required=False)
+  parser.add_argument('-sc', '--stepcontrol', help='Step length regulation', type=float, default=0.01, required=False)
+  parser.add_argument('-ms', '--meshspacing', help='Average spacing in the mesh', type=float, default=0.005, required=False)
   args = parser.parse_args()
 
   # Parameters to change
@@ -73,7 +74,7 @@ if __name__ == '__main__':
   mug = 1.0 #65.0 Shear modulus of gray matter
   muw = 1.167 #75.86 Shear modulus of white matter
   K = 5.0 #100.0 Bulk modulus
-  a = 0.01 #0.003 0.01 Mesh spacing - set manually based on the average spacing in the mesh
+  a = args.meshspacing #0.003 0.01 Mesh spacing - set manually based on the average spacing in the mesh
   rho = 0.01 #0.0001 Mass density - adjust to run the simulation faster or slower
   gamma = 0.5 #0.1 Damping coefficent
   di = 500 #Output data once every di steps
