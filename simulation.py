@@ -12,7 +12,7 @@ import math
 from geometry import importMesh, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, edge_length, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom, tetra_labels_surface, tetra_labels_volume, Curve_fitting
 from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthTensor_homo, growthTensor_homo_2, growthTensor_relahomo, growthRate_2
 from normalisation import normalise_coord
-from collision_Tallinen import contactProcess
+from collision import contactProcess
 from mechanics import tetraElasticity, move
 from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl, point3d_to_voxel, mesh_to_image, stl_to_image
 from mathfunc import make_2D_array
