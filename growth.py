@@ -39,13 +39,23 @@ def growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets):
 
   return at
 
-# Calculate the relative growth rate function
+# Calculate the relative growth rate function for half brain
 @jit
-def growthRate_2(t, ne, n_clusters, labels, peak, amplitude, latency):
+def growthRate_2_half(t, ne, n_clusters, labels, peak, amplitude, latency):
   at = np.zeros(ne, dtype=np.float64)
   for i in range(n_clusters):
     #at[np.where(labels == i)[0]] = 2*np.exp(-((t-peak[i])/latency[i])**2/2)/np.sqrt(2*np.pi) * 1/latency[i] * sp.ndtr(amplitude[i]*(t-peak[i])/latency[i])
     at[np.where(labels == i)[0]] = amplitude[i]*np.exp(-(t-peak[i])**2/latency[i])
+
+  return at
+
+# Calculate the relative growth rate function for whole brain
+@jit
+def growthRate_2_whole(t, ne, n_clusters, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2):
+  at = np.zeros(ne, dtype=np.float64)
+  for i in range(n_clusters):
+    at[np.where(labels_volume == i)[0]] = amplitude[i]*np.exp(-(t-peak[i])**2/latency[i])  #10.79 0.38
+    at[np.where(labels_volume_2 == i)[0]] = amplitude_2[i]*np.exp(-(t-peak_2[i])**2/latency_2[i])
 
   return at
 
