@@ -158,7 +158,7 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
   filetxt.close()
 
 # Convert surface mesh structure (from simulations) to .stl format file
-def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny):
+def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny, halforwholebrain):
 
   stlname = "B%d.stl"%(step)
 
@@ -174,7 +174,10 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
   vertices[:,:] = Ut[SN[:],:]*zoom_pos
   vertices_seg[:,1] = cog[0] - Ut[SN[:],0]*maxd
   #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
-  vertices_seg[:,0] = Ut[SN[:],1]*maxd + miny
+  if halforwholebrain.__eq__("half"):
+    vertices_seg[:,0] = Ut[SN[:],1]*maxd + miny
+  else:
+    vertices_seg[:,0] = Ut[SN[:],1]*maxd + cog[1]
   #vertices_seg[:,0] = cog[1] - vertices[:,1]*maxd
   vertices_seg[:,2] = cog[2] - Ut[SN[:],2]*maxd
   #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
