@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 
-  python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -hc 'whole' -t 0.042 -g 1.829 -mr './data/rh.gii' -ml './data/lh.gii' -tr './data/covariateinteraction2.R.noivh.GGnorm.func.gii' -tl './data/covariateinteraction2.L.noivh.GGnorm.func.gii' -sc 0.01 -ms 0.01
+  python simulation.py -i '/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/week23-3M-tets.mesh' -o './res/week23-3M-tets_atlas_Garcia' -hc 'whole' -t 0.042 -g 1.829 -mr './data/rh.gii' -ml './data/lh.gii' -tr './data/covariateinteraction2.R.noivh.GGnorm.func.gii' -tl './data/covariateinteraction2.L.noivh.GGnorm.func.gii' -sc 0.01 -ms 0.01
 
 """
 
