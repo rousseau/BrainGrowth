@@ -3,6 +3,7 @@ import numpy as np
 import math
 from numba import jit, njit, prange
 from sklearn.neighbors import KDTree
+import sys
 
 # Generates point-triangle proximity lists (NNLt) using the linked cell algorithm
 @jit
@@ -48,7 +49,10 @@ def contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, 
   maxDist = max(norm_dim_3(Ut[SN[:]] - Utold[:]))
   if maxDist > 0.5*(hs-hc):
     #NNLt = createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw) # Generates point-triangle proximity lists (NNLt[nsn]) using the linked cell algorithm
-    Utold[:] = Ut[SN[:]]  
+    Utold[:] = Ut[SN[:]]
+    if np.any(np.isinf(Ut[SN[:]])) == True or np.any(np.isnan(Ut[SN[:]])) == True:
+      print('Computational divergence')
+      Ut[SN[:]] = np.nan_to_num(Ut[SN[:]])
     tree = KDTree(Ut[SN[:]])
     ind = tree.query_radius(Ut[SN[:]], r=0.5*a)  # Generates point-points proximity index arrays (ind) using the Kd-Tree algorithm (looks up the nearest neighbors of any point)
     ind = [[indice for indice in ind[i] if indice != i] for i in range(len(ind))]  # Remove the index of the point itself
