@@ -112,9 +112,9 @@ def volume_mesh(Vn_init, nn, ne, tets, Ut):
 
   return Vm_init
 
-# Define the label for each surface node
+# Define the label for each surface node for half brain
 @jit
-def tetra_labels_surface(mesh_file, method, n_clusters, Ut0, SN, tets):
+def tetra_labels_surface_half(mesh_file, method, n_clusters, Ut0, SN, tets):
   mesh = sio.load_mesh(mesh_file)
   if method.__eq__("Kmeans"):
   # 1) Simple K-means to start simply
@@ -136,9 +136,9 @@ def tetra_labels_surface(mesh_file, method, n_clusters, Ut0, SN, tets):
 
   return labels_surface, labels
 
-# Define the label for each tetrahedron
+# Define the label for each tetrahedron for half brain
 @jit
-def tetra_labels_volume(Ut0, SN, tets, labels_surface):
+def tetra_labels_volume_half(Ut0, SN, tets, labels_surface):
   # Find the nearest surface nodes to barycenters of tetahedra (csn_t) and distribute the label to each tetahedra (labels_volume)
   Ut_barycenter = (Ut0[tets[:,0]] + Ut0[tets[:,1]] + Ut0[tets[:,2]] + Ut0[tets[:,3]])/4.0
   tree = spatial.KDTree(Ut0[SN[:]])
@@ -147,6 +147,58 @@ def tetra_labels_volume(Ut0, SN, tets, labels_surface):
   labels_volume = labels_surface[csn_t[1]]
 
   return labels_volume
+
+# Define the label for each surface node for whole brain
+@jit
+def tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, Ut0, SN, tets, indices_a, indices_b):
+  mesh = sio.load_mesh(mesh_file)
+  mesh_2 = sio.load_mesh(mesh_file_2)
+  if method.__eq__("Kmeans"):
+  # 1) Simple K-means to start simply
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(mesh.vertices)
+    kmeans_2 = KMeans(n_clusters=n_clusters, random_state=0).fit(mesh_2.vertices)
+  else:
+  # 2) Another method: spectral clustering
+    Lsparse = graph_laplacian(mesh)
+    Lsparse_2 = graph_laplacian(mesh_2)
+    evals, evecs = eigs(Lsparse, k=n_clusters - 1, which='SM')
+    evals_2, evecs_2 = eigs(Lsparse_2, k=n_clusters - 1, which='SM')
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(np.real(evecs))
+    kmeans_2 = KMeans(n_clusters=n_clusters, random_state=0).fit(np.real(evecs_2))
+  #kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(mesh.vertices)
+  labels = kmeans.labels_
+  labels_2 = kmeans_2.labels_ 
+  # Find the nearest reference surface nodes to our surface nodes (csn) and distribute the labels to our surface nodes (labels_surface)
+  mesh.vertices[:,[0,1]]=mesh.vertices[:,[1,0]]
+  mesh_2.vertices[:,[0,1]]=mesh_2.vertices[:,[1,0]]
+  tree_1 = spatial.KDTree(mesh.vertices)
+  tree_2 = spatial.KDTree(mesh_2.vertices)
+  csn = tree_1.query(Ut0[SN[indices_a]])
+  csn_2 = tree_2.query(Ut0[SN[indices_b]])
+  #labels_surface = np.zeros(nsn, dtype = np.int64)
+  #labels_surface_2 = np.zeros(nsn, dtype = np.int64)
+  labels_surface = kmeans.labels_[csn[1]]
+  labels_surface_2 = kmeans_2.labels_[csn_2[1]]
+
+  return labels_surface, labels_surface_2, labels, labels_2
+
+# Define the label for each tetrahedron for whole brain
+@jit
+def tetra_labels_volume_whole(Ut0, SN, tets, indices_a, indices_b, indices_c, indices_d, labels_surface, labels_surface_2):
+  # Find the nearest surface nodes to barycenters of tetahedra (csn_t) and distribute the label to each tetahedra (labels_volume)
+  #indices_c = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 >= 0.0)[0]  #lower part
+  #indices_d = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 < 0.0)[0]  #upper part
+  Ut_barycenter_c = (Ut0[tets[indices_c,0]] + Ut0[tets[indices_c,1]] + Ut0[tets[indices_c,2]] + Ut0[tets[indices_c,3]])/4.0
+  Ut_barycenter_d = (Ut0[tets[indices_d,0]] + Ut0[tets[indices_d,1]] + Ut0[tets[indices_d,2]] + Ut0[tets[indices_d,3]])/4.0
+  tree_3 = spatial.KDTree(Ut0[SN[indices_a]])
+  csn_t = tree_3.query(Ut_barycenter_c[:,:])
+  tree_4 = spatial.KDTree(Ut0[SN[indices_b]])
+  csn_t_2 = tree_4.query(Ut_barycenter_d[:,:])
+  #labels_volume = np.zeros(ne, dtype = np.int64)
+  labels_volume = labels_surface[csn_t[1]]
+  labels_volume_2 = labels_surface_2[csn_t_2[1]]
+
+  return labels_volume, labels_volume_2
 
 # Define Gaussian function for temporal growth rate
 @jit
@@ -163,9 +215,9 @@ def skew(X, a, e, w):
   
   return Y
 
-# Curve-fit of temporal growth for each label
+# Curve-fit of temporal growth for each label for half brain
 #@jit
-def Curve_fitting(texture_file, labels, n_clusters):
+def Curve_fitting_half(texture_file, labels, n_clusters):
   ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
   xdata=np.array(ages)
   xdata_new = np.zeros(5)
@@ -197,6 +249,54 @@ def Curve_fitting(texture_file, labels, n_clusters):
     #multiple[k]=popt[3]
 
   return peak, amplitude, latency
+
+# Curve-fit of temporal growth for each label for whole brain
+@jit
+def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters):
+  ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
+  xdata=np.array(ages)
+  xdata_new = np.zeros(5)
+  xdata_new[0]=22
+  xdata_new[1]=xdata[2]
+  xdata_new[2]=xdata[6]
+  xdata_new[3]=xdata[25]
+  xdata_new[4]=xdata[20]
+  tp_model = 6.926*10**(-5)*xdata_new**3-0.00665*xdata_new**2+0.250*xdata_new-3.0189  #time of numerical model
+
+  texture = sio.load_texture(texture_file)
+  texture_new = np.zeros((5,np.size(texture.darray,1)))
+  texture_new[0,:] = np.zeros(np.size(texture.darray, 1))
+  texture_new[1,:] = texture.darray[2]*1.26
+  texture_new[2,:] = texture.darray[6]*1.37
+  texture_new[3,:] = texture.darray[25]*1.70
+  texture_new[4,:] = texture.darray[20]*2.33 
+  texture_2 = sio.load_texture(texture_file_2)
+  texture_new_2 = np.zeros((5,np.size(texture_2.darray,1)))
+  texture_new_2[0,:] = np.zeros(np.size(texture_2.darray, 1))
+  texture_new_2[1,:] = texture_2.darray[2]*1.26
+  texture_new_2[2,:] = texture_2.darray[6]*1.37
+  texture_new_2[3,:] = texture_2.darray[25]*1.70
+  texture_new_2[4,:] = texture_2.darray[20]*2.33
+
+  peak=np.zeros((n_clusters,))
+  amplitude=np.zeros((n_clusters,))
+  latency=np.zeros((n_clusters,))
+  peak_2=np.zeros((n_clusters,))
+  amplitude_2=np.zeros((n_clusters,))
+  latency_2=np.zeros((n_clusters,))
+  for k in range(n_clusters):
+    ydata=np.mean(texture_new[:,np.where(labels == k)[0]], axis=1)
+    ydata_2=np.mean(texture_new_2[:,np.where(labels_2 == k)[0]], axis=1)
+    popt, pcov=curve_fit(func, tp_model, ydata, p0=[1.5, 0.9, 0.09])
+    popt_2, pcov_2=curve_fit(func, tp_model, ydata_2, p0=[1.5, 0.9, 0.09])
+    peak[k]=popt[1]   
+    amplitude[k]=popt[0]
+    latency[k]=popt[2]
+    peak_2[k]=popt_2[1]   
+    amplitude_2[k]=popt_2[0]
+    latency_2[k]=popt_2[2]
+
+  return peak, amplitude, latency, peak_2, amplitude_2, latency_2
 
 # Mark non-growing areas
 @njit(parallel=True)
