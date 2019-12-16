@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 
-  python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -t 0.042 -g 1.829 -mr './data/rh.gii' -tx './data/covariateinteraction2.R.noivh.GGnorm.func.gii' -sc 0.01 -ms 0.005
+  python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -hc 'whole' -t 0.042 -g 1.829 -mr './data/rh.gii' -ml './data/lh.gii' -tr './data/covariateinteraction2.R.noivh.GGnorm.func.gii' -tl './data/covariateinteraction2.L.noivh.GGnorm.func.gii' -sc 0.01 -ms 0.01
 
 """
 
@@ -9,8 +9,8 @@ from __future__ import division
 import argparse
 import numpy as np
 import math
-from geometry import importMesh, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, edge_length, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom, tetra_labels_surface, tetra_labels_volume, Curve_fitting
-from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthTensor_homo, growthTensor_homo_2, growthTensor_relahomo, growthRate_2
+from geometry import importMesh, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, edge_length, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, Curve_fitting_whole
+from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthTensor_homo, growthTensor_homo_2, growthTensor_relahomo, growthRate_2_half, growthRate_2_whole
 from normalisation import normalise_coord
 from collision import contactProcess
 from mechanics import tetraElasticity, move
@@ -22,12 +22,15 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Dynamic simulations')
   parser.add_argument('-i', '--input', help='Input maillage', type=str, required=True)
   parser.add_argument('-o', '--output', help='Output maillage', type=str, required=True)
+  parser.add_argument('-hc', '--halforwholebrain', help='Half or whole brain', type=str, required=True)
   parser.add_argument('-t', '--thickness', help='Cortical thickness', type=float, default=0.042, required=False)
   parser.add_argument('-g', '--growth', help='Relative growth rate', type=float, default=1.829, required=False)
-  parser.add_argument('-mr', '--registermesh', help='Mesh after registration', type=str, required=True)
-  parser.add_argument('-tx', '--texture', help='Texture of template', type=str, required=True)
+  parser.add_argument('-mr', '--registermeshright', help='Mesh of right brain after registration', type=str, required=False)
+  parser.add_argument('-ml', '--registermeshleft', help='Mesh of left brain after registration', type=str, required=False)
+  parser.add_argument('-tr', '--textureright', help='Texture of template of right brain', type=str, required=False)
+  parser.add_argument('-tl', '--textureleft', help='Texture of template of left brain', type=str, required=False)
   parser.add_argument('-sc', '--stepcontrol', help='Step length regulation', type=float, default=0.01, required=False)
-  parser.add_argument('-ms', '--meshspacing', help='Average spacing in the mesh', type=float, default=0.005, required=False)
+  parser.add_argument('-ms', '--meshspacing', help='Average spacing in the mesh', type=float, default=0.01, required=False)
   args = parser.parse_args()
 
   # Parameters to change
@@ -113,14 +116,43 @@ if __name__ == '__main__':
   #G = 1.0
   # End of parameters
  
-  # Define the label for each surface node
-  mesh_file = args.registermesh
-  n_clusters = 10
+  ## Parcel brain in lobes
+  n_clusters = 10  #Number of lobes
   method = 'spectral' #Method of parcellation in lobes
-  labels_surface, labels = tetra_labels_surface(mesh_file, method, n_clusters, Ut0, SN, tets)
+  # Half brain
+  if args.halforwholebrain.__eq__("half"):
+    # Define the label for each surface node
+    mesh_file = args.registermeshright
+    labels_surface, labels = tetra_labels_surface_half(mesh_file, method, n_clusters, Ut0, SN, tets)
+
+    # Define the label for each tetrahedron
+    labels_volume = tetra_labels_volume_half(Ut0, SN, tets, labels_surface)
+
+    # Curve-fit of temporal growth for each label
+    texture_file = args.textureright
+    peak, amplitude, latency = Curve_fitting_half(texture_file, labels, n_clusters)
+
+  # Whole brain
+  else:
+    # Define the label for each surface node
+    mesh_file = args.registermeshright
+    mesh_file_2 = args.registermeshleft
+    indices_a = np.where(Ut0[SN[:],1] >= (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #right part surface node indices
+    indices_b = np.where(Ut0[SN[:],1] < (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #left part surface node indices
+    indices_c = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 >= (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #right part tetrahedral indices
+    indices_d = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 < (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #left part tetrahedral indices
+    labels_surface, labels_surface_2, labels, labels_2 = tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, Ut0, SN, tets, indices_a, indices_b)
+
+    # Define the label for each tetrahedron
+    labels_volume, labels_volume_2 = tetra_labels_volume_whole(Ut0, SN, tets, indices_a, indices_b, indices_c, indices_d, labels_surface, labels_surface_2)
+
+    # Curve-fit of temporal growth for each label
+    texture_file = args.textureright
+    texture_file_2 = args.textureleft
+    peak, amplitude, latency, peak_2, amplitude_2, latency_2 = Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters)
 
   # Normalize initial mesh coordinates, change mesh information by values normalized
-  Ut0, Ut, cog, maxd, miny = normalise_coord(Ut0, Ut, nn)
+  Ut0, Ut, cog, maxd, miny = normalise_coord(Ut0, Ut, nn, args.halforwholebrain)
 
   '''# Initialize deformed coordinates
   Ut = Ut0'''
@@ -165,14 +197,6 @@ if __name__ == '__main__':
 
   #myfile = open("/home/x17wang/Codes/BrainGrowth/test.txt", "w")
 
-  ## Parcel brain in lobes
-  # Define the label for each tetrahedron
-  labels_volume = tetra_labels_volume(Ut0, SN, tets, labels_surface)
-
-  # Curve-fit of temporal growth for each label
-  texture_file = args.texture
-  peak, amplitude, latency = Curve_fitting(texture_file, labels, n_clusters)
-
   #filename_nii_reso = "/home/x17wang/Exp/London/London-23weeks/brain_crisp_2_refilled.nii.gz"
   #reso = 0.5
 
@@ -181,7 +205,10 @@ if __name__ == '__main__':
 
     # Calculate the relative growth rate
     #at = growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets)
-    at = growthRate_2(t, ne, n_clusters, labels_volume, peak, amplitude, latency)
+    if args.halforwholebrain.__eq__("half"):
+      at = growthRate_2_half(t, ne, n_clusters, labels_volume, peak, amplitude, latency)
+    else:
+      at = growthRate_2_whole(t, ne, n_clusters, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2)
 
     # Calculate the longitudinal length of the real brain
     L = longitLength(t)
@@ -234,7 +261,7 @@ if __name__ == '__main__':
       writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos)
 
       # Convert surface mesh structure (from simulations) to .stl format file
-      mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny)
+      mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny, args.halforwholebrain)
 
       # Convert mesh .stl to image .nii.gz
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
