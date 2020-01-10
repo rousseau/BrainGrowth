@@ -267,7 +267,7 @@ if __name__ == '__main__':
     if step % di == 0:
 
       # Write texture of growth in .gii files
-      writeTex(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, bt)
+      #writeTex(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, bt)
 
       # Obtain zoom parameter by checking the longitudinal length of the brain model
       zoom_pos = paraZoom(Ut, SN, L, nsn)
