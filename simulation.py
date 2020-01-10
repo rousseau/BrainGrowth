@@ -119,31 +119,40 @@ if __name__ == '__main__':
   # End of parameters
  
   ## Parcel brain in lobes
-  n_clusters = 10  #Number of lobes
-  method = 'spectral' #Method of parcellation in lobes
+  n_clusters = 10   #Number of lobes
+  method = 'User-defined lobes' #Method of parcellation in lobes
   # Half brain
   if args.halforwholebrain.__eq__("half"):
     # Define the label for each surface node
     mesh_file = args.registermeshright
-    labels_surface, labels = tetra_labels_surface_half(mesh_file, method, n_clusters, Ut0, SN, tets)
+    lobes_file = '/home/x17wang/Data/GarciaPNAS2018_K65Z/ATLAS30.R.Fiducial.surf.regions.gii'
+    lobes = sio.load_texture(lobes_file)
+    lobes = lobes.darray[0].astype(int)
+    labels_surface, labels = tetra_labels_surface_half(mesh_file, method, n_clusters, Ut0, SN, tets, lobes)
 
     # Define the label for each tetrahedron
     labels_volume = tetra_labels_volume_half(Ut0, SN, tets, labels_surface)
 
     # Curve-fit of temporal growth for each label
     texture_file = args.textureright
-    peak, amplitude, latency, multiple = Curve_fitting_half(texture_file, labels, n_clusters)
+    peak, amplitude, latency, multiple = Curve_fitting_half(texture_file, labels, n_clusters, lobes)
 
   # Whole brain
   else:
     # Define the label for each surface node
     mesh_file = args.registermeshright
     mesh_file_2 = args.registermeshleft
+    lobes_file = '/home/x17wang/Data/GarciaPNAS2018_K65Z/ATLAS30.R.Fiducial.surf.regions.gii'
+    lobes_file_2 = '/home/x17wang/Data/GarciaPNAS2018_K65Z/ATLAS30.L.Fiducial.surf.regions.gii'
+    lobes = sio.load_texture(lobes_file)
+    lobes = lobes.darray[0].astype(int)
+    lobes_2 = sio.load_texture(lobes_file_2)
+    lobes_2 = lobes_2.darray[0].astype(int)
     indices_a = np.where(Ut0[SN[:],1] >= (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #right part surface node indices
     indices_b = np.where(Ut0[SN[:],1] < (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #left part surface node indices
     indices_c = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 >= (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #right part tetrahedral indices
     indices_d = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 < (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #left part tetrahedral indices
-    labels_surface, labels_surface_2, labels, labels_2 = tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, Ut0, SN, tets, indices_a, indices_b)
+    labels_surface, labels_surface_2, labels, labels_2 = tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, Ut0, SN, tets, indices_a, indices_b, lobes, lobes_2)
 
     # Define the label for each tetrahedron
     labels_volume, labels_volume_2 = tetra_labels_volume_whole(Ut0, SN, tets, indices_a, indices_b, indices_c, indices_d, labels_surface, labels_surface_2)
@@ -151,7 +160,7 @@ if __name__ == '__main__':
     # Curve-fit of temporal growth for each label
     texture_file = args.textureright
     texture_file_2 = args.textureleft
-    peak, amplitude, latency, peak_2, amplitude_2, latency_2 = Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters)
+    peak, amplitude, latency, multiple, peak_2, amplitude_2, latency_2, multiple_2 = Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2)
 
   # Normalize initial mesh coordinates, change mesh information by values normalized
   Ut0, Ut, cog, maxd, miny = normalise_coord(Ut0, Ut, nn, args.halforwholebrain)
@@ -208,9 +217,9 @@ if __name__ == '__main__':
     # Calculate the relative growth rate
     #at = growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets)
     if args.halforwholebrain.__eq__("half"):
-      at, bt = growthRate_2_halfgrowthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, multiple)
+      at, bt = growthRate_2_halfgrowthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, multiple, lobes)
     else:
-      at, bt = growthRate_2_wholegrowthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2)
+      at, bt = growthRate_2_wholegrowthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2)
 
     # Calculate the longitudinal length of the real brain
     L = longitLength(t)
