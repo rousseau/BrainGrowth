@@ -14,9 +14,10 @@ from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthT
 from normalisation import normalise_coord
 from collision import contactProcess
 from mechanics import tetraElasticity, move
-from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl, point3d_to_voxel, mesh_to_image, stl_to_image
+from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl, point3d_to_voxel, mesh_to_image, stl_to_image, writeTex
 from mathfunc import make_2D_array
 from numba import jit, prange
+import slam.io as sio
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Dynamic simulations')
@@ -130,7 +131,7 @@ if __name__ == '__main__':
 
     # Curve-fit of temporal growth for each label
     texture_file = args.textureright
-    peak, amplitude, latency = Curve_fitting_half(texture_file, labels, n_clusters)
+    peak, amplitude, latency, multiple = Curve_fitting_half(texture_file, labels, n_clusters)
 
   # Whole brain
   else:
@@ -206,9 +207,9 @@ if __name__ == '__main__':
     # Calculate the relative growth rate
     #at = growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets)
     if args.halforwholebrain.__eq__("half"):
-      at = growthRate_2_half(t, ne, n_clusters, labels_volume, peak, amplitude, latency)
+      at, bt = growthRate_2_halfgrowthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, multiple)
     else:
-      at = growthRate_2_whole(t, ne, n_clusters, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2)
+      at, bt = growthRate_2_wholegrowthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2)
 
     # Calculate the longitudinal length of the real brain
     L = longitLength(t)
@@ -250,6 +251,9 @@ if __name__ == '__main__':
 
     # Output
     if step % di == 0:
+
+      # Write texture of growth in .gii files
+      writeTex(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, bt)
 
       # Obtain zoom parameter by checking the longitudinal length of the brain model
       zoom_pos = paraZoom(Ut, SN, L, nsn)
