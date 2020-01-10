@@ -32,7 +32,7 @@ if __name__ == '__main__':
   parser.add_argument('-tl', '--textureleft', help='Texture of template of left brain', type=str, required=False)
   parser.add_argument('-sc', '--stepcontrol', help='Step length regulation', type=float, default=0.01, required=False)
   parser.add_argument('-ms', '--meshspacing', help='Average spacing in the mesh', type=float, default=0.01, required=False)
-  parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh, type=float, default=0.01, required=False)
+  parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh', type=float, default=0.01, required=False)
   args = parser.parse_args()
 
   # Parameters to change
