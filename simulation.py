@@ -125,7 +125,7 @@ if __name__ == '__main__':
   if args.halforwholebrain.__eq__("half"):
     # Define the label for each surface node
     mesh_file = args.registermeshright
-    lobes_file = '/home/x17wang/Data/GarciaPNAS2018_K65Z/ATLAS30.R.Fiducial.surf.regions.gii'
+    lobes_file = './data/ATLAS30.R.Fiducial.surf.regions.gii'
     lobes = sio.load_texture(lobes_file)
     lobes = lobes.darray[0].astype(int)
     labels_surface, labels = tetra_labels_surface_half(mesh_file, method, n_clusters, Ut0, SN, tets, lobes)
@@ -146,8 +146,8 @@ if __name__ == '__main__':
     # Define the label for each surface node
     mesh_file = args.registermeshright
     mesh_file_2 = args.registermeshleft
-    lobes_file = '/home/x17wang/Data/GarciaPNAS2018_K65Z/ATLAS30.R.Fiducial.surf.regions.gii'
-    lobes_file_2 = '/home/x17wang/Data/GarciaPNAS2018_K65Z/ATLAS30.L.Fiducial.surf.regions.gii'
+    lobes_file = './data/ATLAS30.R.Fiducial.surf.regions.gii'
+    lobes_file_2 = './data/ATLAS30.L.Fiducial.surf.regions.gii'
     lobes = sio.load_texture(lobes_file)
     lobes = lobes.darray[0].astype(int)
     lobes_2 = sio.load_texture(lobes_file_2)
