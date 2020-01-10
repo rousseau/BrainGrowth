@@ -215,6 +215,18 @@ def skew(X, a, e, w):
   
   return Y
 
+# Define polynomial for temporal growth
+@jit
+def poly(x, a, b, c):
+  
+  return a*x**2+b*x+c
+
+# Define gompertz model for temporal growth
+@jit
+def gompertz(x, a, b, c, d):
+
+  return a+b*np.exp(-np.exp(-c*(x-d)))
+
 # Curve-fit of temporal growth for each label for half brain
 #@jit
 def Curve_fitting_half(texture_file, labels, n_clusters):
@@ -235,20 +247,31 @@ def Curve_fitting_half(texture_file, labels, n_clusters):
   texture_new[2,:] = texture.darray[6]*1.37
   texture_new[3,:] = texture.darray[25]*1.70
   texture_new[4,:] = texture.darray[20]*2.33  
+  
+  # Calculate the local (true) cortical growth
+  popt, pcov = curve_fit(poly, np.array([27, 31, 33, 37]), np.array([1, 1.26, 1.26*1.37, 1.26*1.37*1.70]))
+  croissance_globale = np.array(poly(xdata_new,*popt))
 
+  texture = sio.load_texture(texture_file)
+  croissance_true = np.zeros(texture_new.shape) #texture.darray.shape
+  for i in range(texture_new.shape[0]):
+    croissance_true[i,:] = texture_new[i,:]*croissance_globale[i]
+  croissance_length = np.sqrt(croissance_true)
+
+  # Curve-fit the local (true) cortical growth of time
   peak=np.zeros((n_clusters,))
   amplitude=np.zeros((n_clusters,))
   latency=np.zeros((n_clusters,))
   multiple=np.zeros((n_clusters,))
   for k in range(n_clusters):
-    ydata=np.mean(texture_new[:,np.where(labels == k)[0]], axis=1)
-    popt, pcov=curve_fit(func, tp_model, ydata, p0=[1.5, 0.9, 0.09]) #[2, 32., 20., 85])
+    ydata=np.mean(croissance_length[:,np.where(labels == k)[0]], axis=1)
+    popt, pcov=curve_fit(gompertz, tp_model, ydata, p0=[0.94, 2.16, 3.51, 0.65]) #[2, 32., 20., 85])
     peak[k]=popt[1]
     amplitude[k]=popt[0]
     latency[k]=popt[2]
-    #multiple[k]=popt[3]
+    multiple[k]=popt[3]
 
-  return peak, amplitude, latency
+  return peak, amplitude, latency, multiple
 
 # Curve-fit of temporal growth for each label for whole brain
 @jit
@@ -278,6 +301,18 @@ def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_cluste
   texture_new_2[3,:] = texture_2.darray[25]*1.70
   texture_new_2[4,:] = texture_2.darray[20]*2.33
 
+  # Calculate the local (true) cortical growth
+  popt, pcov = curve_fit(poly, np.array([27, 31, 33, 37]), np.array([1, 1.26, 1.26*1.37, 1.26*1.37*1.70]))
+  croissance_globale = np.array(poly(xdata_new,*popt))
+
+  croissance_true = np.zeros(texture_new.shape)
+  croissance_true_2 = np.zeros(texture_new_2.shape)
+  for i in range(texture_new.shape[0]):
+    croissance_true[i,:] = texture_new[i,:]*croissance_globale[i]
+    croissance_true_2[i,:] = texture_new_2[i,:]*croissance_globale[i]
+  croissance_length = np.sqrt(croissance_true)
+  croissance_length_2 = np.sqrt(croissance_true_2)
+
   peak=np.zeros((n_clusters,))
   amplitude=np.zeros((n_clusters,))
   latency=np.zeros((n_clusters,))
@@ -285,8 +320,8 @@ def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_cluste
   amplitude_2=np.zeros((n_clusters,))
   latency_2=np.zeros((n_clusters,))
   for k in range(n_clusters):
-    ydata=np.mean(texture_new[:,np.where(labels == k)[0]], axis=1)
-    ydata_2=np.mean(texture_new_2[:,np.where(labels_2 == k)[0]], axis=1)
+    ydata=np.mean(croissance_length[:,np.where(labels == k)[0]], axis=1)
+    ydata_2=np.mean(croissance_length_2[:,np.where(labels_2 == k)[0]], axis=1)
     popt, pcov=curve_fit(func, tp_model, ydata, p0=[1.5, 0.9, 0.09])
     popt_2, pcov_2=curve_fit(func, tp_model, ydata_2, p0=[1.5, 0.9, 0.09])
     peak[k]=popt[1]   
