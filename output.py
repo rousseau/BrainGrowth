@@ -8,6 +8,7 @@ from scipy import ndimage
 from scipy.interpolate import RegularGridInterpolator
 from stl import mesh, Mode
 import trimesh
+import slam.io as sio
 #import mayavi.mlab
 #import pymesh
 
@@ -331,7 +332,24 @@ def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_ni
   aff[2,2] = reso
   img = nib.Nifti1Image(outimage, aff)
   nib.save(img, file_nii_path)
+
+# Write growth texture in .gii files
+def writeTex(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, bt):
+
+  giiname = "B%d_texture.gii"%(step)
+
+  foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
   
+  try:
+    if not os.path.exists(foldname):
+      os.makedirs(foldname)
+  except OSError:
+    print ('Error: Creating directory. ' + foldname)
+
+  file_gii_path = os.path.join(foldname, giiname)
+
+  sio.write_texture(bt, file_gii_path) 
+
 '''# Convert mesh to binary .nii.gz image
 def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nn):
 
