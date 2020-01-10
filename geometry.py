@@ -114,25 +114,27 @@ def volume_mesh(Vn_init, nn, ne, tets, Ut):
 
 # Define the label for each surface node for half brain
 @jit
-def tetra_labels_surface_half(mesh_file, method, n_clusters, Ut0, SN, tets):
+def tetra_labels_surface_half(mesh_file, method, n_clusters, Ut0, SN, tets, lobes):
   mesh = sio.load_mesh(mesh_file)
   if method.__eq__("Kmeans"):
   # 1) Simple K-means to start simply
     kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(mesh.vertices)
-  else:
+    labels = kmeans.labels_
+  elif method.__eq__("Spectral"):
   # 2) Another method: spectral clustering
     Lsparse = graph_laplacian(mesh)
     evals, evecs = eigs(Lsparse, k=n_clusters - 1, which='SM')
     kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(np.real(evecs))
+    labels = kmeans.labels_
   #kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(mesh.vertices)
-  labels = kmeans.labels_ 
+  labels = lobes #kmeans.labels_ 
   # Find the nearest reference surface nodes to our surface nodes (csn) and distribute the labels to our surface nodes (labels_surface)
   mesh.vertices[:,[0,1]]=mesh.vertices[:,[1,0]]
   tree = spatial.KDTree(mesh.vertices)
   csn = tree.query(Ut0[SN[:]])
   #labels_surface = np.zeros(nsn, dtype = np.int64)
   #labels_surface_2 = np.zeros(nsn, dtype = np.int64)
-  labels_surface = kmeans.labels_[csn[1]]
+  labels_surface = labels[csn[1]]
 
   return labels_surface, labels
 
@@ -150,14 +152,16 @@ def tetra_labels_volume_half(Ut0, SN, tets, labels_surface):
 
 # Define the label for each surface node for whole brain
 @jit
-def tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, Ut0, SN, tets, indices_a, indices_b):
+def tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, Ut0, SN, tets, indices_a, indices_b, lobes, lobes_2):
   mesh = sio.load_mesh(mesh_file)
   mesh_2 = sio.load_mesh(mesh_file_2)
   if method.__eq__("Kmeans"):
   # 1) Simple K-means to start simply
     kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(mesh.vertices)
     kmeans_2 = KMeans(n_clusters=n_clusters, random_state=0).fit(mesh_2.vertices)
-  else:
+    labels = kmeans.labels_
+    labels_2 = kmeans_2.labels_
+  elif method.__eq__("Spectral"):
   # 2) Another method: spectral clustering
     Lsparse = graph_laplacian(mesh)
     Lsparse_2 = graph_laplacian(mesh_2)
@@ -165,9 +169,11 @@ def tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, Ut0, 
     evals_2, evecs_2 = eigs(Lsparse_2, k=n_clusters - 1, which='SM')
     kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(np.real(evecs))
     kmeans_2 = KMeans(n_clusters=n_clusters, random_state=0).fit(np.real(evecs_2))
+    labels = kmeans.labels_
+    labels_2 = kmeans_2.labels_
   #kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(mesh.vertices)
-  labels = kmeans.labels_
-  labels_2 = kmeans_2.labels_ 
+  labels = lobes #kmeans.labels_
+  labels_2 = lobes_2 #kmeans_2.labels_ 
   # Find the nearest reference surface nodes to our surface nodes (csn) and distribute the labels to our surface nodes (labels_surface)
   mesh.vertices[:,[0,1]]=mesh.vertices[:,[1,0]]
   mesh_2.vertices[:,[0,1]]=mesh_2.vertices[:,[1,0]]
@@ -229,7 +235,7 @@ def gompertz(x, a, b, c, d):
 
 # Curve-fit of temporal growth for each label for half brain
 #@jit
-def Curve_fitting_half(texture_file, labels, n_clusters):
+def Curve_fitting_half(texture_file, labels, n_clusters, lobes):
   ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
   xdata=np.array(ages)
   xdata_new = np.zeros(5)
@@ -257,25 +263,35 @@ def Curve_fitting_half(texture_file, labels, n_clusters):
   for i in range(texture_new.shape[0]):
     croissance_true[i,:] = texture_new[i,:]*croissance_globale[i]
   croissance_length = np.sqrt(croissance_true)
-
+  
   # Curve-fit the local (true) cortical growth of time
-  peak=np.zeros((n_clusters,))
+  """peak=np.zeros((n_clusters,))
   amplitude=np.zeros((n_clusters,))
   latency=np.zeros((n_clusters,))
-  multiple=np.zeros((n_clusters,))
-  for k in range(n_clusters):
-    ydata=np.mean(croissance_length[:,np.where(labels == k)[0]], axis=1)
-    popt, pcov=curve_fit(gompertz, tp_model, ydata, p0=[0.94, 2.16, 3.51, 0.65]) #[2, 32., 20., 85])
-    peak[k]=popt[1]
+  multiple=np.zeros((n_clusters,))"""
+  amplitude=peak=latency=multiple=np.zeros((len(np.unique(lobes)),))
+  m = 0
+  for k in np.unique(lobes):
+  #for k in range(n_clusters):
+    #ydata = croissance_length[:, csn_t[1]]
+    ydata=np.mean(croissance_length[:, np.where(lobes == k)[0]], axis=1)
+    #ydata=np.mean(croissance_length[:,np.where(labels == k)[0]], axis=1)
+    popt, pcov=curve_fit(gompertz, tp_model, ydata, p0=[0.94, 2.16, 3.51, 0.65]) #(poly [3.14, -0.89, 0.99]) (func, p0=[1.5, 0.9, 0.09])  #p0=[-70, 0.9, 0.3]) #[2, 32., 20., 85]) (gompertz.pdf, p0=[0.01,0.6,3.5])
+    """peak[k]=popt[1]   
     amplitude[k]=popt[0]
     latency[k]=popt[2]
-    multiple[k]=popt[3]
+    multiple[k]=popt[3]"""
+    peak[m]=popt[1]
+    amplitude[m]=popt[0]
+    latency[m]=popt[2]
+    multiple[m]=popt[3]
+    m += 1
 
   return peak, amplitude, latency, multiple
 
 # Curve-fit of temporal growth for each label for whole brain
 @jit
-def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters):
+def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2):
   ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
   xdata=np.array(ages)
   xdata_new = np.zeros(5)
@@ -313,7 +329,7 @@ def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_cluste
   croissance_length = np.sqrt(croissance_true)
   croissance_length_2 = np.sqrt(croissance_true_2)
 
-  peak=np.zeros((n_clusters,))
+  """peak=np.zeros((n_clusters,))
   amplitude=np.zeros((n_clusters,))
   latency=np.zeros((n_clusters,))
   peak_2=np.zeros((n_clusters,))
@@ -329,9 +345,34 @@ def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_cluste
     latency[k]=popt[2]
     peak_2[k]=popt_2[1]   
     amplitude_2[k]=popt_2[0]
-    latency_2[k]=popt_2[2]
+    latency_2[k]=popt_2[2]"""
 
-  return peak, amplitude, latency, peak_2, amplitude_2, latency_2
+  amplitude=peak=latency=multiple=np.zeros((len(np.unique(lobes)),))
+  amplitude_2=peak_2=latency_2=multiple_2=np.zeros((len(np.unique(lobes_2)),))
+  m = 0
+  for k in np.unique(lobes):
+  #for k in range(n_clusters):
+    #ydata = croissance_length[:, csn_t[1]]
+    ydata=np.mean(croissance_length[:, np.where(lobes == k)[0]], axis=1)
+    ydata_2=np.mean(croissance_length_2[:, np.where(lobes_2 == k)[0]], axis=1)
+    #ydata=np.mean(croissance_length[:,np.where(labels == k)[0]], axis=1)
+    popt, pcov=curve_fit(gompertz, tp_model, ydata, p0=[0.94, 2.16, 3.51, 0.65]) #(poly [3.14, -0.89, 0.99]) (func, p0=[1.5, 0.9, 0.09])  #p0=[-70, 0.9, 0.3]) #[2, 32., 20., 85]) (gompertz.pdf, p0=[0.01,0.6,3.5])
+    popt_2, pcov_2=curve_fit(gompertz, tp_model, ydata_2, p0=[0.94, 2.16, 3.51, 0.65])
+    """peak[k]=popt[1]   
+    amplitude[k]=popt[0]
+    latency[k]=popt[2]
+    multiple[k]=popt[3]"""
+    peak[m]=popt[1]
+    amplitude[m]=popt[0]
+    latency[m]=popt[2]
+    multiple[m]=popt[3]
+    peak_2[m]=popt_2[1]
+    amplitude_2[m]=popt_2[0]
+    latency_2[m]=popt_2[2]
+    multiple_2[m]=popt_2[3]
+    m += 1
+
+  return peak, amplitude, latency, multiple, peak_2, amplitude_2, latency_2, multiple_2
 
 # Mark non-growing areas
 @njit(parallel=True)
