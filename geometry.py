@@ -238,30 +238,53 @@ def gompertz(x, a, b, c, d):
 def Curve_fitting_half(texture_file, labels, n_clusters, lobes):
   ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
   xdata=np.array(ages)
-  xdata_new = np.zeros(5)
+  """xdata_new = np.zeros(5)
   xdata_new[0]=22
-  xdata_new[1]=xdata[2]
-  xdata_new[2]=xdata[6]
-  xdata_new[3]=xdata[25]
-  xdata_new[4]=xdata[20]
-  tp_model = 6.926*10**(-5)*xdata_new**3-0.00665*xdata_new**2+0.250*xdata_new-3.0189  #time of numerical model
+  xdata_new[1]=27
+  xdata_new[2]=31
+  xdata_new[3]=33
+  xdata_new[4]=37"""
+  tp_model = 6.926*10**(-5)*xdata**3-0.00665*xdata**2+0.250*xdata-3.0189  #time of numerical model
  
-  texture = sio.load_texture(texture_file)
+  """texture_27 = sio.load_texture(texture_file_27)
+  texture_31 = sio.load_texture(texture_file_31)
+  texture_33 = sio.load_texture(texture_file_33)
+  texture_37 = sio.load_texture(texture_file_37)
+  
+  texture_new = np.zeros((5,np.size(texture_27.darray,1)))
+  texture_new[0, :] = np.zeros(np.size(texture_27.darray, 1))
+  texture_new[1,:] = texture_27.darray[0]
+  texture_new[2,:] = texture_31.darray[0]
+  texture_new[3,:] = texture_33.darray[0]
+  texture_new[4,:] = texture_37.darray[0]"""
+
+  """texture = sio.load_texture(texture_file)
   texture_new = np.zeros((5,np.size(texture.darray,1)))
   texture_new[0, :] = np.zeros(np.size(texture.darray, 1))
-  texture_new[1,:] = texture.darray[2]*1.26
-  texture_new[2,:] = texture.darray[6]*1.37
-  texture_new[3,:] = texture.darray[25]*1.70
-  texture_new[4,:] = texture.darray[20]*2.33  
+  texture_new[1,:] = texture.darray[2]
+  texture_new[2,:] = texture.darray[6]
+  texture_new[3,:] = texture.darray[25]
+  texture_new[4,:] = texture.darray[20]"""
   
   # Calculate the local (true) cortical growth
   popt, pcov = curve_fit(poly, np.array([27, 31, 33, 37]), np.array([1, 1.26, 1.26*1.37, 1.26*1.37*1.70]))
-  croissance_globale = np.array(poly(xdata_new,*popt))
+  croissance_globale = np.array(poly(xdata,*popt))
+
+  """croissance_true_relative = np.zeros(texture.darray.shape)
+  croissance_true = np.zeros(texture_new.shape)
+  for i in range(texture_new.shape[0]):
+    croissance_true_relative[i, :] = texture_new[i,:]*croissance_globale[i]
+  croissance_true[0, :] = 1.0
+  croissance_true[1, :] = 1.45
+  croissance_true[2, :] = 1.45+croissance_true_relative[1, :]
+  croissance_true[3, :] = croissance_true[2, :] + croissance_true_relative[2, :]
+  croissance_true[4, :] = croissance_true[3, :] + croissance_true_relative[3, :]"""
 
   texture = sio.load_texture(texture_file)
-  croissance_true = np.zeros(texture_new.shape) #texture.darray.shape
-  for i in range(texture_new.shape[0]):
-    croissance_true[i,:] = texture_new[i,:]*croissance_globale[i]
+  croissance_true = np.zeros(texture.darray.shape) #texture.darray.shape
+  for i in range(texture.darray.shape[0]):
+    croissance_true[i,:] = texture.darray[i,:]*croissance_globale[i]
+
   croissance_length = np.sqrt(croissance_true)
   
   # Curve-fit the local (true) cortical growth of time
@@ -294,39 +317,28 @@ def Curve_fitting_half(texture_file, labels, n_clusters, lobes):
 def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2):
   ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
   xdata=np.array(ages)
-  xdata_new = np.zeros(5)
+  """xdata_new = np.zeros(5)
   xdata_new[0]=22
-  xdata_new[1]=xdata[2]
-  xdata_new[2]=xdata[6]
-  xdata_new[3]=xdata[25]
-  xdata_new[4]=xdata[20]
-  tp_model = 6.926*10**(-5)*xdata_new**3-0.00665*xdata_new**2+0.250*xdata_new-3.0189  #time of numerical model
-
-  texture = sio.load_texture(texture_file)
-  texture_new = np.zeros((5,np.size(texture.darray,1)))
-  texture_new[0,:] = np.zeros(np.size(texture.darray, 1))
-  texture_new[1,:] = texture.darray[2]*1.26
-  texture_new[2,:] = texture.darray[6]*1.37
-  texture_new[3,:] = texture.darray[25]*1.70
-  texture_new[4,:] = texture.darray[20]*2.33 
-  texture_2 = sio.load_texture(texture_file_2)
-  texture_new_2 = np.zeros((5,np.size(texture_2.darray,1)))
-  texture_new_2[0,:] = np.zeros(np.size(texture_2.darray, 1))
-  texture_new_2[1,:] = texture_2.darray[2]*1.26
-  texture_new_2[2,:] = texture_2.darray[6]*1.37
-  texture_new_2[3,:] = texture_2.darray[25]*1.70
-  texture_new_2[4,:] = texture_2.darray[20]*2.33
+  xdata_new[1]=27
+  xdata_new[2]=31
+  xdata_new[3]=33
+  xdata_new[4]=37"""
+  tp_model = 6.926*10**(-5)*xdata**3-0.00665*xdata**2+0.250*xdata-3.0189  #time of numerical model
 
   # Calculate the local (true) cortical growth
   popt, pcov = curve_fit(poly, np.array([27, 31, 33, 37]), np.array([1, 1.26, 1.26*1.37, 1.26*1.37*1.70]))
-  croissance_globale = np.array(poly(xdata_new,*popt))
+  croissance_globale = np.array(poly(xdata,*popt))
 
-  croissance_true = np.zeros(texture_new.shape)
-  croissance_true_2 = np.zeros(texture_new_2.shape)
-  for i in range(texture_new.shape[0]):
-    croissance_true[i,:] = texture_new[i,:]*croissance_globale[i]
-    croissance_true_2[i,:] = texture_new_2[i,:]*croissance_globale[i]
+  texture = sio.load_texture(texture_file)
+  croissance_true = np.zeros(texture.darray.shape, dtype=np.float64)
+  for i in range(texture.darray.shape[0]):
+    croissance_true[i,:] = texture.darray[i,:]*croissance_globale[i]
   croissance_length = np.sqrt(croissance_true)
+
+  texture_2 = sio.load_texture(texture_file_2)
+  croissance_true_2 = np.zeros(texture_2.darray.shape, dtype=np.float64)
+  for j in range(texture_2.darray.shape[0]):
+    croissance_true_2[j,:] = texture_2.darray[j,:]*croissance_globale[j]
   croissance_length_2 = np.sqrt(croissance_true_2)
 
   """peak=np.zeros((n_clusters,))
