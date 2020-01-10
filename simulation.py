@@ -135,6 +135,10 @@ if __name__ == '__main__':
 
     # Curve-fit of temporal growth for each label
     texture_file = args.textureright
+    """texture_file_27 = '/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA28to30/noninjured_ab.L.configincaltrelaxaverage.GGnorm.func.gii'
+    texture_file_31 ='/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA30to34/noninjured_bc.L.configincaltrelaxaverage.GGnorm.func.gii'
+    texture_file_33 = '/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA34to38/noninjured_cd.L.configincaltrelaxaverage.GGnorm.func.gii'
+    texture_file_37 ='/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA30to38/noninjured_bd.L.configincaltrelaxaverage.GGnorm.func.gii'"""
     peak, amplitude, latency, multiple = Curve_fitting_half(texture_file, labels, n_clusters, lobes)
 
   # Whole brain
@@ -217,9 +221,9 @@ if __name__ == '__main__':
     # Calculate the relative growth rate
     #at = growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets)
     if args.halforwholebrain.__eq__("half"):
-      at, bt = growthRate_2_halfgrowthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, multiple, lobes)
+      at, bt = growthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, multiple, lobes)
     else:
-      at, bt = growthRate_2_wholegrowthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2)
+      at, bt = growthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2)
 
     # Calculate the longitudinal length of the real brain
     L = longitLength(t)
