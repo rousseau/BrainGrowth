@@ -127,7 +127,7 @@ if __name__ == '__main__':
     mesh_file = args.registermeshright
     lobes_file = './data/ATLAS30.R.Fiducial.surf.regions.gii'
     lobes = sio.load_texture(lobes_file)
-    lobes = lobes.darray[0].astype(int)
+    lobes = np.round(lobes.darray[0])
     labels_surface, labels = tetra_labels_surface_half(mesh_file, method, n_clusters, Ut0, SN, tets, lobes)
 
     # Define the label for each tetrahedron
@@ -149,9 +149,9 @@ if __name__ == '__main__':
     lobes_file = './data/ATLAS30.R.Fiducial.surf.regions.gii'
     lobes_file_2 = './data/ATLAS30.L.Fiducial.surf.regions.gii'
     lobes = sio.load_texture(lobes_file)
-    lobes = lobes.darray[0].astype(int)
+    lobes = np.round(lobes.darray[0])
     lobes_2 = sio.load_texture(lobes_file_2)
-    lobes_2 = lobes_2.darray[0].astype(int)
+    lobes_2 = np.round(lobes_2.darray[0])
     indices_a = np.where(Ut0[SN[:],1] >= (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #right part surface node indices
     indices_b = np.where(Ut0[SN[:],1] < (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #left part surface node indices
     indices_c = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 >= (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #right part tetrahedral indices
