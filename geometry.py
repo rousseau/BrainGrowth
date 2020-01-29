@@ -313,7 +313,7 @@ def Curve_fitting_half(texture_file, labels, n_clusters, lobes):
   return peak, amplitude, latency, multiple
 
 # Curve-fit of temporal growth for each label for whole brain
-@jit
+#@jit
 def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2):
   ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
   xdata=np.array(ages)
