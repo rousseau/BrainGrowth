@@ -183,8 +183,8 @@ def tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, Ut0, 
   csn_2 = tree_2.query(Ut0[SN[indices_b]])
   #labels_surface = np.zeros(nsn, dtype = np.int64)
   #labels_surface_2 = np.zeros(nsn, dtype = np.int64)
-  labels_surface = kmeans.labels_[csn[1]]
-  labels_surface_2 = kmeans_2.labels_[csn_2[1]]
+  labels_surface = labels[csn[1]]
+  labels_surface_2 = labels_2[csn_2[1]]
 
   return labels_surface, labels_surface_2, labels, labels_2
 
