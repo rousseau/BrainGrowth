@@ -125,7 +125,7 @@ if __name__ == '__main__':
   if args.halforwholebrain.__eq__("half"):
     # Define the label for each surface node
     mesh_file = args.registermeshright
-    lobes_file = './data/ATLAS30.R.Fiducial.surf.regions.gii'
+    lobes_file = './data/ATLAS30.R.Fiducial.surf.fineregions.gii'
     lobes = sio.load_texture(lobes_file)
     lobes = np.round(lobes.darray[0])
     labels_surface, labels = tetra_labels_surface_half(mesh_file, method, n_clusters, Ut0, SN, tets, lobes)
@@ -146,8 +146,8 @@ if __name__ == '__main__':
     # Define the label for each surface node
     mesh_file = args.registermeshright
     mesh_file_2 = args.registermeshleft
-    lobes_file = './data/ATLAS30.R.Fiducial.surf.regions.gii'
-    lobes_file_2 = './data/ATLAS30.L.Fiducial.surf.regions.gii'
+    lobes_file = './data/ATLAS30.R.Fiducial.surf.fineregions.gii'
+    lobes_file_2 = './data/ATLAS30.L.Fiducial.surf.fineregions.gii'
     lobes = sio.load_texture(lobes_file)
     lobes = np.round(lobes.darray[0])
     lobes_2 = sio.load_texture(lobes_file_2)
@@ -223,7 +223,7 @@ if __name__ == '__main__':
     if args.halforwholebrain.__eq__("half"):
       at, bt = growthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, multiple, lobes)
     else:
-      at, bt = growthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2)
+      at, bt = growthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, multiple, peak_2, amplitude_2, latency_2, multiple_2, lobes, lobes_2)
 
     # Calculate the longitudinal length of the real brain
     L = longitLength(t)
