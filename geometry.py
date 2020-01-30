@@ -359,30 +359,29 @@ def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_cluste
     amplitude_2[k]=popt_2[0]
     latency_2[k]=popt_2[2]"""
 
-  amplitude=peak=latency=multiple=np.zeros((len(np.unique(lobes)),))
-  amplitude_2=peak_2=latency_2=multiple_2=np.zeros((len(np.unique(lobes_2)),))
+  multiple=latency=amplitude=peak=np.zeros((len(np.unique(lobes)),))
+  multiple_2=latency_2=amplitude_2=peak_2=np.zeros((len(np.unique(lobes_2)),))
+  #for k in range(n_clusters):
   m = 0
   for k in np.unique(lobes):
-  #for k in range(n_clusters):
-    #ydata = croissance_length[:, csn_t[1]]
+    """ydata=np.mean(texture_new[:,np.where(labels == k)[0]], axis=1)
+    ydata_2=np.mean(texture_new_2[:,np.where(labels_2 == k)[0]], axis=1)"""
     ydata=np.mean(croissance_length[:, np.where(lobes == k)[0]], axis=1)
-    ydata_2=np.mean(croissance_length_2[:, np.where(lobes_2 == k)[0]], axis=1)
-    #ydata=np.mean(croissance_length[:,np.where(labels == k)[0]], axis=1)
-    popt, pcov=curve_fit(gompertz, tp_model, ydata, p0=[0.94, 2.16, 3.51, 0.65]) #(poly [3.14, -0.89, 0.99]) (func, p0=[1.5, 0.9, 0.09])  #p0=[-70, 0.9, 0.3]) #[2, 32., 20., 85]) (gompertz.pdf, p0=[0.01,0.6,3.5])
-    popt_2, pcov_2=curve_fit(gompertz, tp_model, ydata_2, p0=[0.94, 2.16, 3.51, 0.65])
-    """peak[k]=popt[1]   
-    amplitude[k]=popt[0]
-    latency[k]=popt[2]
-    multiple[k]=popt[3]"""
+    popt, pcov=curve_fit(gompertz, tp_model, ydata, p0=[0.94, 2.16, 3.51, 1.0]) #p0=[1.5, 0.9, 0.09] =[0.94, 2.16, 3.51, 0.65])
     peak[m]=popt[1]
     amplitude[m]=popt[0]
     latency[m]=popt[2]
     multiple[m]=popt[3]
-    peak_2[m]=popt_2[1]
-    amplitude_2[m]=popt_2[0]
-    latency_2[m]=popt_2[2]
-    multiple_2[m]=popt_2[3]
     m += 1
+  m_2 = 0
+  for k in np.unique(lobes_2):
+    ydata_2=np.mean(croissance_length_2[:, np.where(lobes_2 == k)[0]], axis=1)
+    popt_2, pcov_2=curve_fit(gompertz, tp_model, ydata_2, p0=[0.94, 2.16, 3.51, 1.0])
+    peak_2[m_2]=popt_2[1]   
+    amplitude_2[m_2]=popt_2[0]
+    latency_2[m_2]=popt_2[2]
+    multiple_2[m_2]=popt_2[3]
+    m_2 += 1
 
   return peak, amplitude, latency, multiple, peak_2, amplitude_2, latency_2, multiple_2
 
