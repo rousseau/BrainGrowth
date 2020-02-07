@@ -23,23 +23,23 @@ def dist2surf(Ut0, SN):
 
   return csn, d2s
 
-# Calculate the relative growth rate
+# Calculate the global relative growth rate for half or whole brain
 @jit
 def growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets):
-  #at = np.zeros(ne, dtype=np.float64)
+  at = np.zeros(ne, dtype=np.float64)
   #if t < 0.0:
   #at[indices_b[:]] = 1.5*GROWTH_RELATIVE*t   #3.658
   #at[indices_a[:]] = GROWTH_RELATIVE*t     #1.829
   #for i in prange(ne):
     #at[i] = 2.0*GROWTH_RELATIVE*t/(1+math.exp((Ut0[tets[i,0],2]+Ut0[tets[i,1],2]+Ut0[tets[i,2],2]+Ut0[tets[i,3],2])/4))  #~1.829*2max, ~1.829min
-  at = GROWTH_RELATIVE*t
+  at[:] = GROWTH_RELATIVE*t
     #at[i] = GROWTH_RELATIVE + 7.4*t
   #if t >= 0.0: 
     #at = GROWTH_RELATIVE - GROWTH_RELATIVE*t
 
   return at
 
-# Calculate the relative growth rate function for half brain
+# Calculate the regional relative growth rate for half brain
 @jit
 def growthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, multiple, lobes):
   at = np.zeros(ne, dtype=np.float64)
@@ -56,7 +56,7 @@ def growthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, pea
 
   return at, bt
 
-# Calculate the relative growth rate function for whole brain
+# Calculate the regional relative growth rate for whole brain
 @jit
 def growthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, multiple, peak_2, amplitude_2, latency_2, multiple_2, lobes, lobes_2):
   at = np.zeros(ne, dtype=np.float64)
