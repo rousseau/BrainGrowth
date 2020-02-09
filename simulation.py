@@ -31,6 +31,8 @@ if __name__ == '__main__':
   parser.add_argument('-ml', '--registermeshleft', help='Mesh of left brain after registration', type=str, required=False)
   parser.add_argument('-tr', '--textureright', help='Texture of template of right brain', type=str, required=False)
   parser.add_argument('-tl', '--textureleft', help='Texture of template of left brain', type=str, required=False)
+  parser.add_argument('-lr', '--lobesright', help='User-defined lobes of right brain', type=str, required=False)
+  parser.add_argument('-ll', '--lobesleft', help='User-defined lobes of left brain', type=str, required=False)
   parser.add_argument('-sc', '--stepcontrol', help='Step length regulation', type=float, default=0.01, required=False)
   parser.add_argument('-ms', '--meshspacing', help='Average spacing in the mesh', type=float, default=0.01, required=False)
   parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh', type=float, default=0.01, required=False)
@@ -127,7 +129,7 @@ if __name__ == '__main__':
     if args.halforwholebrain.__eq__("half"):
       # Define the label for each surface node
       mesh_file = args.registermeshright
-      lobes_file = './data/ATLAS30.R.Fiducial.surf.fineregions.gii'
+      lobes_file = args.lobesright
       lobes = sio.load_texture(lobes_file)
       lobes = np.round(lobes.darray[0])
       labels_surface, labels = tetra_labels_surface_half(mesh_file, method, n_clusters, Ut0, SN, tets, lobes)
@@ -148,8 +150,8 @@ if __name__ == '__main__':
       # Define the label for each surface node
       mesh_file = args.registermeshright
       mesh_file_2 = args.registermeshleft
-      lobes_file = './data/ATLAS30.R.Fiducial.surf.fineregions.gii'
-      lobes_file_2 = './data/ATLAS30.L.Fiducial.surf.fineregions.gii'
+      lobes_file = args.lobesright
+      lobes_file_2 = args.lobesleft
       lobes = sio.load_texture(lobes_file)
       lobes = np.round(lobes.darray[0])
       lobes_2 = sio.load_texture(lobes_file_2)
