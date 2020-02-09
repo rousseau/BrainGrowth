@@ -220,14 +220,14 @@ if __name__ == '__main__':
   while t < 1.0:
 
     # Calculate the relative growth rate
-    if args.growthmethod.__eq__("global"):
-      at = growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets)
-    else:
+    if args.growthmethod.__eq__("regional"):
       if args.halforwholebrain.__eq__("half"):
         at, bt = growthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, multiple, lobes)
       else:
         at, bt = growthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, multiple, peak_2, amplitude_2, latency_2, multiple_2, lobes, lobes_2)
-
+    else:
+      at = growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets)
+      
     # Calculate the longitudinal length of the real brain
     L = longitLength(t)
 
