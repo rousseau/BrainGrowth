@@ -120,52 +120,53 @@ if __name__ == '__main__':
   # End of parameters
  
   ## Parcel brain in lobes
-  n_clusters = 10   #Number of lobes
-  method = 'User-defined lobes' #Method of parcellation in lobes
-  # Half brain
-  if args.halforwholebrain.__eq__("half"):
-    # Define the label for each surface node
-    mesh_file = args.registermeshright
-    lobes_file = './data/ATLAS30.R.Fiducial.surf.fineregions.gii'
-    lobes = sio.load_texture(lobes_file)
-    lobes = np.round(lobes.darray[0])
-    labels_surface, labels = tetra_labels_surface_half(mesh_file, method, n_clusters, Ut0, SN, tets, lobes)
+  if args.growthmethod.__eq__("regional"):
+    n_clusters = 10   #Number of lobes
+    method = 'User-defined lobes' #Method of parcellation in lobes
+    # Half brain
+    if args.halforwholebrain.__eq__("half"):
+      # Define the label for each surface node
+      mesh_file = args.registermeshright
+      lobes_file = './data/ATLAS30.R.Fiducial.surf.fineregions.gii'
+      lobes = sio.load_texture(lobes_file)
+      lobes = np.round(lobes.darray[0])
+      labels_surface, labels = tetra_labels_surface_half(mesh_file, method, n_clusters, Ut0, SN, tets, lobes)
 
-    # Define the label for each tetrahedron
-    labels_volume = tetra_labels_volume_half(Ut0, SN, tets, labels_surface)
+      # Define the label for each tetrahedron
+      labels_volume = tetra_labels_volume_half(Ut0, SN, tets, labels_surface)
 
-    # Curve-fit of temporal growth for each label
-    texture_file = args.textureright
-    """texture_file_27 = '/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA28to30/noninjured_ab.L.configincaltrelaxaverage.GGnorm.func.gii'
-    texture_file_31 ='/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA30to34/noninjured_bc.L.configincaltrelaxaverage.GGnorm.func.gii'
-    texture_file_33 = '/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA34to38/noninjured_cd.L.configincaltrelaxaverage.GGnorm.func.gii'
-    texture_file_37 ='/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA30to38/noninjured_bd.L.configincaltrelaxaverage.GGnorm.func.gii'"""
-    peak, amplitude, latency, multiple = Curve_fitting_half(texture_file, labels, n_clusters, lobes)
+      # Curve-fit of temporal growth for each label
+      texture_file = args.textureright
+      """texture_file_27 = '/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA28to30/noninjured_ab.L.configincaltrelaxaverage.GGnorm.func.gii'
+      texture_file_31 ='/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA30to34/noninjured_bc.L.configincaltrelaxaverage.GGnorm.func.gii'
+      texture_file_33 = '/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA34to38/noninjured_cd.L.configincaltrelaxaverage.GGnorm.func.gii'
+      texture_file_37 ='/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA30to38/noninjured_bd.L.configincaltrelaxaverage.GGnorm.func.gii'"""
+      peak, amplitude, latency, multiple = Curve_fitting_half(texture_file, labels, n_clusters, lobes)
 
-  # Whole brain
-  else:
-    # Define the label for each surface node
-    mesh_file = args.registermeshright
-    mesh_file_2 = args.registermeshleft
-    lobes_file = './data/ATLAS30.R.Fiducial.surf.fineregions.gii'
-    lobes_file_2 = './data/ATLAS30.L.Fiducial.surf.fineregions.gii'
-    lobes = sio.load_texture(lobes_file)
-    lobes = np.round(lobes.darray[0])
-    lobes_2 = sio.load_texture(lobes_file_2)
-    lobes_2 = np.round(lobes_2.darray[0])
-    indices_a = np.where(Ut0[SN[:],1] >= (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #right part surface node indices
-    indices_b = np.where(Ut0[SN[:],1] < (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #left part surface node indices
-    indices_c = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 >= (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #right part tetrahedral indices
-    indices_d = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 < (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #left part tetrahedral indices
-    labels_surface, labels_surface_2, labels, labels_2 = tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, Ut0, SN, tets, indices_a, indices_b, lobes, lobes_2)
+    # Whole brain
+    else:
+      # Define the label for each surface node
+      mesh_file = args.registermeshright
+      mesh_file_2 = args.registermeshleft
+      lobes_file = './data/ATLAS30.R.Fiducial.surf.fineregions.gii'
+      lobes_file_2 = './data/ATLAS30.L.Fiducial.surf.fineregions.gii'
+      lobes = sio.load_texture(lobes_file)
+      lobes = np.round(lobes.darray[0])
+      lobes_2 = sio.load_texture(lobes_file_2)
+      lobes_2 = np.round(lobes_2.darray[0])
+      indices_a = np.where(Ut0[SN[:],1] >= (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #right part surface node indices
+      indices_b = np.where(Ut0[SN[:],1] < (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #left part surface node indices
+      indices_c = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 >= (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #right part tetrahedral indices
+      indices_d = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 < (max(Ut0[:,1]) + min(Ut0[:,1]))/2.0)[0]  #left part tetrahedral indices
+      labels_surface, labels_surface_2, labels, labels_2 = tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, Ut0, SN, tets, indices_a, indices_b, lobes, lobes_2)
 
-    # Define the label for each tetrahedron
-    labels_volume, labels_volume_2 = tetra_labels_volume_whole(Ut0, SN, tets, indices_a, indices_b, indices_c, indices_d, labels_surface, labels_surface_2)
+      # Define the label for each tetrahedron
+      labels_volume, labels_volume_2 = tetra_labels_volume_whole(Ut0, SN, tets, indices_a, indices_b, indices_c, indices_d, labels_surface, labels_surface_2)
 
-    # Curve-fit of temporal growth for each label
-    texture_file = args.textureright
-    texture_file_2 = args.textureleft
-    peak, amplitude, latency, multiple, peak_2, amplitude_2, latency_2, multiple_2 = Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2)
+      # Curve-fit of temporal growth for each label
+      texture_file = args.textureright
+      texture_file_2 = args.textureleft
+      peak, amplitude, latency, multiple, peak_2, amplitude_2, latency_2, multiple_2 = Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2)
 
   # Normalize initial mesh coordinates, change mesh information by values normalized
   Ut0, Ut, cog, maxd, miny = normalise_coord(Ut0, Ut, nn, args.halforwholebrain)
