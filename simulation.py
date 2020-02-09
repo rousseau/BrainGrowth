@@ -26,6 +26,7 @@ if __name__ == '__main__':
   parser.add_argument('-hc', '--halforwholebrain', help='Half or whole brain', type=str, required=True)
   parser.add_argument('-t', '--thickness', help='Cortical thickness', type=float, default=0.042, required=False)
   parser.add_argument('-g', '--growth', help='Relative growth rate', type=float, default=1.829, required=False)
+  parser.add_argument('-gm', '--growthmethod', help='Global or regional growth', type=str, required=False)
   parser.add_argument('-mr', '--registermeshright', help='Mesh of right brain after registration', type=str, required=False)
   parser.add_argument('-ml', '--registermeshleft', help='Mesh of left brain after registration', type=str, required=False)
   parser.add_argument('-tr', '--textureright', help='Texture of template of right brain', type=str, required=False)
@@ -219,11 +220,13 @@ if __name__ == '__main__':
   while t < 1.0:
 
     # Calculate the relative growth rate
-    #at = growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets)
-    if args.halforwholebrain.__eq__("half"):
-      at, bt = growthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, multiple, lobes)
+    if args.growthmethod.__eq__("global"):
+      at = growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets)
     else:
-      at, bt = growthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, multiple, peak_2, amplitude_2, latency_2, multiple_2, lobes, lobes_2)
+      if args.halforwholebrain.__eq__("half"):
+        at, bt = growthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, multiple, lobes)
+      else:
+        at, bt = growthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, multiple, peak_2, amplitude_2, latency_2, multiple_2, lobes, lobes_2)
 
     # Calculate the longitudinal length of the real brain
     L = longitLength(t)
