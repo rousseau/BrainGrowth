@@ -25,7 +25,7 @@ def dist2surf(Ut0, SN):
 
 # Calculate the global relative growth rate for half or whole brain
 @jit
-def growthRate(GROWTH_RELATIVE, t, ne, Ut0, tets):
+def growthRate(GROWTH_RELATIVE, t, ne):
   at = np.zeros(ne, dtype=np.float64)
   #if t < 0.0:
   #at[indices_b[:]] = 1.5*GROWTH_RELATIVE*t   #3.658
