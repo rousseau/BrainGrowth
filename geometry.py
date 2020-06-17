@@ -292,7 +292,10 @@ def Curve_fitting_half(texture_file, labels, n_clusters, lobes):
   amplitude=np.zeros((n_clusters,))
   latency=np.zeros((n_clusters,))
   multiple=np.zeros((n_clusters,))"""
-  amplitude=peak=latency=multiple=np.zeros((len(np.unique(lobes)),))
+  amplitude=np.zeros((len(np.unique(lobes)),))
+  peak=np.zeros((len(np.unique(lobes)),))
+  latency=np.zeros((len(np.unique(lobes)),))
+  multiple=np.zeros((len(np.unique(lobes)),))
   m = 0
   for k in np.unique(lobes):
   #for k in range(n_clusters):
@@ -359,8 +362,14 @@ def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_cluste
     amplitude_2[k]=popt_2[0]
     latency_2[k]=popt_2[2]"""
 
-  multiple=latency=amplitude=peak=np.zeros((len(np.unique(lobes)),))
-  multiple_2=latency_2=amplitude_2=peak_2=np.zeros((len(np.unique(lobes_2)),))
+  multiple=np.zeros((len(np.unique(lobes)),))
+  latency=np.zeros((len(np.unique(lobes)),))
+  amplitude=np.zeros((len(np.unique(lobes)),))
+  peak=np.zeros((len(np.unique(lobes)),))
+  multiple_2=np.zeros((len(np.unique(lobes_2)),))
+  latency_2=np.zeros((len(np.unique(lobes_2)),))
+  amplitude_2=np.zeros((len(np.unique(lobes_2)),))
+  peak_2=np.zeros((len(np.unique(lobes_2)),))
   #for k in range(n_clusters):
   m = 0
   for k in np.unique(lobes):
