@@ -229,111 +229,91 @@ def poly(x, a, b, c):
 
 # Define gompertz model for temporal growth
 @jit
-def gompertz(x, a, b, c, d):
+def gompertz(x, a, b, c):
 
-  return a+b*np.exp(-np.exp(-c*(x-d)))
+  return a*np.exp(-np.exp(-b*(x-c)))
 
 # Curve-fit of temporal growth for each label for half brain
 #@jit
 def Curve_fitting_half(texture_file, labels, n_clusters, lobes):
   ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
   xdata=np.array(ages)
-  """xdata_new = np.zeros(5)
-  xdata_new[0]=22
-  xdata_new[1]=27
-  xdata_new[2]=31
-  xdata_new[3]=33
-  xdata_new[4]=37"""
-  tp_model = 6.926*10**(-5)*xdata**3-0.00665*xdata**2+0.250*xdata-3.0189  #time of numerical model
- 
-  """texture_27 = sio.load_texture(texture_file_27)
-  texture_31 = sio.load_texture(texture_file_31)
-  texture_33 = sio.load_texture(texture_file_33)
-  texture_37 = sio.load_texture(texture_file_37)
   
-  texture_new = np.zeros((5,np.size(texture_27.darray,1)))
-  texture_new[0, :] = np.zeros(np.size(texture_27.darray, 1))
-  texture_new[1,:] = texture_27.darray[0]
-  texture_new[2,:] = texture_31.darray[0]
-  texture_new[3,:] = texture_33.darray[0]
-  texture_new[4,:] = texture_37.darray[0]"""
+  croissance_globale_R = np.array([1.30, 1.56, 1.22, 1.46, 1.35,1.24,1.47,1.58,1.45,1.31,1.66,1.78,1.67,1.42,1.44,1.22,1.75,1.56,1.40,1.33,1.79,1.27,1.52,1.34,1.68,1.81,1.78])
 
-  """texture = sio.load_texture(texture_file)
-  texture_new = np.zeros((5,np.size(texture.darray,1)))
-  texture_new[0, :] = np.zeros(np.size(texture.darray, 1))
-  texture_new[1,:] = texture.darray[2]
-  texture_new[2,:] = texture.darray[6]
-  texture_new[3,:] = texture.darray[25]
-  texture_new[4,:] = texture.darray[20]"""
-  
   # Calculate the local (true) cortical growth
-  popt, pcov = curve_fit(poly, np.array([27, 31, 33, 37]), np.array([1, 1.26, 1.26*1.37, 1.26*1.37*1.70]))
-  croissance_globale = np.array(poly(xdata,*popt))
-
-  """croissance_true_relative = np.zeros(texture.darray.shape)
-  croissance_true = np.zeros(texture_new.shape)
-  for i in range(texture_new.shape[0]):
-    croissance_true_relative[i, :] = texture_new[i,:]*croissance_globale[i]
-  croissance_true[0, :] = 1.0
-  croissance_true[1, :] = 1.45
-  croissance_true[2, :] = 1.45+croissance_true_relative[1, :]
-  croissance_true[3, :] = croissance_true[2, :] + croissance_true_relative[2, :]
-  croissance_true[4, :] = croissance_true[3, :] + croissance_true_relative[3, :]"""
-
   texture = sio.load_texture(texture_file)
-  croissance_true = np.zeros(texture.darray.shape) #texture.darray.shape
-  for i in range(texture.darray.shape[0]):
-    croissance_true[i,:] = texture.darray[i,:]*croissance_globale[i]
-
-  croissance_length = np.sqrt(croissance_true)
+  texture_sujet2_R = np.array([texture.darray[1], texture.darray[5], texture.darray[13]])
   
-  # Curve-fit the local (true) cortical growth of time
-  """peak=np.zeros((n_clusters,))
-  amplitude=np.zeros((n_clusters,))
-  latency=np.zeros((n_clusters,))
-  multiple=np.zeros((n_clusters,))"""
-  amplitude=np.zeros((len(np.unique(lobes)),))
-  peak=np.zeros((len(np.unique(lobes)),))
-  latency=np.zeros((len(np.unique(lobes)),))
-  multiple=np.zeros((len(np.unique(lobes)),))
+  ages_sujet2 = np.array([31, 33, 37, 44])
+  tp_model = 6.926*10**(-5)*ages_sujet2**3-0.00665*ages_sujet2**2+0.250*ages_sujet2-3.0189  #time of numerical model
+  croissance_globale_sujet2_R = np.array([croissance_globale_R[1], croissance_globale_R[5], croissance_globale_R[13]])
+  croissance_true_relative_R = np.zeros(texture_sujet2_R.shape)
+  for i in range(texture_sujet2_R.shape[0]):
+    croissance_true_relative_R[i, :] = texture_sujet2_R[i,:]*croissance_globale_sujet2_R[i]
+
+  latency=np.zeros(len(np.unique(lobes)), dtype=np.float64)
+  amplitude=np.zeros(len(np.unique(lobes)), dtype=np.float64)
+  peak=np.zeros(len(np.unique(lobes)), dtype=np.float64)
+  ydata=np.zeros((3, len(np.unique(lobes))), dtype = np.float64)
+  ydata_new=np.zeros((4, len(np.unique(lobes))), dtype = np.float64)
+  
+  p = 0
+  for k in np.unique(lobes):      #= int(np.unique(lobes)[5])
+    for j in range(texture_sujet2_R.shape[0]):
+      ydata[j, p]=np.mean(croissance_true_relative_R[j, np.where(lobes == k)[0]])
+    p += 1
+  ydata_new[0,:] = ydata[0,:]-1
+  ydata_new[1,:] = ydata[0, :]*ydata[1, :]-1
+  ydata_new[2,:] = ydata[0, :]*ydata[1, :]*ydata[2, :]-1
+  ydata_new[3,:] = np.full(len(np.unique(lobes)), 1.829)
+
   m = 0
-  for k in np.unique(lobes):
-  #for k in range(n_clusters):
-    #ydata = croissance_length[:, csn_t[1]]
-    ydata=np.mean(croissance_length[:, np.where(lobes == k)[0]], axis=1)
-    #ydata=np.mean(croissance_length[:,np.where(labels == k)[0]], axis=1)
-    popt, pcov=curve_fit(gompertz, tp_model, ydata, p0=[0.94, 2.16, 3.51, 0.65]) #(poly [3.14, -0.89, 0.99]) (func, p0=[1.5, 0.9, 0.09])  #p0=[-70, 0.9, 0.3]) #[2, 32., 20., 85]) (gompertz.pdf, p0=[0.01,0.6,3.5])
-    """peak[k]=popt[1]   
-    amplitude[k]=popt[0]
-    latency[k]=popt[2]
-    multiple[k]=popt[3]"""
+  for j in range(len(np.unique(lobes))):    
+    popt, pcov = curve_fit(gompertz, tp_model, ydata_new[:,j])   
     peak[m]=popt[1]
     amplitude[m]=popt[0]
     latency[m]=popt[2]
-    multiple[m]=popt[3]
+    #multiple[m]=popt[3]
     m += 1
 
-  return peak, amplitude, latency, multiple
+  return peak, amplitude, latency
 
 # Curve-fit of temporal growth for each label for whole brain
 #@jit
 def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2):
   ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
   xdata=np.array(ages)
+  
+  croissance_globale_L = np.array([1.26, 1.51, 1.21, 1.38, 1.37, 1.22, 1.44, 1.57, 1.45, 1.34, 1.54, 1.67, 1.70, 1.48, 1.50, 1.19, 1.78, 1.59, 1.49, 1.34, 1.77, 1.29 ,1.57, 1.45, 1.71, 1.76, 1.81])
+  croissance_globale_R = np.array([1.30, 1.56, 1.22, 1.46, 1.35,1.24,1.47,1.58,1.45,1.31,1.66,1.78,1.67,1.42,1.44,1.22,1.75,1.56,1.40,1.33,1.79,1.27,1.52,1.34,1.68,1.81,1.78])
   """xdata_new = np.zeros(5)
   xdata_new[0]=22
   xdata_new[1]=27
   xdata_new[2]=31
   xdata_new[3]=33
   xdata_new[4]=37"""
-  tp_model = 6.926*10**(-5)*xdata**3-0.00665*xdata**2+0.250*xdata-3.0189  #time of numerical model
+  #tp_model = 6.926*10**(-5)*xdata**3-0.00665*xdata**2+0.250*xdata-3.0189  #time of numerical model
 
   # Calculate the local (true) cortical growth
-  popt, pcov = curve_fit(poly, np.array([27, 31, 33, 37]), np.array([1, 1.26, 1.26*1.37, 1.26*1.37*1.70]))
-  croissance_globale = np.array(poly(xdata,*popt))
+  """popt, pcov = curve_fit(poly, np.array([27, 31, 33, 37]), np.array([1, 1.26, 1.26*1.37, 1.26*1.37*1.70]))
+  croissance_globale = np.array(poly(xdata,*popt))"""
 
   texture = sio.load_texture(texture_file)
-  croissance_true = np.zeros(texture.darray.shape, dtype=np.float64)
+  texture_2 = sio.load_texture(texture_file_2)
+  texture_sujet2_R = np.array([texture.darray[1], texture.darray[5], texture.darray[13]])
+  texture_sujet2_L = np.array([texture_2.darray[1], texture_2.darray[5], texture_2.darray[13]])
+  
+  ages_sujet2 = np.array([31, 33, 37, 44])
+  tp_model = 6.926*10**(-5)*ages_sujet2**3-0.00665*ages_sujet2**2+0.250*ages_sujet2-3.0189  #time of numerical model
+  croissance_globale_sujet2_R = np.array([croissance_globale_R[1], croissance_globale_R[5], croissance_globale_R[13]])
+  croissance_globale_sujet2_L = np.array([croissance_globale_L[1], croissance_globale_L[5], croissance_globale_L[13]])
+  croissance_true_relative_R = np.zeros(texture_sujet2_R.shape)
+  croissance_true_relative_L = np.zeros(texture_sujet2_L.shape)
+  for i in range(texture_sujet2_R.shape[0]):
+    croissance_true_relative_R[i, :] = texture_sujet2_R[i,:]*croissance_globale_sujet2_R[i]
+    croissance_true_relative_L[i, :] = texture_sujet2_L[i,:]*croissance_globale_sujet2_L[i]
+  """croissance_true = np.zeros(texture.darray.shape, dtype=np.float64)
   for i in range(texture.darray.shape[0]):
     croissance_true[i,:] = texture.darray[i,:]*croissance_globale[i]
   croissance_length = np.sqrt(croissance_true)
@@ -342,7 +322,7 @@ def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_cluste
   croissance_true_2 = np.zeros(texture_2.darray.shape, dtype=np.float64)
   for j in range(texture_2.darray.shape[0]):
     croissance_true_2[j,:] = texture_2.darray[j,:]*croissance_globale[j]
-  croissance_length_2 = np.sqrt(croissance_true_2)
+  croissance_length_2 = np.sqrt(croissance_true_2)"""
 
   """peak=np.zeros((n_clusters,))
   amplitude=np.zeros((n_clusters,))
@@ -362,19 +342,22 @@ def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_cluste
     amplitude_2[k]=popt_2[0]
     latency_2[k]=popt_2[2]"""
 
-  multiple=np.zeros((len(np.unique(lobes)),))
-  latency=np.zeros((len(np.unique(lobes)),))
-  amplitude=np.zeros((len(np.unique(lobes)),))
-  peak=np.zeros((len(np.unique(lobes)),))
-  multiple_2=np.zeros((len(np.unique(lobes_2)),))
-  latency_2=np.zeros((len(np.unique(lobes_2)),))
-  amplitude_2=np.zeros((len(np.unique(lobes_2)),))
-  peak_2=np.zeros((len(np.unique(lobes_2)),))
-  #for k in range(n_clusters):
-  m = 0
+  latency=np.zeros(len(np.unique(lobes)), dtype=np.float64)
+  amplitude=np.zeros(len(np.unique(lobes)), dtype=np.float64)
+  peak=np.zeros(len(np.unique(lobes)), dtype=np.float64)
+  latency_2=np.zeros(len(np.unique(lobes_2)), dtype=np.float64)
+  amplitude_2=np.zeros(len(np.unique(lobes_2)), dtype=np.float64)
+  peak_2=np.zeros(len(np.unique(lobes_2)), dtype=np.float64)
+  ydata=np.zeros((3, len(np.unique(lobes))), dtype = np.float64)
+  ydata_new=np.zeros((4, len(np.unique(lobes))), dtype = np.float64)
+  ydata_2=np.zeros((3, len(np.unique(lobes_2))), dtype = np.float64)
+  ydata_new_2=np.zeros((4, len(np.unique(lobes_2))), dtype = np.float64)
+
+  #for k in range(n_clusters):  
+  """m = 0
   for k in np.unique(lobes):
-    """ydata=np.mean(texture_new[:,np.where(labels == k)[0]], axis=1)
-    ydata_2=np.mean(texture_new_2[:,np.where(labels_2 == k)[0]], axis=1)"""
+    #ydata=np.mean(texture_new[:,np.where(labels == k)[0]], axis=1)
+    #ydata_2=np.mean(texture_new_2[:,np.where(labels_2 == k)[0]], axis=1)
     ydata=np.mean(croissance_length[:, np.where(lobes == k)[0]], axis=1)
     popt, pcov=curve_fit(gompertz, tp_model, ydata, p0=[0.94, 2.16, 3.51, 1.0]) #p0=[1.5, 0.9, 0.09] =[0.94, 2.16, 3.51, 0.65])
     peak[m]=popt[1]
@@ -390,9 +373,47 @@ def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_cluste
     amplitude_2[m_2]=popt_2[0]
     latency_2[m_2]=popt_2[2]
     multiple_2[m_2]=popt_2[3]
+    m_2 += 1"""
+  
+  p = 0
+  for k in np.unique(lobes):      #= int(np.unique(lobes)[5])
+    for j in range(texture_sujet2_R.shape[0]):
+      ydata[j, p]=np.mean(croissance_true_relative_R[j, np.where(lobes == k)[0]])
+    p += 1
+  ydata_new[0,:] = ydata[0,:]-1
+  ydata_new[1,:] = ydata[0, :]*ydata[1, :]-1
+  ydata_new[2,:] = ydata[0, :]*ydata[1, :]*ydata[2, :]-1
+  ydata_new[3,:] = np.full(len(np.unique(lobes)), 1.829)
+
+  m = 0
+  for j in range(len(np.unique(lobes))):    
+    popt, pcov = curve_fit(gompertz, tp_model, ydata_new[:,j])   
+    peak[m]=popt[1]
+    amplitude[m]=popt[0]
+    latency[m]=popt[2]
+    #multiple[m]=popt[3]
+    m += 1
+
+  p_2 = 0
+  for k in np.unique(lobes_2):
+    for j in range(texture_sujet2_L.shape[0]):
+      ydata_2[j, p_2]=np.mean(croissance_true_relative_L[j, np.where(lobes_2 == k)[0]])
+    p_2 += 1
+  ydata_new_2[0,:] = ydata_2[0,:]-1
+  ydata_new_2[1,:] = ydata_2[0, :]*ydata_2[1, :]-1
+  ydata_new_2[2,:] = ydata_2[0, :]*ydata_2[1, :]*ydata_2[2, :]-1
+  ydata_new_2[3,:] = np.full(len(np.unique(lobes_2)), 1.829)
+
+  m_2 = 0
+  for j in range(len(np.unique(lobes_2))):    
+    popt_2, pcov_2 = curve_fit(gompertz, tp_model, ydata_new_2[:,j])   
+    peak_2[m_2]=popt_2[1]
+    amplitude_2[m_2]=popt_2[0]
+    latency_2[m_2]=popt_2[2]
+    #multiple_2[m_2]=popt[3]
     m_2 += 1
 
-  return peak, amplitude, latency, multiple, peak_2, amplitude_2, latency_2, multiple_2
+  return peak, amplitude, latency, peak_2, amplitude_2, latency_2
 
 # Mark non-growing areas
 @njit(parallel=True)
