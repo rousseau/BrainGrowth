@@ -145,7 +145,7 @@ if __name__ == '__main__':
       texture_file_31 ='/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA30to34/noninjured_bc.L.configincaltrelaxaverage.GGnorm.func.gii'
       texture_file_33 = '/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA34to38/noninjured_cd.L.configincaltrelaxaverage.GGnorm.func.gii'
       texture_file_37 ='/home/x17wang/Data/GarciaPNAS2018_K65Z/PMA30to38/noninjured_bd.L.configincaltrelaxaverage.GGnorm.func.gii'"""
-      peak, amplitude, latency, multiple = Curve_fitting_half(texture_file, labels, n_clusters, lobes)
+      peak, amplitude, latency = Curve_fitting_half(texture_file, labels, n_clusters, lobes)
 
     # Whole brain
     else:
@@ -170,7 +170,7 @@ if __name__ == '__main__':
       # Curve-fit of temporal growth for each label
       texture_file = args.textureright
       texture_file_2 = args.textureleft
-      peak, amplitude, latency, multiple, peak_2, amplitude_2, latency_2, multiple_2 = Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2)
+      peak, amplitude, latency, peak_2, amplitude_2, latency_2 = Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2)
 
   # Normalize initial mesh coordinates, change mesh information by values normalized
   Ut0, Ut, cog, maxd, miny = normalise_coord(Ut0, Ut, nn, args.halforwholebrain)
@@ -227,9 +227,9 @@ if __name__ == '__main__':
     # Calculate the relative growth rate
     if args.growthmethod.__eq__("regional"):
       if args.halforwholebrain.__eq__("half"):
-        at, bt = growthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, multiple, lobes)
+        at, bt = growthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, lobes)
       else:
-        at, bt = growthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, multiple, peak_2, amplitude_2, latency_2, multiple_2, lobes, lobes_2)
+        at, bt = growthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2)
     else:
       at = growthRate(GROWTH_RELATIVE, t, ne)
       
