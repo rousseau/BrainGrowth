@@ -229,7 +229,7 @@ if __name__ == '__main__':
       if args.halforwholebrain.__eq__("half"):
         at, bt = growthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, lobes)
       else:
-        at, bt = growthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2)
+        at, bt = growthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2, indices_a, indices_b, indices_c, indices_d)
     else:
       at = growthRate(GROWTH_RELATIVE, t, ne)
       
