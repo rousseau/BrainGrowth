@@ -58,19 +58,19 @@ def growthRate_2_half(t, ne, nsn, n_clusters, labels_surface, labels_volume, pea
 
 # Calculate the regional relative growth rate for whole brain
 @jit
-def growthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2):
+def growthRate_2_whole(t, ne, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2, indices_a, indices_b, indices_c, indices_d):
   at = np.zeros(ne, dtype=np.float64)
   bt = np.zeros(nsn, dtype=np.float64)
   #for i in range(n_clusters):
   m = 0
   for i in np.unique(lobes):
-    at[np.where(labels_volume == i)[0]] = amplitude[m]*np.exp(-np.exp(-peak[m]*(t-latency[m])))
-    bt[np.where(labels_surface == i)[0]] = amplitude[m]*np.exp(-np.exp(-peak[m]*(t-latency[m])))
+    at[indices_c[np.where(labels_volume == i)[0]]] = amplitude[m]*np.exp(-np.exp(-peak[m]*(t-latency[m])))
+    bt[indices_a[np.where(labels_surface == i)[0]]] = amplitude[m]*np.exp(-np.exp(-peak[m]*(t-latency[m])))
     m += 1
   m_2 = 0
   for i in np.unique(lobes_2):
-    at[np.where(labels_volume_2 == i)[0]] = amplitude[m_2]*np.exp(-np.exp(-peak[m_2]*(t-latency[m_2])))
-    bt[np.where(labels_surface_2 == i)[0]] = amplitude[m_2]*np.exp(-np.exp(-peak[m_2]*(t-latency[m_2])))
+    at[indices_d[np.where(labels_volume_2 == i)[0]]] = amplitude[m_2]*np.exp(-np.exp(-peak[m_2]*(t-latency[m_2])))
+    bt[indices_b[np.where(labels_surface_2 == i)[0]]] = amplitude[m_2]*np.exp(-np.exp(-peak[m_2]*(t-latency[m_2])))
     m_2 += 1
   at = np.where(at > 0.0, at, 0.0)
   bt = np.where(bt > 0.0, bt, 0.0)
