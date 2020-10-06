@@ -57,9 +57,13 @@ python simulation.py -i './data/sphere5.mesh' -o './res/sphere5' -hc 'whole' -t 
 
 **o**: path of output
 
+**hc**: whole or half geometry
+
 **t**: cortical thickness
 
 **g**: relative growth rate
+
+**gm**: global or regional growth
 
 ### Running a demo
 
