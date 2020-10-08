@@ -12,7 +12,7 @@ This repository contains the work during the PhD of Xiaoyu WANG, titled "Brain d
 
 ## Requirements
 
-All scripts were coded in `python 2.7`, but they are compatible to `python 3.7` (tested on version 3.7.3).
+All scripts were coded in `python 2.7`, but they are compatible to `python 3.7` (tested on the version 3.7.3).
 
 <details>
 <summary><b>Python packages and versions</b></summary>
