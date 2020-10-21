@@ -136,7 +136,7 @@ def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, 
   filepov.close()
 
 # Write surface mesh in .txt files
-def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos):
+def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos, cog, maxd):
 
   txtname = "B%d.txt"%(step)
 
@@ -147,12 +147,20 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
       os.makedirs(foldname)
   except OSError:
     print ('Error: Creating directory. ' + foldname)
+  
+  vertices = np.zeros((nsn,3), dtype = float)
+  vertices_seg = np.zeros((nsn,3), dtype = float)
+
+  vertices[:,:] = Ut[SN[:],:]*zoom_pos
+  vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd
+  vertices_seg[:,0] = vertices[:,1]*maxd + cog[1]
+  vertices_seg[:,2] = cog[2] - vertices[:,2]*maxd
 
   completeName = os.path.join(foldname, txtname)
   filetxt = open(completeName, "w")
   filetxt.write(str(nsn) + "\n")
   for i in range(nsn):
-    filetxt.write(str(Ut[SN[i]][0]*zoom_pos) + " " + str(Ut[SN[i]][1]*zoom_pos) + " " + str(Ut[SN[i]][2]*zoom_pos) + "\n")
+    filetxt.write(str(vertices_seg[i,0]) + " " + str(vertices_seg[i,1]) + " " + str(vertices_seg[i,2]) + "\n")
   filetxt.write(str(len(faces)) + "\n")
   for i in range(len(faces)):
     filetxt.write(str(SNb[faces[i][0]]+1) + " " + str(SNb[faces[i][1]]+1) + " " + str(SNb[faces[i][2]]+1) + "\n")
