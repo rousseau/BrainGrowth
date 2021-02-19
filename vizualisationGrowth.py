@@ -80,7 +80,7 @@ for i in steps:
     mesh1.faces = faces
     mesh1.vertices = vertices
     mesh_2 = trimesh.convex.convex_hull(mesh1, qhull_options='QbB Pp Qt')
-    for j in range(30370):
+    for j in range(np.size(mesh_o.vertices, 0)):
         endpoints = np.array([mesh_o.vertices[j,:], mesh_o.vertices[j,:]+10000*(mesh1.vertices[j,:]-mesh_o.vertices[j,:])])
         for k in range(np.size(mesh_2.faces, 0)):
             plane_normal = np.cross(mesh_2.vertices[mesh_2.faces[k,1], :]-mesh_2.vertices[mesh_2.faces[k,0], :], mesh_2.vertices[mesh_2.faces[k,2], :]-mesh_2.vertices[mesh_2.faces[k,0], :])
