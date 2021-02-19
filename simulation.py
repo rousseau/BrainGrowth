@@ -15,7 +15,7 @@ from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthT
 from normalisation import normalise_coord
 from collision_Tallinen import contactProcess
 from mechanics import tetraElasticity, move
-from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl, point3d_to_voxel, mesh_to_image, stl_to_image, writeTex
+from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl, point3d_to_voxel, mesh_to_image, stl_to_image, writeTex, mesh_to_gifti
 from mathfunc import make_2D_array
 from numba import jit, prange
 import slam.io as sio
@@ -288,6 +288,9 @@ if __name__ == '__main__':
 
       # Convert surface mesh structure (from simulations) to .stl format file
       mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny, args.halforwholebrain)
+      
+      # Convert surface mesh structure (from simulations) to .gii format file
+      mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny, args.halforwholebrain)
 
       # Convert mesh .stl to image .nii.gz
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
