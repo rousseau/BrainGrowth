@@ -7,7 +7,7 @@ import slam.curvature as scurv
 
 # Visualization of the biomechanical model simulations
 
-# Curvature
+# Curvature computed with the umbrella operator
 folder='/home/INT/lefevre.j/Documents/Codes/Python/BrainGrowth/res/sphere5/pov_H0.042000AT1.829000/'
 mesh_file = 'B15000.stl'
 
@@ -17,7 +17,7 @@ curvature = curvatureTopologic(mesh)
 splt.pyglet_plot(mesh, curvature)
 
 
-# Mean curvature
+# Mean curvature computed by Rusinkiewicz estimation
 folder='/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/data/sphere5_402133/pov_H0.042000AT1.829000/'
 steps = np.arange(0, 45000, 1000)
 A = []
