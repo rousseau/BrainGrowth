@@ -284,7 +284,7 @@ if __name__ == '__main__':
       writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom, zoom_pos)
 
       # Write surface mesh output files in .txt files
-      writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos, cog, maxd)
+      writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos, cog, maxd, miny, args.halforwholebrain)
 
       # Convert surface mesh structure (from simulations) to .stl format file
       mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny, args.halforwholebrain)
