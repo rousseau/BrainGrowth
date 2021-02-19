@@ -136,7 +136,7 @@ def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, 
   filepov.close()
 
 # Write surface mesh in .txt files
-def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos, cog, maxd):
+def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos, cog, maxd, miny, halforwholebrain):
 
   txtname = "B%d.txt"%(step)
 
@@ -153,7 +153,10 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
 
   vertices[:,:] = Ut[SN[:],:]*zoom_pos
   vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd
-  vertices_seg[:,0] = vertices[:,1]*maxd + cog[1]
+  if halforwholebrain.__eq__("half"):
+    vertices_seg[:,0] = vertices[:,1]*maxd + miny
+  else:
+    vertices_seg[:,0] = vertices[:,1]*maxd + cog[1]
   vertices_seg[:,2] = cog[2] - vertices[:,2]*maxd
 
   completeName = os.path.join(foldname, txtname)
