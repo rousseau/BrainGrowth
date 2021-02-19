@@ -210,6 +210,36 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
 
   # Write the mesh to file ".stl"
   brain.save(save_path, mode=Mode.ASCII)"""
+  
+# Convert surface mesh structure (from simulations) to .gii format file
+def mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny, halforwholebrain):
+
+  stlname = "B%d.gii"%(step)
+
+  foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+
+  save_path = os.path.join(foldname, stlname)
+
+  # Transform coordinates (because the coordinates are normalized at the beginning)
+  vertices = np.zeros((nsn,3), dtype = float)
+  f_indices = np.zeros((len(faces),3), dtype = int)
+  vertices_seg = np.zeros((nsn,3), dtype = float)
+
+  vertices[:,:] = Ut[SN[:],:]*zoom_pos
+  vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd
+  if halforwholebrain.__eq__("half"):
+    vertices_seg[:,0] = vertices[:,1]*maxd + miny
+  else:
+    vertices_seg[:,0] = vertices[:,1]*maxd + cog[1]
+  vertices_seg[:,2] = cog[2] - vertices[:,2]*maxd
+
+  f_indices[:,0] = SNb[faces[:,0]]
+  f_indices[:,1] = SNb[faces[:,1]]
+  f_indices[:,2] = SNb[faces[:,2]]
+
+  # Create the .stl mesh par Trimesh and save it
+  mesh = trimesh.Trimesh(vertices=vertices_seg, faces=f_indices, process=False)
+  sio.write_mesh(mesh, save_path)
 
 # Convert mesh .stl to image .nii.gz
 def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, cog, nn, miny):
