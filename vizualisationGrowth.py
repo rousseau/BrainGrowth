@@ -95,7 +95,7 @@ for i in steps:
     
     A[q, :] = np.sqrt((mesh1.vertices[:,0] - inters_1[:, 0])**2+(mesh1.vertices[:,1] - inters_1[:, 1])**2+(mesh1.vertices[:,2] - inters_1[:, 2])**2)
 
-	q += 1
+    q += 1
 
 
 # 3D GI
