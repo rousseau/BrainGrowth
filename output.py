@@ -242,7 +242,7 @@ def mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoo
   sio.write_mesh(mesh, save_path)
 
 # Convert mesh .stl to image .nii.gz
-def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, cog, nn, miny):
+def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, cog, n_nodes, miny):
 
   """stlname = "B%d.stl"%(step)
 
@@ -262,8 +262,8 @@ def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename
   foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
   
   # Transform coordinates (because the coordinates are normalized at the beginning)
-  vertices = np.zeros((nn,3), dtype = float)
-  vertices_seg = np.zeros((nn,3), dtype = float)
+  vertices = np.zeros((n_nodes,3), dtype = float)
+  vertices_seg = np.zeros((n_nodes,3), dtype = float)
 
   vertices[:,:] = Ut[:,:]*zoom_pos
   vertices_seg[:,1] = (cog[0] - Ut[:,0]*maxd)  #/1.396
@@ -278,14 +278,14 @@ def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename
   data = img.get_fdata()
   matrix_image_to_world = img.affine[:3, :3]
   abc = img.affine[:3, 3]
-  image = np.zeros((nn,3), dtype = np.float32)
-  for i in range(nn):
+  image = np.zeros((_nodes,3), dtype = np.float32)
+  for i in range(n_nodes):
     image[i] = np.linalg.inv(matrix_image_to_world).dot(np.transpose(vertices_seg[i]) - abc)
   """array_index = np.transpose(np.asarray(np.where(data==1)))
   tree = spatial.KDTree(array_index)
   pp = tree.query(image)"""
   outimage = np.zeros((int(np.round(np.max(image[:,0])))+1, int(np.round(np.max(image[:,0])))+1, int(np.round(np.max(image[:,0])))+1), dtype = np.float32)
-  for i in range(nn):
+  for i in range(n_nodes):
     #outimage[array_index[pp[1][i],0], array_index[pp[1][i],1], array_index[pp[1][i],2]] = 1.0
     outimage[int(np.round(image[i,0])), int(np.round(image[i,1])), int(np.round(image[i,2]))] = 1.0
 
@@ -334,22 +334,22 @@ def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii
   nib.save(img, file_nii_path)
 
 # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
-def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, cog, maxd, nn, faces, tets, miny):
+def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, coordinates, zoom_pos, cog, maxd, n_nodes, faces, tets, miny):
 
   niiname = "B%d_2.nii.gz"%(step)
 
   foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
 
   # Transform coordinates (because the coordinates are normalized at the beginning)
-  vertices = np.zeros((nn,3), dtype = float)
-  vertices_seg = np.zeros((nn,3), dtype = float)
+  vertices = np.zeros((n_nodes,3), dtype = float)
+  vertices_seg = np.zeros((n_nodes,3), dtype = float)
 
-  vertices[:,:] = Ut[:,:]*zoom_pos
-  vertices_seg[:,1] = cog[0] - Ut[:,0]*maxd
+  vertices[:,:] = coordinates[:,:]*zoom_pos
+  vertices_seg[:,1] = cog[0] - coordinates[:,0]*maxd
   #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
-  vertices_seg[:,0] = Ut[:,1]*maxd + miny
+  vertices_seg[:,0] = coordinates[:,1]*maxd + miny
   #vertices_seg[:,0] = cog[1] - vertices[:,1]*maxd
-  vertices_seg[:,2] = cog[2] - Ut[:,2]*maxd
+  vertices_seg[:,2] = cog[2] - coordinates[:,2]*maxd
   #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
 
   """mesh = pymesh.form_mesh(vertices_seg, faces, tets)

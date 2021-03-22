@@ -7,33 +7,33 @@ from numba import jit, njit, prange
 
 # Calculate elastic forces
 @njit(parallel=True)
-def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, ne, eps):
+def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, n_tets, eps):
 
   # Deformed volume
   #vol = det(At)/6.0
 
   # Apply growth to reference state
-  Ar = np.zeros((ne,3,3), dtype=np.float64)
+  Ar = np.zeros((n_tets,3,3), dtype=np.float64)
   Ar[:] = dot_mat_dim_3(G[:], A0[:])
   #Ar[:] = dot_const_mat_dim_3(G, A0[:])
   #Ar = np.dot(At, G)
   #Ar = G*np.array(A0)
 
   # Calculate deformation gradient
-  F = np.zeros((ne,3,3), dtype=np.float64)
+  F = np.zeros((n_tets,3,3), dtype=np.float64)
   F[:] = dot_mat_dim_3(At[:], inv_dim_3(Ar[:]))   # Ar: rest tetra, At: material tetra
 
   # Calculate left Cauchy-Green strain tensor
-  B = np.zeros((ne,3,3), dtype=np.float64)
+  B = np.zeros((n_tets,3,3), dtype=np.float64)
   B[:] = dot_mat_dim_3(F[:], transpose_dim_3(F[:]))
 
   # Calculate relative volume change and averaged nodal volume change
-  J = np.zeros(ne, dtype=np.float64)
-  J1 = np.zeros(ne, dtype=np.float64)
-  J2 = np.zeros(ne, dtype=np.float64)
-  J3 = np.zeros(ne, dtype=np.float64)
-  J4 = np.zeros(ne, dtype=np.float64)
-  Ja = np.zeros(ne, dtype=np.float64)
+  J = np.zeros(n_tets, dtype=np.float64)
+  J1 = np.zeros(n_tets, dtype=np.float64)
+  J2 = np.zeros(n_tets, dtype=np.float64)
+  J3 = np.zeros(n_tets, dtype=np.float64)
+  J4 = np.zeros(n_tets, dtype=np.float64)
+  Ja = np.zeros(n_tets, dtype=np.float64)
   J[:] = det_dim_3(F[:]) # Relative volume change
   J1[:] = Vn[tets[:,0]]/Vn0[tets[:,0]]
   J2[:] = Vn[tets[:,1]]/Vn0[tets[:,1]]
@@ -42,7 +42,7 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, ne, eps):
   Ja[:] = (J1[:] + J2[:] + J3[:] + J4[:])/4.0   # Averaged nodal volume change
 
   # Decide if need for SVD or not
-  for i in prange(ne):
+  for i in prange(n_tets):
 
     ll1, ll2, ll3 = EV(B[i])
 
@@ -129,11 +129,11 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, ne, eps):
 
 # Newton dynamics (Integrate velocity into displacement)
 @njit(parallel=True)
-def move(nn, Ft, Vt, Ut, gamma, Vn0, rho, dt):
-  for i in prange(nn):
+def move(n_nodes, Ft, Vt, coordinates, gamma, Vn0, rho, dt):
+  for i in prange(n_nodes):
     Ft[i] -= Vt[i]*gamma*Vn0[i]
     Vt[i] += Ft[i]/(Vn0[i]*rho)*dt
-  Ut[:] += Vt[:]*dt
-  Ft[:] = np.zeros((nn,3), dtype = np.float64)
+  coordinates[:] += Vt[:]*dt
+  Ft[:] = np.zeros((n_nodes,3), dtype = np.float64)
 
-  return Ft, Ut, Vt
+  return Ft, coordinates, Vt

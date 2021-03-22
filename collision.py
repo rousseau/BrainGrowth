@@ -7,13 +7,13 @@ import sys
 
 # Generates point-triangle proximity lists (NNLt) using the linked cell algorithm
 @jit
-def createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw):
+def createNNLtriangle(NNLt, coordinates, faces, SN, nsn, nf, hs, bw, mw):
   mx = max(1, int(bw/mw))  # = 40 cells, bw=3.2, mw=0.08
   head = [-1]*mx*mx*mx  # mx*mx*mx cells number, size mx*mx*mx list with all values are -1, 40*40*40 = 64000
   lists = [0]*nf
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
   for i in range(nf):  # Divide triangle faces into cells, i index of face
-    cog = (Ut[faces[i,0]] + Ut[faces[i,1]] + Ut[faces[i,2]])/3.0
+    cog = (coordinates[faces[i,0]] + coordinates[faces[i,1]] + coordinates[faces[i,2]])/3.0
     xa = int((cog[0]+0.5*bw)/bw*mx)
     ya = int((cog[1]+0.5*bw)/bw*mx)
     za = int((cog[2]+0.5*bw)/bw*mx)
@@ -25,16 +25,16 @@ def createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw):
   for i in range(nsn):   # Search cells around each surface point and build proximity list
     pt = SN[i]
     NNLt[i][:] = []
-    xa = int((Ut[pt,0]+0.5*bw)/bw*mx)
-    ya = int((Ut[pt,1]+0.5*bw)/bw*mx)
-    za = int((Ut[pt,2]+0.5*bw)/bw*mx)
+    xa = int((coordinates[pt,0]+0.5*bw)/bw*mx)
+    ya = int((coordinates[pt,1]+0.5*bw)/bw*mx)
+    za = int((coordinates[pt,2]+0.5*bw)/bw*mx)
 
     for xi, yi, zi in zip(range(max(0,xa-1), min(mx-1, xa+1)+1), range(max(0,ya-1), min(mx-1, ya+1)+1), range(max(0,za-1), min(mx-1, za+1)+1)): # Browse head list
       tri = head[mx*mx*zi + mx*yi + xi]
       while tri != -1:
         if pt != faces[tri,0] and pt != faces[tri,1] and pt != faces[tri,2]:
-          pc, ubt, vbt, wbt = closestPointTriangle(Ut[pt], Ut[faces[tri,0]], Ut[faces[tri,1]], Ut[faces[tri,2]], ub, vb, wb)
-          if np.linalg.norm(pc - Ut[pt]) < hs:
+          pc, ubt, vbt, wbt = closestPointTriangle(coordinates[pt], coordinates[faces[tri,0]], coordinates[faces[tri,1]], coordinates[faces[tri,2]], ub, vb, wb)
+          if np.linalg.norm(pc - coordinates[pt]) < hs:
             NNLt[i].append(tri)
         tri = lists[tri]
 
@@ -43,18 +43,18 @@ def createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw):
 
 # Calculate contact forces
 #@jit
-def contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr):
+def contactProcess(coordinates, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr):
   maxDist = 0.0
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
-  maxDist = max(norm_dim_3(Ut[SN[:]] - Utold[:]))
+  maxDist = max(norm_dim_3(coordinates[SN[:]] - Utold[:]))
   if maxDist > 0.5*(hs-hc):
     #NNLt = createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw) # Generates point-triangle proximity lists (NNLt[nsn]) using the linked cell algorithm
-    Utold[:] = Ut[SN[:]]
-    if np.any(np.isinf(Ut[SN[:]])) == True or np.any(np.isnan(Ut[SN[:]])) == True:
+    Utold[:] = coordinates[SN[:]]
+    if np.any(np.isinf(coordinates[SN[:]])) == True or np.any(np.isnan(coordinates[SN[:]])) == True:
       print('Computational divergence')
-      Ut[SN[:]] = np.nan_to_num(Ut[SN[:]])
-    tree = KDTree(Ut[SN[:]])
-    ind = tree.query_radius(Ut[SN[:]], r=0.5*a)  # Generates point-points proximity index arrays (ind) using the Kd-Tree algorithm (looks up the nearest neighbors of any point)
+      coordinates[SN[:]] = np.nan_to_num(coordinates[SN[:]])
+    tree = KDTree(coordinates[SN[:]])
+    ind = tree.query_radius(coordinates[SN[:]], r=0.5*a)  # Generates point-points proximity index arrays (ind) using the Kd-Tree algorithm (looks up the nearest neighbors of any point)
     ind = [[indice for indice in ind[i] if indice != i] for i in range(len(ind))]  # Remove the index of the point itself
     for i in range(nsn):
       #ind[i] = [SN[ind[i][j]] for j in range(len(ind[i]))] # Find corresponding surface node index for "ind"
@@ -67,12 +67,12 @@ def contactProcess(Ut, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, 
       pt = SN[i]
       tri = NNLt[i][tp] # A proximity triangle index
       #if pt != faces[tri,0] and pt != faces[tri,1] and pt != faces[tri,2]:   # Determine if the point is inside the proximity triangle or not
-      pc, ubt, vbt, wbt = closestPointTriangle(Ut[pt], Ut[faces[tri,0]], Ut[faces[tri,1]], Ut[faces[tri,2]], ub, vb, wb)   # Find the closest point in the triangle to the point and barycentric coordinates of the triangle
-      cc = pc - Ut[pt]   # The closest point in the triangle subtracts to the point
+      pc, ubt, vbt, wbt = closestPointTriangle(coordinates[pt], coordinates[faces[tri,0]], coordinates[faces[tri,1]], coordinates[faces[tri,2]], ub, vb, wb)   # Find the closest point in the triangle to the point and barycentric coordinates of the triangle
+      cc = pc - coordinates[pt]   # The closest point in the triangle subtracts to the point
       rc = np.linalg.norm(cc)   # Distance between the closest point in the triangle to the point, sqrt(x*x+y*y+z*z)
       if rc < hc and gr[pt] + gr[faces[tri,0]] > 0.0:  # Calculate contact force if within the contact range
         cc *= 1.0/rc
-        Ntri = cross_dim_2(Ut[faces[tri,1]] - Ut[faces[tri,0]], Ut[faces[tri,2]] - Ut[faces[tri,0]]) # Triangle normal
+        Ntri = cross_dim_2(coordinates[faces[tri,1]] - coordinates[faces[tri,0]], coordinates[faces[tri,2]] - coordinates[faces[tri,0]]) # Triangle normal
         Ntri *= 1.0/np.linalg.norm(Ntri)
         fn = cc*(rc-hc)/hc*kc*a*a # kc = 10.0*K Contact stiffness
         if np.dot(fn,Ntri) < 0.0:
