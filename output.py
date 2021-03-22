@@ -28,7 +28,7 @@ def area_volume(Ut, faces, gr, Vn):
   return Area, Volume
 
 # Writes POV-Ray source files and then output in .png files
-def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom, zoom_pos):
+def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom, zoom_pos):
 
   povname = "%s/pov_H%fAT%f/B%d.png"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step)
 
@@ -41,8 +41,8 @@ def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
     print ('Error: Creating directory. ' + foldname)
 
   # Normals in deformed state
-  N_init = np.zeros((nsn,3), dtype = float)
-  N = normalSurfaces(Ut, faces, SNb, len(faces), nsn, N_init)
+  N_init = np.zeros((n_surface_nodes,3), dtype = float)
+  N = normalSurfaces(Ut, faces, nodal_idx_b, len(faces), n_surface_nodes, N_init)
 
   #os.path.dirname(povname)
 
@@ -50,28 +50,28 @@ def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
   light = LightSource([-14, 3, -14], 'color', [1, 1, 1])
   background = Background('color', [1, 1, 1])
 
-  vertices = np.zeros((nsn,3), dtype = float)
-  normals = np.zeros((nsn,3), dtype = float)
+  vertices = np.zeros((n_surface_nodes,3), dtype = float)
+  normals = np.zeros((n_surface_nodes,3), dtype = float)
   f_indices = np.zeros((len(faces),3), dtype = int)
-  vertices[:,:] = Ut[SN[:],:]*zoom_pos
+  vertices[:,:] = Ut[nodal_idx[:],:]*zoom_pos
   normals[:,:] = N[:,:]
-  f_indices[:,0] = SNb[faces[:,0]]
-  f_indices[:,1] = SNb[faces[:,1]]
-  f_indices[:,2] = SNb[faces[:,2]]
+  f_indices[:,0] = nodal_idx_b[faces[:,0]]
+  f_indices[:,1] = nodal_idx_b[faces[:,1]]
+  f_indices[:,2] = nodal_idx_b[faces[:,2]]
 
   """vertices = []
   normals = []
   f_indices = []
-  for i in range(nsn):
+  for i in range(n_surface_nodes):
     vertex = [Ut[SN[i]][0]*zoom_pos, Ut[SN[i]][1]*zoom_pos, Ut[SN[i]][2]*zoom_pos]
     vertices.append(vertex)
     normal = [N[i][0], N[i][1], N[i][2]]
     normals.append(normal)
   for i in range(len(faces)):
-    f_indice = [SNb[faces[i][0]], SNb[faces[i][1]], SNb[faces[i][2]]]
+    f_indice = [nodal_idx_b[faces[i][0]], nodal_idx_b[faces[i][1]], nodal_idx_b[faces[i][2]]]
     f_indices.append(f_indice)"""
 
-  Mesh = Mesh2(VertexVectors(nsn, *vertices), NormalVectors(nsn, *normals), FaceIndices(len(faces), *f_indices), 'inside_vector', [0,1,0])
+  Mesh = Mesh2(VertexVectors(n_surface_nodes, *vertices), NormalVectors(n_surface_nodes, *normals), FaceIndices(len(faces), *f_indices), 'inside_vector', [0,1,0])
   box = Box([-100, -100, -100], [100, 100, 100])
   pigment = Pigment('color', [1, 1, 0.5])
   normal = Normal('bumps', 0.05, 'scale', 0.005)
@@ -84,7 +84,7 @@ def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
   scene.render(povname, width=800, height=600, quality=9)
   
 # Writes POV-Ray source files
-def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom, zoom_pos):
+def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom, zoom_pos):
 
   povname = "B%d.pov"%(step)
 
@@ -100,16 +100,16 @@ def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, 
   filepov = open(completeName, "w")
 
   # Normals in deformed state
-  N_init = np.zeros((nsn,3), dtype = float)
-  N = normalSurfaces(Ut, faces, SNb, len(faces), nsn, N_init)
+  N_init = np.zeros((n_surface_nodes,3), dtype = float)
+  N = normalSurfaces(Ut, faces, nodal_idx_b, len(faces), n_surface_nodes, N_init)
 
   """for i in range(len(faces)):
     Ntmp = np.cross(Ut[faces[i][1]] - Ut[faces[i][0]], Ut[faces[i][2]] - Ut[faces[i][0]])
-    N[SNb[faces[i][0]]] += Ntmp
-    N[SNb[faces[i][1]]] += Ntmp
-    N[SNb[faces[i][2]]] += Ntmp
+    N[nodal_idx_b[faces[i][0]]] += Ntmp
+    N[nodal_idx_b[faces[i][1]]] += Ntmp
+    N[nodal_idx_b[faces[i][2]]] += Ntmp
 
-  for i in range(nsn):
+  for i in range(n_surface_nodes):
     N_norm = np.linalg.norm(N[i])
     N[i] *= 1.0/N_norm"""
 
@@ -120,15 +120,15 @@ def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, 
 
   filepov.write("intersection {\n")
   filepov.write("mesh2 { \n")
-  filepov.write("vertex_vectors { " + str(nsn) + ",\n")
-  for i in range(nsn):
-    filepov.write("<" + "{0:.5f}".format(Ut[SN[i]][0]*zoom_pos) + "," + "{0:.5f}".format(Ut[SN[i]][1]*zoom_pos) + "," + "{0:.5f}".format(Ut[SN[i]][2]*zoom_pos) + ">,\n")
-  filepov.write("} normal_vectors { " + str(nsn) + ",\n")
-  for i in range(nsn):
+  filepov.write("vertex_vectors { " + str(n_surface_nodes) + ",\n")
+  for i in range(n_surface_nodes):
+    filepov.write("<" + "{0:.5f}".format(Ut[nodal_idx[i]][0]*zoom_pos) + "," + "{0:.5f}".format(Ut[nodal_idx[i]][1]*zoom_pos) + "," + "{0:.5f}".format(Ut[nodal_idx[i]][2]*zoom_pos) + ">,\n")
+  filepov.write("} normal_vectors { " + str(n_surface_nodes) + ",\n")
+  for i in range(n_surface_nodes):
     filepov.write("<" + "{0:.5f}".format(N[i][0]) + "," + "{0:.5f}".format(N[i][1]) + "," + "{0:.5f}".format(N[i][2]) + ">,\n")
   filepov.write("} face_indices { " + str(len(faces)) + ",\n")
   for i in range(len(faces)):
-    filepov.write("<" + str(SNb[faces[i][0]]) + "," + str(SNb[faces[i][1]]) + "," + str(SNb[faces[i][2]]) + ">,\n")
+    filepov.write("<" + str(nodal_idx_b[faces[i][0]]) + "," + str(nodal_idx_b[faces[i][1]]) + "," + str(nodal_idx_b[faces[i][2]]) + ">,\n")
   filepov.write("} inside_vector<0,1,0> }\n")
   filepov.write("box { <-100, -100, -100>, <100, 100, 100> }\n")
   filepov.write("pigment { rgb<1,1,0.5> } normal { bumps 0.05 scale 0.005 } finish { phong 1 reflection 0.05 ambient 0 diffuse 0.9 } }\n")
@@ -136,7 +136,7 @@ def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, 
   filepov.close()
 
 # Write surface mesh in .txt files
-def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, SNb, nsn, zoom_pos, cog, maxd, miny, halforwholebrain):
+def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom_pos, cog, maxd, miny, halforwholebrain):
 
   txtname = "B%d.txt"%(step)
 
@@ -148,10 +148,10 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
   except OSError:
     print ('Error: Creating directory. ' + foldname)
   
-  vertices = np.zeros((nsn,3), dtype = float)
-  vertices_seg = np.zeros((nsn,3), dtype = float)
+  vertices = np.zeros((n_surface_nodes,3), dtype = float)
+  vertices_seg = np.zeros((n_surface_nodes,3), dtype = float)
 
-  vertices[:,:] = Ut[SN[:],:]*zoom_pos
+  vertices[:,:] = Ut[nodal_idx[:],:]*zoom_pos
   vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd
   if halforwholebrain.__eq__("half"):
     vertices_seg[:,0] = vertices[:,1]*maxd + miny
@@ -161,16 +161,16 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, SN, S
 
   completeName = os.path.join(foldname, txtname)
   filetxt = open(completeName, "w")
-  filetxt.write(str(nsn) + "\n")
-  for i in range(nsn):
+  filetxt.write(str(n_surface_nodes) + "\n")
+  for i in range(n_surface_nodes):
     filetxt.write(str(vertices_seg[i,0]) + " " + str(vertices_seg[i,1]) + " " + str(vertices_seg[i,2]) + "\n")
   filetxt.write(str(len(faces)) + "\n")
   for i in range(len(faces)):
-    filetxt.write(str(SNb[faces[i][0]]+1) + " " + str(SNb[faces[i][1]]+1) + " " + str(SNb[faces[i][2]]+1) + "\n")
+    filetxt.write(str(nodal_idx_b[faces[i][0]]+1) + " " + str(nodal_idx_b[faces[i][1]]+1) + " " + str(nodal_idx_b[faces[i][2]]+1) + "\n")
   filetxt.close()
 
 # Convert surface mesh structure (from simulations) to .stl format file
-def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny, halforwholebrain):
+def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, zoom_pos, cog, maxd, n_surface_nodes, faces, nodal_idx_b, miny, halforwholebrain):
 
   stlname = "B%d.stl"%(step)
 
@@ -179,11 +179,11 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
   save_path = os.path.join(foldname, stlname)
 
   # Transform coordinates (because the coordinates are normalized at the beginning)
-  vertices = np.zeros((nsn,3), dtype = float)
+  vertices = np.zeros((n_surface_nodes,3), dtype = float)
   f_indices = np.zeros((len(faces),3), dtype = int)
-  vertices_seg = np.zeros((nsn,3), dtype = float)
+  vertices_seg = np.zeros((n_surface_nodes,3), dtype = float)
 
-  vertices[:,:] = Ut[SN[:],:]*zoom_pos
+  vertices[:,:] = Ut[nodal_idx[:],:]*zoom_pos
   vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd
   #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
   if halforwholebrain.__eq__("half"):
@@ -194,9 +194,9 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
   vertices_seg[:,2] = cog[2] - vertices[:,2]*maxd
   #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
 
-  f_indices[:,0] = SNb[faces[:,0]]
-  f_indices[:,1] = SNb[faces[:,1]]
-  f_indices[:,2] = SNb[faces[:,2]]
+  f_indices[:,0] = nodal_idx_b[faces[:,0]]
+  f_indices[:,1] = nodal_idx_b[faces[:,1]]
+  f_indices[:,2] = nodal_idx_b[faces[:,2]]
 
   # Create the .stl mesh par Trimesh and save it
   mesh = trimesh.Trimesh(vertices=vertices_seg, faces=f_indices, process=False)
@@ -212,7 +212,7 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_
   brain.save(save_path, mode=Mode.ASCII)"""
   
 # Convert surface mesh structure (from simulations) to .gii format file
-def mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny, halforwholebrain):
+def mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, zoom_pos, cog, maxd, n_surface_nodes, faces, nodal_idx_b, miny, halforwholebrain):
 
   stlname = "B%d.gii"%(step)
 
@@ -221,11 +221,11 @@ def mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoo
   save_path = os.path.join(foldname, stlname)
 
   # Transform coordinates (because the coordinates are normalized at the beginning)
-  vertices = np.zeros((nsn,3), dtype = float)
+  vertices = np.zeros((n_surface_nodes,3), dtype = float)
   f_indices = np.zeros((len(faces),3), dtype = int)
-  vertices_seg = np.zeros((nsn,3), dtype = float)
+  vertices_seg = np.zeros((n_surface_nodes,3), dtype = float)
 
-  vertices[:,:] = Ut[SN[:],:]*zoom_pos
+  vertices[:,:] = Ut[nodal_idx[:],:]*zoom_pos
   vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd
   if halforwholebrain.__eq__("half"):
     vertices_seg[:,0] = vertices[:,1]*maxd + miny
@@ -233,9 +233,9 @@ def mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoo
     vertices_seg[:,0] = vertices[:,1]*maxd + cog[1]
   vertices_seg[:,2] = cog[2] - vertices[:,2]*maxd
 
-  f_indices[:,0] = SNb[faces[:,0]]
-  f_indices[:,1] = SNb[faces[:,1]]
-  f_indices[:,2] = SNb[faces[:,2]]
+  f_indices[:,0] = nodal_idx_b[faces[:,0]]
+  f_indices[:,1] = nodal_idx_b[faces[:,1]]
+  f_indices[:,2] = nodal_idx_b[faces[:,2]]
 
   # Create the .stl mesh par Trimesh and save it
   mesh = trimesh.Trimesh(vertices=vertices_seg, faces=f_indices, process=False)

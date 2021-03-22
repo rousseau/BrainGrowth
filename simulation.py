@@ -71,13 +71,13 @@ if __name__ == '__main__':
   tets, n_tets = tetraVerticesIndices(mesh, n_nodes)
 
   # Read surface triangle indices (faces: index of three vertices of triangles) and get number of surface triangles (nf)
-  faces, nf = triangleIndices(mesh, n_nodes, n_tets)
+  faces, n_faces = triangleIndices(mesh, n_nodes, n_tets)
 
-  # Determine surface nodes and index maps (nsn: number of nodes at the surface, SN: Nodal index map from surface to full mesh, SNb: Nodal index map from full mesh to surface)
-  nsn, SN, SNb = numberSurfaceNodes(faces, n_nodes, nf)
+  # Determine surface nodes and index maps  n_surface_nodes: number of nodes at the surface, SN: Nodal index map from surface to full mesh, nodal_idx_b: Nodal index map from full mesh to surface)
+  n_surface_nodes, nodal_idx, nodal_idx_b = numberSurfaceNodes(faces, n_nodes, n_faces)
 
   # Check minimum, maximum and average edge lengths (average mesh spacing) at the surface
-  mine, maxe, ave = edge_length(coordinates, faces, nf)
+  mine, maxe, ave = edge_length(coordinates, faces, n_faces)
   print ('minimum edge lengths: ' + str(mine) + ' maximum edge lengths: ' + str(maxe) + ' average value of edge length: ' + str(ave))
 
   # Calculate the total volume of a tetrahedral mesh
@@ -118,15 +118,15 @@ if __name__ == '__main__':
 
   csn = np.zeros(n_nodes, dtype = np.int64)  #Nearest surface nodes for all nodes
   d2s = np.zeros(n_nodes, dtype = np.float64)  #Distances to nearest surface nodes for all nodes
-  N0 = np.zeros((nsn,3), dtype = np.float64)  #Normals of surface nodes
+  N0 = np.zeros((n_surface_nodes,3), dtype = np.float64)  #Normals of surface nodes
   Vt = np.zeros((n_nodes,3), dtype = np.float64)  #Velocities
   Ft = np.zeros((n_nodes,3), dtype = np.float64)  #Forces
   #Vn0 = np.zeros(nn, dtype = float) #Nodal volumes in reference state
   #Vn = np.zeros(nn, dtype = float)  #Deformed nodal volumes
   # Ue = 0 #Elastic energy
 
-  NNLt = [[] for _ in range(nsn)] #Triangle-proximity lists for surface nodes
-  Utold = np.zeros((nsn,3), dtype = np.float64)  #Stores positions when proximity list is updated
+  NNLt = [[] for _ in range (n_surface_nodes)] #Triangle-proximity lists for surface nodes
+  Utold = np.zeros( (n_surface_nodes,3), dtype = np.float64)  #Stores positions when proximity list is updated
   #ub = vb = wb = 0 #Barycentric coordinates of triangles
   #G = np.array([np.identity(3)]*ne)  
   shape = (n_tets,3,3)
@@ -148,10 +148,10 @@ if __name__ == '__main__':
       lobes_file = args.lobesright
       lobes = sio.load_texture(lobes_file)
       lobes = np.round(lobes.darray[0])
-      labels_surface, labels = tetra_labels_surface_half(mesh_file, method, n_clusters, coordinates0, SN, tets, lobes)
+      labels_surface, labels = tetra_labels_surface_half(mesh_file, method, n_clusters, coordinates0, nodal_idx, tets, lobes)
 
       # Define the label for each tetrahedron
-      labels_volume = tetra_labels_volume_half(coordinates0, SN, tets, labels_surface)
+      labels_volume = tetra_labels_volume_half(coordinates0, nodal_idx, tets, labels_surface)
 
       # Curve-fit of temporal growth for each label
       texture_file = args.textureright
@@ -172,14 +172,14 @@ if __name__ == '__main__':
       lobes = np.round(lobes.darray[0])
       lobes_2 = sio.load_texture(lobes_file_2)
       lobes_2 = np.round(lobes_2.darray[0])
-      indices_a = np.where(coordinates0[SN[:],1] >= (max(coordinates0[:,1]) + min(coordinates0[:,1]))/2.0)[0]  #right part surface node indices
-      indices_b = np.where(coordinates0[SN[:],1] < (max(coordinates0[:,1]) + min(coordinates0[:,1]))/2.0)[0]  #left part surface node indices
+      indices_a = np.where(coordinates0[nodal_idx[:],1] >= (max(coordinates0[:,1]) + min(coordinates0[:,1]))/2.0)[0]  #right part surface node indices
+      indices_b = np.where(coordinates0[nodal_idx[:],1] < (max(coordinates0[:,1]) + min(coordinates0[:,1]))/2.0)[0]  #left part surface node indices
       indices_c = np.where((coordinates0[tets[:,0],1]+coordinates0[tets[:,1],1]+coordinates0[tets[:,2],1]+coordinates0[tets[:,3],1])/4 >= (max(coordinates0[:,1]) + min(coordinates0[:,1]))/2.0)[0]  #right part tetrahedral indices
       indices_d = np.where((coordinates0[tets[:,0],1]+coordinates0[tets[:,1],1]+coordinates0[tets[:,2],1]+coordinates0[tets[:,3],1])/4 < (max(coordinates0[:,1]) + min(coordinates0[:,1]))/2.0)[0]  #left part tetrahedral indices
-      labels_surface, labels_surface_2, labels, labels_2 = tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, coordinates0, SN, tets, indices_a, indices_b, lobes, lobes_2)
+      labels_surface, labels_surface_2, labels, labels_2 = tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, coordinates0, nodal_idx, tets, indices_a, indices_b, lobes, lobes_2)
 
       # Define the label for each tetrahedron
-      labels_volume, labels_volume_2 = tetra_labels_volume_whole(coordinates0, SN, tets, indices_a, indices_b, indices_c, indices_d, labels_surface, labels_surface_2)
+      labels_volume, labels_volume_2 = tetra_labels_volume_whole(coordinates0, nodal_idx, tets, indices_a, indices_b, indices_c, indices_d, labels_surface, labels_surface_2)
 
       # Curve-fit of temporal growth for each label
       texture_file = args.textureright
@@ -193,7 +193,7 @@ if __name__ == '__main__':
   Ut = Ut0'''
 
   # Find the nearest surface nodes (csn) to nodes and distances to them (d2s)
-  csn, d2s = dist2surf(coordinates0, SN)
+  csn, d2s = dist2surf(coordinates0, nodal_idx)
 
   # Configuration of tetrahedra at reference state (A0)
   A0 = configRefer(coordinates0, tets, n_tets)
@@ -202,7 +202,7 @@ if __name__ == '__main__':
   gr = markgrowth(coordinates0, n_nodes)
 
   # Calculate normals of each surface triangle and apply these normals to surface nodes
-  N0 = normalSurfaces(coordinates0, faces, SNb, nf, nsn, N0)
+  N0 = normalSurfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes, N0)
 
   #num_cores = mp.cpu_count()
   #pool = mp.Pool(mp.cpu_count())
@@ -245,9 +245,9 @@ if __name__ == '__main__':
     # Calculate the relative growth rate
     if args.growthmethod.__eq__("regional"):
       if args.halforwholebrain.__eq__("half"):
-        at, bt = growthRate_2_half(t, n_tets, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, lobes)
+        at, bt = growthRate_2_half(t, n_tets, n_surface_nodes, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, lobes)
       else:
-        at, bt = growthRate_2_whole(t, n_tets, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2, indices_a, indices_b, indices_c, indices_d)
+        at, bt = growthRate_2_whole(t, n_tets, n_surface_nodes, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2, indices_a, indices_b, indices_c, indices_d)
     else:
       at = growthRate(GROWTH_RELATIVE, t, n_tets)
       
@@ -267,7 +267,7 @@ if __name__ == '__main__':
     #Ft = elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne)
 
     # Calculate contact forces
-    Ft, NNLt = contactProcess(coordinates, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr)
+    Ft, NNLt = contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, faces, n_faces, bw, mw, hs, hc, kc, a, gr)
     #myfile.write("%s\n" % NNLt)
     # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
     gm, mu = shearModulus(d2s, H, tets, n_tets, muw, mug, gr)
@@ -287,7 +287,7 @@ if __name__ == '__main__':
     #G = 1.0 + GROWTH_RELATIVE*t
 
     # Midplane
-    Ft = midPlane(coordinates, coordinates0, Ft, SN, nsn, mpy, a, hc, K)
+    Ft = midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, mpy, a, hc, K)
 
     # Output
     if step % di == 0:
@@ -296,19 +296,19 @@ if __name__ == '__main__':
       #writeTex(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, bt)
 
       # Obtain zoom parameter by checking the longitudinal length of the brain model
-      zoom_pos = paraZoom(coordinates, SN, L, nsn)
+      zoom_pos = paraZoom(coordinates, nodal_idx, L, n_surface_nodes)
 
       # Write .pov files and output mesh in .png files
-      writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, faces, SN, SNb, nsn, zoom, zoom_pos)
+      writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom, zoom_pos)
 
       # Write surface mesh output files in .txt files
-      writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, faces, SN, SNb, nsn, zoom_pos, cog, maxd, miny, args.halforwholebrain)
+      writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom_pos, cog, maxd, miny, args.halforwholebrain)
 
       # Convert surface mesh structure (from simulations) to .stl format file
-      mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny, args.halforwholebrain)
+      mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, cog, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
       
       # Convert surface mesh structure (from simulations) to .gii format file
-      mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, SN, zoom_pos, cog, maxd, nsn, faces, SNb, miny, args.halforwholebrain)
+      mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, cog, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
 
       # Convert mesh .stl to image .nii.gz
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
