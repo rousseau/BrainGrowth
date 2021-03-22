@@ -502,13 +502,13 @@ def volumeNodal(G, A0, tets, coordinates, n_tets, n_nodes):
 
 # Midplane
 @njit(parallel=True)
-def midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, mpy, a, hc, K):
+def midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, mpy, mesh_spacing, hc, K):
   for i in prange(n_surface_nodes):
     pt = nodal_idx[i]
-    if coordinates0[pt,1] < mpy - 0.5*a and coordinates[pt,1] > mpy:
-      Ft[pt,1] -= (mpy - coordinates[pt,1])/hc*a*a*K
-    if coordinates0[pt,1] > mpy + 0.5*a and coordinates[pt,1] < mpy:
-      Ft[pt,1] -= (mpy - coordinates[pt,1])/hc*a*a*K
+    if coordinates0[pt,1] < mpy - 0.5*mesh_spacing and coordinates[pt,1] > mpy:
+      Ft[pt,1] -= (mpy - coordinates[pt,1])/hc*mesh_spacing*mesh_spacing*K
+    if coordinates0[pt,1] > mpy + 0.5*mesh_spacing and coordinates[pt,1] < mpy:
+      Ft[pt,1] -= (mpy - coordinates[pt,1])/hc*mesh_spacing*mesh_spacing*K
 
   return Ft
 

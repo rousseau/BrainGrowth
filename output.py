@@ -278,7 +278,7 @@ def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename
   data = img.get_fdata()
   matrix_image_to_world = img.affine[:3, :3]
   abc = img.affine[:3, 3]
-  image = np.zeros((_nodes,3), dtype = np.float32)
+  image = np.zeros((n_nodes,3), dtype = np.float32)
   for i in range(n_nodes):
     image[i] = np.linalg.inv(matrix_image_to_world).dot(np.transpose(vertices_seg[i]) - abc)
   """array_index = np.transpose(np.asarray(np.where(data==1)))

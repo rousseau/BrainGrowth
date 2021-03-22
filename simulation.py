@@ -97,17 +97,17 @@ if __name__ == '__main__':
   mug = 1.0 #65.0 Shear modulus of gray matter
   muw = 1.167 #75.86 Shear modulus of white matter
   K = 5.0 #100.0 Bulk modulus
-  a = args.meshspacing #0.003 0.01 Mesh spacing - set manually based on the average spacing in the mesh
+  mesh_spacing = args.meshspacing #0.003 0.01 Mesh spacing - set manually based on the average spacing in the mesh
   rho = args.massdensity #0.0001 Mass density - adjust to run the simulation faster or slower
   gamma = 0.5 #0.1 Damping coefficent
   di = 500 #Output data once every di steps
 
   bw = 3.2 #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
-  mw = 8*a #Width of a cell in the linked cell algorithm for proximity detection
-  hs = 0.6*a #Thickness of proximity skin
-  hc = 0.2*a #Thickness of repulsive skin
+  mw = 8*mesh_spacing #Width of a cell in the linked cell algorithm for proximity detection
+  hs = 0.6*mesh_spacing #Thickness of proximity skin
+  hc = 0.2*mesh_spacing #Thickness of repulsive skin
   kc = 10.0*K #100.0*K Contact stiffness
-  dt = args.stepcontrol*np.sqrt(rho*a*a/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
+  dt = args.stepcontrol*np.sqrt(rho*mesh_spacing*mesh_spacing/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
   print('dt is ' + str(dt))
   eps = 0.1 #Epsilon
   k = 0.0
@@ -267,7 +267,7 @@ if __name__ == '__main__':
     #Ft = elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne)
 
     # Calculate contact forces
-    Ft, NNLt = contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, faces, n_faces, bw, mw, hs, hc, kc, a, gr)
+    Ft, NNLt = contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, faces, n_faces, bw, mw, hs, hc, kc, mesh_spacing, gr)
     #myfile.write("%s\n" % NNLt)
     # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
     gm, mu = shearModulus(d2s, H, tets, n_tets, muw, mug, gr)
@@ -287,7 +287,7 @@ if __name__ == '__main__':
     #G = 1.0 + GROWTH_RELATIVE*t
 
     # Midplane
-    Ft = midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, mpy, a, hc, K)
+    Ft = midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, mpy, mesh_spacing, hc, K)
 
     # Output
     if step % di == 0:

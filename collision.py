@@ -43,7 +43,7 @@ def createNNLtriangle(NNLt, coordinates, faces, nodal_idx, n_surface_nodes, n_fa
 
 # Calculate contact forces
 #@jit
-def contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, faces, n_faces, bw, mw, hs, hc, kc, a, gr):
+def contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, faces, n_faces, bw, mw, hs, hc, kc, mesh_spacing, gr):
   maxDist = 0.0
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
   maxDist = max(norm_dim_3(coordinates[nodal_idx[:]] - Utold[:]))
@@ -54,7 +54,7 @@ def contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, fac
       print('Computational divergence')
       coordinates[nodal_idx[:]] = np.nan_to_num(coordinates[nodal_idx[:]])
     tree = KDTree(coordinates[nodal_idx[:]])
-    ind = tree.query_radius(coordinates[nodal_idx[:]], r=0.5*a)  # Generates point-points proximity index arrays (ind) using the Kd-Tree algorithm (looks up the nearest neighbors of any point)
+    ind = tree.query_radius(coordinates[nodal_idx[:]], r=0.5*mesh_spacing)  # Generates point-points proximity index arrays (ind) using the Kd-Tree algorithm (looks up the nearest neighbors of any point)
     ind = [[indice for indice in ind[i] if indice != i] for i in range(len(ind))]  # Remove the index of the point itself
     for i in range(n_surface_nodes):
       #ind[i] = [SN[ind[i][j]] for j in range(len(ind[i]))] # Find corresponding surface node index for "ind"
@@ -74,7 +74,7 @@ def contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, fac
         cc *= 1.0/rc
         Ntri = cross_dim_2(coordinates[faces[tri,1]] - coordinates[faces[tri,0]], coordinates[faces[tri,2]] - coordinates[faces[tri,0]]) # Triangle normal
         Ntri *= 1.0/np.linalg.norm(Ntri)
-        fn = cc*(rc-hc)/hc*kc*a*a # kc = 10.0*K Contact stiffness
+        fn = cc*(rc-hc)/hc*kc*mesh_spacing*mesh_spacing # kc = 10.0*K Contact stiffness
         if np.dot(fn,Ntri) < 0.0:
           fn -= Ntri*np.dot(fn,Ntri)*2.0
         Ft[faces[tri,0]] -= fn*ubt
