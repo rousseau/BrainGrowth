@@ -9,14 +9,14 @@ import scipy.special as sp
 
 # Find the nearest surface nodes to nodes (csn) and distances to them (d2s) - these are needed to set up the growth of the gray matter
 @jit
-def dist2surf(coordinates0, SN):
+def dist2surf(coordinates0, nodal_idx):
   #csn = np.zeros(nn)  # Nearest surface nodes
   #d2s = np.zeros(nn)  # Distances to nearest surface node
   """for i in prange(nn):
     d2 = dot_vec_dim_3(Ut0[SN[:]] - Ut0[i], Ut0[SN[:]] - Ut0[i])
     csn[i] = np.argmin(d2)
     d2s[i] = sqrt(np.min(d2))"""
-  tree = spatial.KDTree(coordinates0[SN[:]])
+  tree = spatial.KDTree(coordinates0[nodal_idx[:]])
   pp = tree.query(coordinates0)
   csn = pp[1]  # Nearest surface nodes
   d2s = pp[0]  # Distances to nearest surface node
@@ -41,9 +41,9 @@ def growthRate(GROWTH_RELATIVE, t, n_tets):
 
 # Calculate the regional relative growth rate for half brain
 @jit
-def growthRate_2_half(t, n_tets, nsn, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, lobes):
+def growthRate_2_half(t, n_tets, n_surface_nodes, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, lobes):
   at = np.zeros(n_tets, dtype=np.float64)
-  bt = np.zeros(nsn, dtype=np.float64)
+  bt = np.zeros(n_surface_nodes, dtype=np.float64)
   #for i in range(n_clusters):
   m = 0
   for i in np.unique(lobes):
@@ -58,9 +58,9 @@ def growthRate_2_half(t, n_tets, nsn, n_clusters, labels_surface, labels_volume,
 
 # Calculate the regional relative growth rate for whole brain
 @jit
-def growthRate_2_whole(t, n_tets, nsn, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2, indices_a, indices_b, indices_c, indices_d):
+def growthRate_2_whole(t, n_tets, n_surface_nodes, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2, indices_a, indices_b, indices_c, indices_d):
   at = np.zeros(n_tets, dtype=np.float64)
-  bt = np.zeros(nsn, dtype=np.float64)
+  bt = np.zeros(n_surface_nodes, dtype=np.float64)
   #for i in range(n_clusters):
   m = 0
   for i in np.unique(lobes):

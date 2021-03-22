@@ -7,12 +7,12 @@ import sys
 
 # Generates point-triangle proximity lists (NNLt) using the linked cell algorithm
 @jit
-def createNNLtriangle(NNLt, coordinates, faces, SN, nsn, nf, hs, bw, mw):
+def createNNLtriangle(NNLt, coordinates, faces, nodal_idx, n_surface_nodes, n_faces, hs, bw, mw):
   mx = max(1, int(bw/mw))  # = 40 cells, bw=3.2, mw=0.08
   head = [-1]*mx*mx*mx  # mx*mx*mx cells number, size mx*mx*mx list with all values are -1, 40*40*40 = 64000
-  lists = [0]*nf
+  lists = [0]*n_faces
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
-  for i in range(nf):  # Divide triangle faces into cells, i index of face
+  for i in range(n_faces):  # Divide triangle faces into cells, i index of face
     cog = (coordinates[faces[i,0]] + coordinates[faces[i,1]] + coordinates[faces[i,2]])/3.0
     xa = int((cog[0]+0.5*bw)/bw*mx)
     ya = int((cog[1]+0.5*bw)/bw*mx)
@@ -22,8 +22,8 @@ def createNNLtriangle(NNLt, coordinates, faces, SN, nsn, nf, hs, bw, mw):
     lists[i] = head[mx*mx*za + mx*ya + xa]
     head[mx*mx*za + mx*ya + xa] = i
 
-  for i in range(nsn):   # Search cells around each surface point and build proximity list
-    pt = SN[i]
+  for i in range(n_surface_nodes):   # Search cells around each surface point and build proximity list
+    pt = nodal_idx[i]
     NNLt[i][:] = []
     xa = int((coordinates[pt,0]+0.5*bw)/bw*mx)
     ya = int((coordinates[pt,1]+0.5*bw)/bw*mx)
@@ -43,28 +43,28 @@ def createNNLtriangle(NNLt, coordinates, faces, SN, nsn, nf, hs, bw, mw):
 
 # Calculate contact forces
 #@jit
-def contactProcess(coordinates, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr):
+def contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, faces, n_faces, bw, mw, hs, hc, kc, a, gr):
   maxDist = 0.0
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
-  maxDist = max(norm_dim_3(coordinates[SN[:]] - Utold[:]))
+  maxDist = max(norm_dim_3(coordinates[nodal_idx[:]] - Utold[:]))
   if maxDist > 0.5*(hs-hc):
-    #NNLt = createNNLtriangle(NNLt, Ut, faces, SN, nsn, nf, hs, bw, mw) # Generates point-triangle proximity lists (NNLt[nsn]) using the linked cell algorithm
-    Utold[:] = coordinates[SN[:]]
-    if np.any(np.isinf(coordinates[SN[:]])) == True or np.any(np.isnan(coordinates[SN[:]])) == True:
+    #NNLt = createNNLtriangle(NNLt, Ut, faces, SN, n_surface_nodes, nf, hs, bw, mw) # Generates point-triangle proximity lists (NNLt[n_surface_nodes]) using the linked cell algorithm
+    Utold[:] = coordinates[nodal_idx[:]]
+    if np.any(np.isinf(coordinates[nodal_idx[:]])) == True or np.any(np.isnan(coordinates[nodal_idx[:]])) == True:
       print('Computational divergence')
-      coordinates[SN[:]] = np.nan_to_num(coordinates[SN[:]])
-    tree = KDTree(coordinates[SN[:]])
-    ind = tree.query_radius(coordinates[SN[:]], r=0.5*a)  # Generates point-points proximity index arrays (ind) using the Kd-Tree algorithm (looks up the nearest neighbors of any point)
+      coordinates[nodal_idx[:]] = np.nan_to_num(coordinates[nodal_idx[:]])
+    tree = KDTree(coordinates[nodal_idx[:]])
+    ind = tree.query_radius(coordinates[nodal_idx[:]], r=0.5*a)  # Generates point-points proximity index arrays (ind) using the Kd-Tree algorithm (looks up the nearest neighbors of any point)
     ind = [[indice for indice in ind[i] if indice != i] for i in range(len(ind))]  # Remove the index of the point itself
-    for i in range(nsn):
+    for i in range(n_surface_nodes):
       #ind[i] = [SN[ind[i][j]] for j in range(len(ind[i]))] # Find corresponding surface node index for "ind"
-      NNLt[i] = [np.where(SN[ind[i][tp]] == faces[:,:])[0] for tp in range(len(ind[i]))]  # Find corresponding proximity triangle indexes by the nearest neighbouring points indexes of a point
+      NNLt[i] = [np.where(nodal_idx[ind[i][tp]] == faces[:,:])[0] for tp in range(len(ind[i]))]  # Find corresponding proximity triangle indexes by the nearest neighbouring points indexes of a point
       NNLt[i] = [item for sublist in NNLt[i] for item in sublist] # Merge all proximity triangle indexes for a point
       NNLt[i] = list(set(NNLt[i]))  # Remove the same proximity triangle indexes for a point
-      NNLt[i] = [item for item in NNLt[i] if SN[i] != faces[item,0] and SN[i] != faces[item,1] and SN[i] != faces[item,2]] # Determine if the point is inside the proximity triangle or not
-  for i in range(nsn): # Loop through surface points
+      NNLt[i] = [item for item in NNLt[i] if nodal_idx[i] != faces[item,0] and nodal_idx[i] != faces[item,1] and nodal_idx[i] != faces[item,2]] # Determine if the point is inside the proximity triangle or not
+  for i in range(n_surface_nodes): # Loop through surface points
     for tp in range(len(NNLt[i])): # Loop through corresponding proximity triangles
-      pt = SN[i]
+      pt = nodal_idx[i]
       tri = NNLt[i][tp] # A proximity triangle index
       #if pt != faces[tri,0] and pt != faces[tri,1] and pt != faces[tri,2]:   # Determine if the point is inside the proximity triangle or not
       pc, ubt, vbt, wbt = closestPointTriangle(coordinates[pt], coordinates[faces[tri,0]], coordinates[faces[tri,1]], coordinates[faces[tri,2]], ub, vb, wb)   # Find the closest point in the triangle to the point and barycentric coordinates of the triangle

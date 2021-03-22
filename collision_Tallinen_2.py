@@ -5,19 +5,19 @@ from numba import jit, njit, prange
 
 # Generates point-triangle proximity lists (NNLt) using the linked cell algorithm
 @jit(forceobj=True)
-def createNNLtriangle(NNLt, coordinates, faces, SN, nsn, nf, hs, bw, mw):
+def createNNLtriangle(NNLt, coordinates, faces, nodal_idx, n_surface_nodes, n_faces, hs, bw, mw):
   mx = max(1, int(bw/mw))  # = 40 cells, bw=3.2, mw=0.08
   head = np.array([-1]*mx*mx*mx, dtype=np.int64)  # mx*mx*mx cells nomber, size mx*mx*mx list with all values are -1, 40*40*40 = 64000
-  lists = np.zeros(nf, dtype=np.int64)
+  lists = np.zeros(n_faces, dtype=np.int64)
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
-  cog = np.zeros((nf,3), dtype=np.float64)
-  xa = np.zeros(nf, dtype=np.int64)
-  ya = np.zeros(nf, dtype=np.int64)
-  za = np.zeros(nf, dtype=np.int64)
-  tmp = np.zeros(nf, dtype=np.int64)
-  xxa = np.zeros(nsn, dtype=np.int64)
-  yya = np.zeros(nsn, dtype=np.int64)
-  zza = np.zeros(nsn, dtype=np.int64)
+  cog = np.zeros((n_faces,3), dtype=np.float64)
+  xa = np.zeros(n_faces, dtype=np.int64)
+  ya = np.zeros(n_faces, dtype=np.int64)
+  za = np.zeros(n_faces, dtype=np.int64)
+  tmp = np.zeros(n_faces, dtype=np.int64)
+  xxa = np.zeros(n_surface_nodes, dtype=np.int64)
+  yya = np.zeros(n_surface_nodes, dtype=np.int64)
+  zza = np.zeros(n_surface_nodes, dtype=np.int64)
   cog[:] = (coordinates[faces[:,0]] + coordinates[faces[:,1]] + coordinates[faces[:,2]])/3.0
   xa[:] = (cog[:,0]+0.5*bw)/bw*mx
   ya[:] = (cog[:,1]+0.5*bw)/bw*mx
@@ -26,20 +26,20 @@ def createNNLtriangle(NNLt, coordinates, faces, SN, nsn, nf, hs, bw, mw):
   # print ('cog.x is ' + str(cog[0]) + ' cog y is ' + str(cog[1]) + ' cog.z is ' + str(cog[2]) + ' xa is ' + str(xa) + ' ya is ' + str(ya) + ' za is ' + str(za) + ' tmp is ' + str(tmp))
   #Divide triangle faces into cells
   lists[:] = head[tmp[:]]
-  head[tmp[:]] = np.arange(0,nf)
+  head[tmp[:]] = np.arange(0,n_faces)
 
   # Search cells around each surface point and build proximity list
   NNLt[:][:] = []
-  xxa[:] = (coordinates[SN[:],0] + 0.5*bw)/bw*mx
-  yya[:] = (cooridnates[SN[:],1] + 0.5*bw)/bw*mx
-  zza[:] = (coordinates[SN[:],2] + 0.5*bw)/bw*mx
-  for i in range(nsn):
+  xxa[:] = (coordinates[nodal_idx[:],0] + 0.5*bw)/bw*mx
+  yya[:] = (coordinates[nodal_idx[:],1] + 0.5*bw)/bw*mx
+  zza[:] = (coordinates[nodal_idx[:],2] + 0.5*bw)/bw*mx
+  for i in range(n_surface_nodes):
     for xi, yi, zi in zip(range(max(0,xxa[i]-1), min(mx-1, xxa[i]+1)+1), range(max(0,yya[i]-1), min(mx-1, yya[i]+1)+1), range(max(0,zza[i]-1), min(mx-1, zza[i]+1)+1)): # Browse head list
       tri = head[mx*mx*zi + mx*yi + xi]
       while tri != -1:
-        if SN[i] != faces[tri,0] and SN[i] != faces[tri,1] and SN[i] != faces[tri,2]:
-          pc, ubt, vbt, wbt = closestPointTriangle(coordinates[SN[i]], coordinates[faces[tri,0]], coordinates[faces[tri,1]], coordinates[faces[tri,2]], ub, vb, wb)
-          if np.linalg.norm(pc - coordinates[SN[i]]) < hs:
+        if nodal_idx[i] != faces[tri,0] and nodal_idx[i] != faces[tri,1] and nodal_idx[i] != faces[tri,2]:
+          pc, ubt, vbt, wbt = closestPointTriangle(coordinates[nodal_idx[i]], coordinates[faces[tri,0]], coordinates[faces[tri,1]], coordinates[faces[tri,2]], ub, vb, wb)
+          if np.linalg.norm(pc - coordinates[nodal_idx[i]]) < hs:
             NNLt[i].append(tri)
         tri = lists[tri]
 		#NNLt[i] = NNLt[i,1:]
@@ -49,16 +49,16 @@ def createNNLtriangle(NNLt, coordinates, faces, SN, nsn, nf, hs, bw, mw):
 
 # Calculate contact forces
 #@jit
-def contactProcess(coordinates, Ft, SN, Utold, nsn, NNLt, faces, nf, bw, mw, hs, hc, kc, a, gr):
+def contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, faces, n_faces, bw, mw, hs, hc, kc, a, gr):
   maxDist = 0.0
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
-  maxDist = max(norm_dim_3(coordinates[SN[:]] - Utold[:]))
+  maxDist = max(norm_dim_3(coordinates[nodal_idx[:]] - Utold[:]))
   if maxDist > 0.5*(hs-hc):
-    NNLt = createNNLtriangle(NNLt, coordinates, faces, SN, nsn, nf, hs, bw, mw) # Generates point-triangle proximity lists (NNLt[nsn]) using the linked cell algorithm
-    Utold[:] = coordinates[SN[:]]
-  for i in range(nsn): # Loop through surface points
+    NNLt = createNNLtriangle(NNLt, coordinates, faces, nodal_idx, n_surface_nodes, n_faces, hs, bw, mw) # Generates point-triangle proximity lists (NNLt[n_surface_nodes]) using the linked cell algorithm
+    Utold[:] = coordinates[nodal_idx[:]]
+  for i in range(n_surface_nodes): # Loop through surface points
     for tp in range(len(NNLt[i])):
-      pt = SN[i] # A surface point index
+      pt = nodal_idx[i] # A surface point index
       tri = NNLt[i][tp] # A proximity triangle index
       pc, ubt, vbt, wbt = closestPointTriangle(coordinates[pt], coordinates[faces[tri,0]], coordinates[faces[tri,1]], coordinates[faces[tri,2]], ub, vb, wb)  # Find the nearest point to Barycentric
       cc = pc - coordinates[pt] # moinus to all nodes
