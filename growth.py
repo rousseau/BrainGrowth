@@ -89,11 +89,11 @@ def cortexThickness(THICKNESS_CORTEX, t):
 
 # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
 @njit(parallel=True)
-def shearModulus(d2s, H, tets, n_tets, muw, mug, gr):
+def shearModulus(d2s, cortex_thickness, tets, n_tets, muw, mug, gr):
   gm = np.zeros(n_tets, dtype=np.float64)
   mu = np.zeros(n_tets, dtype=np.float64)
   for i in prange(n_tets):
-    gm[i] = 1.0/(1.0 + math.exp(10.0*(0.25*(d2s[tets[i,0]] + d2s[tets[i,1]] + d2s[tets[i,2]] + d2s[tets[i,3]])/H - 1.0)))*0.25*(gr[tets[i,0]] + gr[tets[i,1]] + gr[tets[i,2]] + gr[tets[i,3]])
+    gm[i] = 1.0/(1.0 + math.exp(10.0*(0.25*(d2s[tets[i,0]] + d2s[tets[i,1]] + d2s[tets[i,2]] + d2s[tets[i,3]])/cortex_thickness - 1.0)))*0.25*(gr[tets[i,0]] + gr[tets[i,1]] + gr[tets[i,2]] + gr[tets[i,3]])
     #wm[i] = 1.0 - gm[i]
     mu[i] = muw*(1.0 - gm[i]) + mug*gm[i]  # Global modulus of white matter and gray matter
 

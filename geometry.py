@@ -97,7 +97,8 @@ def edge_length(Ut, faces, n_faces):
 
 # Return the total volume of a tetrahedral mesh
 @jit(nopython=True, parallel=True)
-def volume_mesh(Vn_init, n_nodes, n_tets, tets, Ut):
+def volume_mesh(n_nodes, n_tets, tets, Ut):
+  Vn_init = np.zeros(n_nodes, dtype = np.float64)
   A_init = np.zeros((n_tets,3,3), dtype=np.float64)
   vol_init = np.zeros(n_tets, dtype=np.float64)
 
@@ -502,13 +503,13 @@ def volumeNodal(G, A0, tets, coordinates, n_tets, n_nodes):
 
 # Midplane
 @njit(parallel=True)
-def midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, mpy, mesh_spacing, hc, K):
+def midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, mpy, mesh_spacing, repuls_skin, bulk_modulus):
   for i in prange(n_surface_nodes):
     pt = nodal_idx[i]
     if coordinates0[pt,1] < mpy - 0.5*mesh_spacing and coordinates[pt,1] > mpy:
-      Ft[pt,1] -= (mpy - coordinates[pt,1])/hc*mesh_spacing*mesh_spacing*K
+      Ft[pt,1] -= (mpy - coordinates[pt,1])/repuls_skin*mesh_spacing*mesh_spacing*bulk_modulus
     if coordinates0[pt,1] > mpy + 0.5*mesh_spacing and coordinates[pt,1] < mpy:
-      Ft[pt,1] -= (mpy - coordinates[pt,1])/hc*mesh_spacing*mesh_spacing*K
+      Ft[pt,1] -= (mpy - coordinates[pt,1])/repuls_skin*mesh_spacing*mesh_spacing*bulk_modulus
 
   return Ft
 

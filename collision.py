@@ -7,7 +7,7 @@ import sys
 
 # Generates point-triangle proximity lists (NNLt) using the linked cell algorithm
 @jit
-def createNNLtriangle(NNLt, coordinates, faces, nodal_idx, n_surface_nodes, n_faces, hs, bw, mw):
+def createNNLtriangle(NNLt, coordinates, faces, nodal_idx, n_surface_nodes, n_faces, prox_skin, bw, mw):
   mx = max(1, int(bw/mw))  # = 40 cells, bw=3.2, mw=0.08
   head = [-1]*mx*mx*mx  # mx*mx*mx cells number, size mx*mx*mx list with all values are -1, 40*40*40 = 64000
   lists = [0]*n_faces
@@ -34,7 +34,7 @@ def createNNLtriangle(NNLt, coordinates, faces, nodal_idx, n_surface_nodes, n_fa
       while tri != -1:
         if pt != faces[tri,0] and pt != faces[tri,1] and pt != faces[tri,2]:
           pc, ubt, vbt, wbt = closestPointTriangle(coordinates[pt], coordinates[faces[tri,0]], coordinates[faces[tri,1]], coordinates[faces[tri,2]], ub, vb, wb)
-          if np.linalg.norm(pc - coordinates[pt]) < hs:
+          if np.linalg.norm(pc - coordinates[pt]) < prox_skin:
             NNLt[i].append(tri)
         tri = lists[tri]
 
@@ -43,12 +43,12 @@ def createNNLtriangle(NNLt, coordinates, faces, nodal_idx, n_surface_nodes, n_fa
 
 # Calculate contact forces
 #@jit
-def contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, faces, n_faces, bw, mw, hs, hc, kc, mesh_spacing, gr):
+def contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, kc, mesh_spacing, gr):
   maxDist = 0.0
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
   maxDist = max(norm_dim_3(coordinates[nodal_idx[:]] - Utold[:]))
-  if maxDist > 0.5*(hs-hc):
-    #NNLt = createNNLtriangle(NNLt, Ut, faces, SN, n_surface_nodes, nf, hs, bw, mw) # Generates point-triangle proximity lists (NNLt[n_surface_nodes]) using the linked cell algorithm
+  if maxDist > 0.5*(prox_skin-repuls_skin):
+    #NNLt = createNNLtriangle(NNLt, Ut, faces, SN, n_surface_nodes, nf, prox_skin, bw, mw) # Generates point-triangle proximity lists (NNLt[n_surface_nodes]) using the linked cell algorithm
     Utold[:] = coordinates[nodal_idx[:]]
     if np.any(np.isinf(coordinates[nodal_idx[:]])) == True or np.any(np.isnan(coordinates[nodal_idx[:]])) == True:
       print('Computational divergence')
@@ -70,11 +70,11 @@ def contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, fac
       pc, ubt, vbt, wbt = closestPointTriangle(coordinates[pt], coordinates[faces[tri,0]], coordinates[faces[tri,1]], coordinates[faces[tri,2]], ub, vb, wb)   # Find the closest point in the triangle to the point and barycentric coordinates of the triangle
       cc = pc - coordinates[pt]   # The closest point in the triangle subtracts to the point
       rc = np.linalg.norm(cc)   # Distance between the closest point in the triangle to the point, sqrt(x*x+y*y+z*z)
-      if rc < hc and gr[pt] + gr[faces[tri,0]] > 0.0:  # Calculate contact force if within the contact range
+      if rc < repuls_skin and gr[pt] + gr[faces[tri,0]] > 0.0:  # Calculate contact force if within the contact range
         cc *= 1.0/rc
         Ntri = cross_dim_2(coordinates[faces[tri,1]] - coordinates[faces[tri,0]], coordinates[faces[tri,2]] - coordinates[faces[tri,0]]) # Triangle normal
         Ntri *= 1.0/np.linalg.norm(Ntri)
-        fn = cc*(rc-hc)/hc*kc*mesh_spacing*mesh_spacing # kc = 10.0*K Contact stiffness
+        fn = cc*(rc-repuls_skin)/repuls_skin*kc*mesh_spacing*mesh_spacing # kc = 10.0*K Contact stiffness
         if np.dot(fn,Ntri) < 0.0:
           fn -= Ntri*np.dot(fn,Ntri)*2.0
         Ft[faces[tri,0]] -= fn*ubt
