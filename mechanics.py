@@ -7,7 +7,7 @@ from numba import jit, njit, prange
 
 # Calculate elastic forces
 @njit(parallel=True)
-def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, n_tets, eps):
+def tetraElasticity(At, A0, Ft, G, bulk_modulus, k, mu, tets, Vn, Vn0, n_tets, eps):
 
   # Deformed volume
   #vol = det(At)/6.0
@@ -50,9 +50,9 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, n_tets, eps):
 
      # Calculate the total stress (shear stress + bulk stress)
       powJ23 = np.power(J[i], 2.0/3.0)
-      S = (B[i] - np.identity(3)*np.trace(B[i])/3.0)*mu[i]/(J[i]*powJ23) + np.identity(3)*K*(Ja[i]-1.0)
+      S = (B[i] - np.identity(3)*np.trace(B[i])/3.0)*mu[i]/(J[i]*powJ23) + np.identity(3)*bulk_modulus*(Ja[i]-1.0)
       P = np.dot(S, inv(F[i].transpose()))*J[i]
-      W = 0.5*mu[i]*(np.trace(B[i])/powJ23 - 3.0) + 0.5*K*((J1[i]-1.0)*(J1[i]-1.0) + (J2[i]-1.0)*(J2[i]-1.0) + (J3[i]-1.0)*(J3[i]-1.0) + (J4[i]-1.0)*(J4[i]-1.0))*0.25
+      W = 0.5*mu[i]*(np.trace(B[i])/powJ23 - 3.0) + 0.5*bulk_modulus*((J1[i]-1.0)*(J1[i]-1.0) + (J2[i]-1.0)*(J2[i]-1.0) + (J3[i]-1.0)*(J3[i]-1.0) + (J4[i]-1.0)*(J4[i]-1.0))*0.25
 
     else:  # Needs SVD
 
@@ -95,11 +95,11 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, n_tets, eps):
 
       Pd = np.identity(3)
       pow23 = np.power(eps*l2*l3, 2.0/3.0)
-      Pd[0,0] = mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23 + k*(l1-eps) + K*(Ja[i]-1.0)*l2*l3
-      Pd[1,1] = mu[i]/3.0*(-eps*eps/l2 + 2.0*l2 - l3*l3/l2)/pow23 + mu[i]/9.0*(-4.0*eps/l2 - 4.0/eps*l2 + 2.0/eps/l2*l3*l3)/pow23*(l1-eps) + K*(Ja[i]-1.0)*l1*l3
-      Pd[2,2] = mu[i]/3.0*(-eps*eps/l3 - l2*l2/l3 + 2.0*l3)/pow23 + mu[i]/9.0*(-4.0*eps/l3 + 2.0/eps*l2*l2/l3 - 4.0/eps*l3)/pow23*(l1-eps) + K*(Ja[i]-1.0)*l1*l2
+      Pd[0,0] = mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23 + k*(l1-eps) + bulk_modulus*(Ja[i]-1.0)*l2*l3
+      Pd[1,1] = mu[i]/3.0*(-eps*eps/l2 + 2.0*l2 - l3*l3/l2)/pow23 + mu[i]/9.0*(-4.0*eps/l2 - 4.0/eps*l2 + 2.0/eps/l2*l3*l3)/pow23*(l1-eps) + bulk_modulus*(Ja[i]-1.0)*l1*l3
+      Pd[2,2] = mu[i]/3.0*(-eps*eps/l3 - l2*l2/l3 + 2.0*l3)/pow23 + mu[i]/9.0*(-4.0*eps/l3 + 2.0/eps*l2*l2/l3 - 4.0/eps*l3)/pow23*(l1-eps) + bulk_modulus*(Ja[i]-1.0)*l1*l2
       P = np.dot(U, np.dot(Pd, v2.transpose()))
-      W = 0.5*mu[i]*((eps*eps + l2*l2 + l3*l3)/pow23 - 3.0) + mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23*(l1-eps) + 0.5*k*(l1-eps)*(l1-eps) + 0.5*K*((J1[i]-1.0)*(J1[i]-1.0) + (J2[i]-1.0)*(J2[i]-1.0) + (J3[i]-1.0)*(J3[i]-1.0) + (J4[i]-1.0)*(J4[i]-1.0))/4.0
+      W = 0.5*mu[i]*((eps*eps + l2*l2 + l3*l3)/pow23 - 3.0) + mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23*(l1-eps) + 0.5*k*(l1-eps)*(l1-eps) + 0.5*bulk_modulus*((J1[i]-1.0)*(J1[i]-1.0) + (J2[i]-1.0)*(J2[i]-1.0) + (J3[i]-1.0)*(J3[i]-1.0) + (J4[i]-1.0)*(J4[i]-1.0))/4.0
 
   # Increment total elastic energy
   #if J*J > 1e-50:
@@ -129,10 +129,10 @@ def tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, n_tets, eps):
 
 # Newton dynamics (Integrate velocity into displacement)
 @njit(parallel=True)
-def move(n_nodes, Ft, Vt, coordinates, gamma, Vn0, rho, dt):
+def move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt):
   for i in prange(n_nodes):
-    Ft[i] -= Vt[i]*gamma*Vn0[i]
-    Vt[i] += Ft[i]/(Vn0[i]*rho)*dt
+    Ft[i] -= Vt[i]*damping_coef*Vn0[i]
+    Vt[i] += Ft[i]/(Vn0[i]*mass_density)*dt
   coordinates[:] += Vt[:]*dt
   Ft[:] = np.zeros((n_nodes,3), dtype = np.float64)
 

@@ -81,8 +81,7 @@ if __name__ == '__main__':
   print ('minimum edge lengths: ' + str(mine) + ' maximum edge lengths: ' + str(maxe) + ' average value of edge length: ' + str(ave))
 
   # Calculate the total volume of a tetrahedral mesh
-  Vn_init = np.zeros(n_nodes, dtype = np.float64)
-  Vm = volume_mesh(Vn_init, n_nodes, n_tets, tets, coordinates)
+  Vm = volume_mesh(n_nodes, n_tets, tets, coordinates)
   print ('Volume of mesh is ' + str(-Vm))
 
   # Calculate the total surface area of a tetrahedral mesh
@@ -93,24 +92,24 @@ if __name__ == '__main__':
   print ('Area of mesh is ' + str(Area))
 
   # Parameters
-  H = THICKNESS_CORTEX  #Cortical plate thickness
+  cortex_thickness = THICKNESS_CORTEX  #Cortical plate thickness
   mug = 1.0 #65.0 Shear modulus of gray matter
   muw = 1.167 #75.86 Shear modulus of white matter
-  K = 5.0 #100.0 Bulk modulus
-  mesh_spacing = args.meshspacing #0.003 0.01 Mesh spacing - set manually based on the average spacing in the mesh
-  rho = args.massdensity #0.0001 Mass density - adjust to run the simulation faster or slower
-  gamma = 0.5 #0.1 Damping coefficent
+  bulk_modulus = 5.0 
+  mesh_spacing = args.meshspacing #0.003 0.01 - set manually based on the average spacing in the mesh
+  mass_density = args.massdensity #0.0001 - adjust to run the simulation faster or slower
+  damping_coef = 0.5 #0.1 Damping coefficent
   di = 500 #Output data once every di steps
 
-  bw = 3.2 #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
-  mw = 8*mesh_spacing #Width of a cell in the linked cell algorithm for proximity detection
-  hs = 0.6*mesh_spacing #Thickness of proximity skin
-  hc = 0.2*mesh_spacing #Thickness of repulsive skin
-  kc = 10.0*K #100.0*K Contact stiffness
-  dt = args.stepcontrol*np.sqrt(rho*mesh_spacing*mesh_spacing/K) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
+  bounding_box = 3.2 #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
+  cell_width = 8*mesh_spacing #Width of a cell in the linked cell algorithm for proximity detection
+  prox_skin = 0.6*mesh_spacing #Thickness of proximity skin
+  repuls_skin = 0.2*mesh_spacing #Thickness of repulsive skin
+  kc = 10.0*bulk_modulus #100.0*K Contact stiffness
+  dt = args.stepcontrol*np.sqrt(mass_density*mesh_spacing*mesh_spacing/bulk_modulus) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
   print('dt is ' + str(dt))
   eps = 0.1 #Epsilon
-  k = 0.0
+  k = 0.0 #not used ?
   mpy = -0.004 #Midplane position
   t = 0.0 #Current time
   step = 0 #Current time step
@@ -204,37 +203,6 @@ if __name__ == '__main__':
   # Calculate normals of each surface triangle and apply these normals to surface nodes
   N0 = normalSurfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes, N0)
 
-  #num_cores = mp.cpu_count()
-  #pool = mp.Pool(mp.cpu_count())
-  #H = THICKNESS_CORTEX
-
-  # Elastic process
-  @jit(nopython=True)
-  def elasticProccess(d2s, H, tets, muw, mug, coordinates, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, n_tets):
-
-    # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
-    gm, mu = shearModulus(d2s, H, tets, n_tets, muw, mug)
-
-    # Deformed configuration of tetrahedra (At)
-    At = configDeform(coordinates, tets, n_tets)
-
-    # Calculate elastic forces
-    Ft = tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, n_tets, eps)
-
-    # Calculate normals of each deformed tetrahedron 
-    Nt = tetraNormals(N0, csn, tets, n_tets)
-
-    # Calculate relative tangential growth factor G
-    G = growthTensor_tangen(Nt, gm, at, G, n_tets)
-    #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
-
-    return Ft
-
-  #myfile = open("/home/x17wang/Codes/BrainGrowth/test.txt", "w")
-
-  #filename_nii_reso = "/home/x17wang/Exp/London/London-23weeks/brain_crisp_2_refilled.nii.gz"
-  #reso = 0.5
-
   end_time_initialization = time.time () - start_time_initialization
   print ('Time required for initialization : ' + str (end_time_initialization) )
 
@@ -255,28 +223,22 @@ if __name__ == '__main__':
     L = longitLength(t)
 
     # Calculate the thickness of growing layer
-    H = cortexThickness(THICKNESS_CORTEX, t)
+    cortex_thickness = cortexThickness(THICKNESS_CORTEX, t)
 
     # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn)
     Vn0, Vn = volumeNodal(G, A0, tets, coordinates, n_tets, n_nodes)
 
-    # Initialize elastic energy
-    #Ue = 0.0
-
-    # Calculate elastic forces
-    #Ft = elasticProccess(d2s, H, tets, muw, mug, Ut, A0, Ft, K, k, Vn, Vn0, eps, N0, csn, at, G, ne)
-
     # Calculate contact forces
-    Ft, NNLt = contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, faces, n_faces, bw, mw, hs, hc, kc, mesh_spacing, gr)
+    Ft, NNLt = contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, kc, mesh_spacing, gr)
     #myfile.write("%s\n" % NNLt)
     # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
-    gm, mu = shearModulus(d2s, H, tets, n_tets, muw, mug, gr)
+    gm, mu = shearModulus(d2s, cortex_thickness, tets, n_tets, muw, mug, gr)
 
     # Deformed configuration of tetrahedra (At)
     At = configDeform(coordinates, tets, n_tets)
 
     # Calculate elastic forces
-    Ft = tetraElasticity(At, A0, Ft, G, K, k, mu, tets, Vn, Vn0, n_tets, eps)
+    Ft = tetraElasticity(At, A0, Ft, G, bulk_modulus, k, mu, tets, Vn, Vn0, n_tets, eps)
 
     # Calculate normals of each deformed tetrahedron 
     Nt = tetraNormals(N0, csn, tets, n_tets)
@@ -287,7 +249,7 @@ if __name__ == '__main__':
     #G = 1.0 + GROWTH_RELATIVE*t
 
     # Midplane
-    Ft = midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, mpy, mesh_spacing, hc, K)
+    Ft = midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, mpy, mesh_spacing, repuls_skin, bulk_modulus)
 
     # Output
     if step % di == 0:
@@ -332,7 +294,7 @@ if __name__ == '__main__':
       start_time_simulation = time.time ()
 
     # Newton dynamics
-    Ft, coordinates, Vt = move(n_nodes, Ft, Vt, coordinates, gamma, Vn0, rho, dt)
+    Ft, coordinates, Vt = move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt)
 
     t += dt
     step += 1
