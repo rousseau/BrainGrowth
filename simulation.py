@@ -105,19 +105,19 @@ if __name__ == '__main__':
   cell_width = 8*mesh_spacing #Width of a cell in the linked cell algorithm for proximity detection
   prox_skin = 0.6*mesh_spacing #Thickness of proximity skin
   repuls_skin = 0.2*mesh_spacing #Thickness of repulsive skin
-  kc = 10.0*bulk_modulus #100.0*K Contact stiffness
+  contact_stiffness = 10.0*bulk_modulus #100.0*K Contact stiffness
   dt = args.stepcontrol*np.sqrt(mass_density*mesh_spacing*mesh_spacing/bulk_modulus) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
   print('dt is ' + str(dt))
   eps = 0.1 #Epsilon
-  k = 0.0 #not used ?
-  mpy = -0.004 #Midplane position
+  k_param = 0.0 #not used ?
+  midplane_pos = -0.004 #Midplane position
   t = 0.0 #Current time
   step = 0 #Current time step
   zoom = 1.0 #Zoom variable for visualization
 
-  csn = np.zeros(n_nodes, dtype = np.int64)  #Nearest surface nodes for all nodes
-  d2s = np.zeros(n_nodes, dtype = np.float64)  #Distances to nearest surface nodes for all nodes
-  N0 = np.zeros((n_surface_nodes,3), dtype = np.float64)  #Normals of surface nodes
+  nearest_surf_node = np.zeros(n_nodes, dtype = np.int64)  #Nearest surface nodes for all nodes
+  dist_2_surf = np.zeros(n_nodes, dtype = np.float64)  #Distances to nearest surface nodes for all nodes
+  surf_node_norms = np.zeros((n_surface_nodes,3), dtype = np.float64)  #Normals of surface nodes
   Vt = np.zeros((n_nodes,3), dtype = np.float64)  #Velocities
   Ft = np.zeros((n_nodes,3), dtype = np.float64)  #Forces
   #Vn0 = np.zeros(nn, dtype = float) #Nodal volumes in reference state
@@ -125,12 +125,12 @@ if __name__ == '__main__':
   # Ue = 0 #Elastic energy
 
   NNLt = [[] for _ in range (n_surface_nodes)] #Triangle-proximity lists for surface nodes
-  Utold = np.zeros( (n_surface_nodes,3), dtype = np.float64)  #Stores positions when proximity list is updated
+  coordinates_old = np.zeros( (n_surface_nodes,3), dtype = np.float64)  #Stores positions when proximity list is updated
   #ub = vb = wb = 0 #Barycentric coordinates of triangles
   #G = np.array([np.identity(3)]*ne)  
   shape = (n_tets,3,3)
-  G = np.zeros(shape, dtype = np.float64)  # Initial tangential growth tensor
-  G[:,np.arange(3),np.arange(3)] = 1.0
+  tan_growth_tensor = np.zeros(shape, dtype = np.float64)  # Initial tangential growth tensor
+  tan_growth_tensor[:,np.arange(3),np.arange(3)] = 1.0
   #G = [1.0]*ne
   #G = 1.0
   # End of parameters
@@ -186,22 +186,22 @@ if __name__ == '__main__':
       peak, amplitude, latency, peak_2, amplitude_2, latency_2 = Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2)
 
   # Normalize initial mesh coordinates, change mesh information by values normalized
-  coordinates0, coordinates, cog, maxd, miny = normalise_coord(coordinates0, coordinates, n_nodes, args.halforwholebrain)
+  coordinates0, coordinates, center_of_gravity, maxd, miny = normalise_coord(coordinates0, coordinates, n_nodes, args.halforwholebrain)
 
   '''# Initialize deformed coordinates
   Ut = Ut0'''
 
-  # Find the nearest surface nodes (csn) to nodes and distances to them (d2s)
-  csn, d2s = dist2surf(coordinates0, nodal_idx)
+  # Find the nearest surface nodes (nearest_surf_node) to nodes and distances to them (dist_2_surf)
+  nearest_surf_node, dist_2_surf = dist2surf(coordinates0, nodal_idx)
 
-  # Configuration of tetrahedra at reference state (A0)
-  A0 = configRefer(coordinates0, tets, n_tets)
+  # Configuration of tetrahedra at reference state (ref_state_tets)
+  ref_state_tets = configRefer(coordinates0, tets, n_tets)
 
   # Mark non-growing areas
   gr = markgrowth(coordinates0, n_nodes)
 
   # Calculate normals of each surface triangle and apply these normals to surface nodes
-  N0 = normalSurfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes, N0)
+  surf_node_norms = normalSurfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes, surf_node_norms)
 
   end_time_initialization = time.time () - start_time_initialization
   print ('Time required for initialization : ' + str (end_time_initialization) )
@@ -220,36 +220,36 @@ if __name__ == '__main__':
       at = growthRate(GROWTH_RELATIVE, t, n_tets)
       
     # Calculate the longitudinal length of the real brain
-    L = longitLength(t)
+    longi_length = longitLength(t)
 
     # Calculate the thickness of growing layer
     cortex_thickness = cortexThickness(THICKNESS_CORTEX, t)
 
     # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn)
-    Vn0, Vn = volumeNodal(G, A0, tets, coordinates, n_tets, n_nodes)
+    Vn0, Vn = volumeNodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes)
 
     # Calculate contact forces
-    Ft, NNLt = contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, kc, mesh_spacing, gr)
+    Ft, NNLt = contactProcess(coordinates, Ft, nodal_idx, coordinates_old, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, contact_stiffness, mesh_spacing, gr)
     #myfile.write("%s\n" % NNLt)
     # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
-    gm, mu = shearModulus(d2s, cortex_thickness, tets, n_tets, muw, mug, gr)
+    gm, mu = shearModulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr)
 
     # Deformed configuration of tetrahedra (At)
-    At = configDeform(coordinates, tets, n_tets)
+    material_tets = configDeform(coordinates, tets, n_tets)
 
     # Calculate elastic forces
-    Ft = tetraElasticity(At, A0, Ft, G, bulk_modulus, k, mu, tets, Vn, Vn0, n_tets, eps)
+    Ft = tetraElasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps)
 
     # Calculate normals of each deformed tetrahedron 
-    Nt = tetraNormals(N0, csn, tets, n_tets)
+    tet_norms = tetraNormals(surf_node_norms, nearest_surf_node, tets, n_tets)
 
     # Calculate relative tangential growth factor G
-    G = growthTensor_tangen(Nt, gm, at, G, n_tets)
+    tan_growth_tensor = growthTensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets)
     #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
     #G = 1.0 + GROWTH_RELATIVE*t
 
     # Midplane
-    Ft = midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, mpy, mesh_spacing, repuls_skin, bulk_modulus)
+    Ft = midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, midplane_pos, mesh_spacing, repuls_skin, bulk_modulus)
 
     # Output
     if step % di == 0:
@@ -258,28 +258,28 @@ if __name__ == '__main__':
       #writeTex(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, bt)
 
       # Obtain zoom parameter by checking the longitudinal length of the brain model
-      zoom_pos = paraZoom(coordinates, nodal_idx, L, n_surface_nodes)
+      zoom_pos = paraZoom(coordinates, nodal_idx, longi_length, n_surface_nodes)
 
       # Write .pov files and output mesh in .png files
       writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom, zoom_pos)
 
       # Write surface mesh output files in .txt files
-      writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom_pos, cog, maxd, miny, args.halforwholebrain)
+      writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom_pos, center_of_gravity, maxd, miny, args.halforwholebrain)
 
       # Convert surface mesh structure (from simulations) to .stl format file
-      mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, cog, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
+      mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
       
       # Convert surface mesh structure (from simulations) to .gii format file
-      mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, cog, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
+      mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
 
       # Convert mesh .stl to image .nii.gz
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
 
       # Convert 3d points to image voxel
-      #point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, cog, nn, miny)
+      #point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, center_of_gravity, nn, miny)
 
       # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
-      #mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, cog, maxd, nn, faces, tets, miny)
+      #mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, center_of_gravity, maxd, nn, faces, tets, miny)
 
       print ('step: ' + str(step) + ' t: ' + str(t) )
 
