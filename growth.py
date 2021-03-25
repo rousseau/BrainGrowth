@@ -120,11 +120,11 @@ def growthTensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
 
 # Calculate homogeneous growth factor G
 @jit
-def growthTensor_homo(tan_growth_tensor, n_tets, GROWTH_RELATIVE, t):
+def growthTensor_homo(G, n_tets, GROWTH_RELATIVE, t):
   for i in prange(n_tets):
-    tan_growth_tensor[i] = 1.0 + GROWTH_RELATIVE*t
+    G[i] = 1.0 + GROWTH_RELATIVE*t
 
-  return tan_growth_tensor
+  return G
 
 # Calculate homogeneous growth factor G (2nd version)
 @jit
