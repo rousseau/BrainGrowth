@@ -108,7 +108,7 @@ if __name__ == '__main__':
   dt = args.stepcontrol*np.sqrt(mass_density*mesh_spacing*mesh_spacing/bulk_modulus) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
   print('dt is ' + str(dt))
   eps = 0.1 #Epsilon
-  k_param = 0.0 #not used ?
+  k_param = 0.0
   midplane_pos = -0.004 #Midplane position
   t = 0.0 #Current time
   step = 0 #Current time step
