@@ -51,7 +51,6 @@ if __name__ == '__main__':
   parser.add_argument('-ms', '--meshspacing', help='Average spacing in the mesh', type=float, default=0.01, required=False) #default is 0.01
   parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh', type=float, default=0.01, required=False) #increase for speed, too high brings negativ jakobians, default is 0.01
   args = parser.parse_args()
-  args = parser.parse_args()
 
   # Parameters to change
   PATH_DIR = args.output # Path of results
