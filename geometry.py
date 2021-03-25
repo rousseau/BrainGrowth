@@ -68,7 +68,7 @@ def numberSurfaceNodes(faces, n_nodes, n_faces):
   for i in range(n_nodes):
     if nodal_idx_b[i] == 1:
       n_surface_nodes += 1 # Determine surface nodes
-  nodal_idx = np.zeros(n_surface_nodes, dtype=int) # SN: Nodal index map from surface to full mesh
+  nodal_idx = np.zeros(n_surface_nodes, dtype=int) # nodal_idx: Nodal index map from surface to full mesh
   p = 0 # Iterator
   for i in range(n_nodes):
     if nodal_idx_b[i] == 1:
