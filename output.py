@@ -136,7 +136,7 @@ def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, noda
   filepov.close()
 
 # Write surface mesh in .txt files
-def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom_pos, cog, maxd, miny, halforwholebrain):
+def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom_pos, center_of_gravity, maxd, miny, halforwholebrain):
 
   txtname = "B%d.txt"%(step)
 
@@ -152,12 +152,12 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal
   vertices_seg = np.zeros((n_surface_nodes,3), dtype = float)
 
   vertices[:,:] = Ut[nodal_idx[:],:]*zoom_pos
-  vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd
+  vertices_seg[:,1] = center_of_gravity[0] - vertices[:,0]*maxd
   if halforwholebrain.__eq__("half"):
     vertices_seg[:,0] = vertices[:,1]*maxd + miny
   else:
-    vertices_seg[:,0] = vertices[:,1]*maxd + cog[1]
-  vertices_seg[:,2] = cog[2] - vertices[:,2]*maxd
+    vertices_seg[:,0] = vertices[:,1]*maxd + center_of_gravity[1]
+  vertices_seg[:,2] = center_of_gravity[2] - vertices[:,2]*maxd
 
   completeName = os.path.join(foldname, txtname)
   filetxt = open(completeName, "w")
@@ -170,7 +170,7 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal
   filetxt.close()
 
 # Convert surface mesh structure (from simulations) to .stl format file
-def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, zoom_pos, cog, maxd, n_surface_nodes, faces, nodal_idx_b, miny, halforwholebrain):
+def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, halforwholebrain):
 
   stlname = "B%d.stl"%(step)
 
@@ -184,15 +184,15 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx
   vertices_seg = np.zeros((n_surface_nodes,3), dtype = float)
 
   vertices[:,:] = Ut[nodal_idx[:],:]*zoom_pos
-  vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd
-  #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
+  vertices_seg[:,1] = center_of_gravity[0] - vertices[:,0]*maxd
+  #vertices_seg[:,1] = vertices[:,0]*maxd + center_of_gravity[0]
   if halforwholebrain.__eq__("half"):
     vertices_seg[:,0] = vertices[:,1]*maxd + miny
   else:
-    vertices_seg[:,0] = vertices[:,1]*maxd + cog[1]
-  #vertices_seg[:,0] = cog[1] - vertices[:,1]*maxd
-  vertices_seg[:,2] = cog[2] - vertices[:,2]*maxd
-  #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
+    vertices_seg[:,0] = vertices[:,1]*maxd + center_of_gravity[1]
+  #vertices_seg[:,0] = center_of_gravity[1] - vertices[:,1]*maxd
+  vertices_seg[:,2] = center_of_gravity[2] - vertices[:,2]*maxd
+  #vertices_seg[:,2] = vertices[:,2]*maxd + center_of_gravity[2]
 
   f_indices[:,0] = nodal_idx_b[faces[:,0]]
   f_indices[:,1] = nodal_idx_b[faces[:,1]]
@@ -212,7 +212,7 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx
   brain.save(save_path, mode=Mode.ASCII)"""
   
 # Convert surface mesh structure (from simulations) to .gii format file
-def mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, zoom_pos, cog, maxd, n_surface_nodes, faces, nodal_idx_b, miny, halforwholebrain):
+def mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, halforwholebrain):
 
   stlname = "B%d.gii"%(step)
 
@@ -226,12 +226,12 @@ def mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_i
   vertices_seg = np.zeros((n_surface_nodes,3), dtype = float)
 
   vertices[:,:] = Ut[nodal_idx[:],:]*zoom_pos
-  vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd
+  vertices_seg[:,1] = center_of_gravity[0] - vertices[:,0]*maxd
   if halforwholebrain.__eq__("half"):
     vertices_seg[:,0] = vertices[:,1]*maxd + miny
   else:
-    vertices_seg[:,0] = vertices[:,1]*maxd + cog[1]
-  vertices_seg[:,2] = cog[2] - vertices[:,2]*maxd
+    vertices_seg[:,0] = vertices[:,1]*maxd + center_of_gravity[1]
+  vertices_seg[:,2] = center_of_gravity[2] - vertices[:,2]*maxd
 
   f_indices[:,0] = nodal_idx_b[faces[:,0]]
   f_indices[:,1] = nodal_idx_b[faces[:,1]]
@@ -242,7 +242,7 @@ def mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_i
   sio.write_mesh(mesh, save_path)
 
 # Convert mesh .stl to image .nii.gz
-def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, cog, n_nodes, miny):
+def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, center_of_gravity, n_nodes, miny):
 
   """stlname = "B%d.stl"%(step)
 
@@ -266,12 +266,12 @@ def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename
   vertices_seg = np.zeros((n_nodes,3), dtype = float)
 
   vertices[:,:] = Ut[:,:]*zoom_pos
-  vertices_seg[:,1] = (cog[0] - Ut[:,0]*maxd)  #/1.396
-  #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
+  vertices_seg[:,1] = (center_of_gravity[0] - Ut[:,0]*maxd)  #/1.396
+  #vertices_seg[:,1] = vertices[:,0]*maxd + center_of_gravity[0]
   vertices_seg[:,0] = (Ut[:,1]*maxd + miny)  #/1.564
-  #vertices_seg[:,0] = cog[1] - vertices[:,1]*maxd
-  vertices_seg[:,2] = (cog[2] - Ut[:,2]*maxd)  #/1.122
-  #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
+  #vertices_seg[:,0] = center_of_gravity[1] - vertices[:,1]*maxd
+  vertices_seg[:,2] = (center_of_gravity[2] - Ut[:,2]*maxd)  #/1.122
+  #vertices_seg[:,2] = vertices[:,2]*maxd + center_of_gravity[2]
 
   # Convert to binary image
   img = nib.load(filename_nii_reso)
@@ -334,7 +334,7 @@ def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii
   nib.save(img, file_nii_path)
 
 # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
-def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, coordinates, zoom_pos, cog, maxd, n_nodes, faces, tets, miny):
+def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, coordinates, zoom_pos, center_of_gravity, maxd, n_nodes, faces, tets, miny):
 
   niiname = "B%d_2.nii.gz"%(step)
 
@@ -345,12 +345,12 @@ def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_ni
   vertices_seg = np.zeros((n_nodes,3), dtype = float)
 
   vertices[:,:] = coordinates[:,:]*zoom_pos
-  vertices_seg[:,1] = cog[0] - coordinates[:,0]*maxd
-  #vertices_seg[:,1] = vertices[:,0]*maxd + cog[0]
+  vertices_seg[:,1] = center_of_gravity[0] - coordinates[:,0]*maxd
+  #vertices_seg[:,1] = vertices[:,0]*maxd + center_of_gravity[0]
   vertices_seg[:,0] = coordinates[:,1]*maxd + miny
-  #vertices_seg[:,0] = cog[1] - vertices[:,1]*maxd
-  vertices_seg[:,2] = cog[2] - coordinates[:,2]*maxd
-  #vertices_seg[:,2] = vertices[:,2]*maxd + cog[2]
+  #vertices_seg[:,0] = center_of_gravity[1] - vertices[:,1]*maxd
+  vertices_seg[:,2] = center_of_gravity[2] - coordinates[:,2]*maxd
+  #vertices_seg[:,2] = vertices[:,2]*maxd + center_of_gravity[2]
 
   """mesh = pymesh.form_mesh(vertices_seg, faces, tets)
   grid = pymesh.VoxelGrid(cell_size, mesh.dim)
@@ -392,7 +392,7 @@ def writeTex(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, bt):
   sio.write_texture(bt, file_gii_path) 
 
 '''# Convert mesh to binary .nii.gz image
-def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, cog, maxd, nn):
+def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, center_of_gravity, maxd, nn):
 
   nifname = "B%d.nii.gz"%(step)
 
@@ -402,16 +402,16 @@ def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoo
   vertices = np.zeros((nn,3), dtype = float)
   vertices_seg = np.zeros((nn,3), dtype = float)
   vertices[:,:] = Ut[:,:]*zoom_pos
-  vertices_seg[:,1] = cog[0] - vertices[:,0]*maxd
-  vertices_seg[:,0] = vertices[:,1]*maxd + cog[1]
-  vertices_seg[:,2] = cog[2] - vertices[:,2]*maxd
+  vertices_seg[:,1] = center_of_gravity[0] - vertices[:,0]*maxd
+  vertices_seg[:,0] = vertices[:,1]*maxd + center_of_gravity[1]
+  vertices_seg[:,2] = center_of_gravity[2] - vertices[:,2]*maxd
 
   # Calculate the center coordinate(x,y,z) of the mesh to define the binary image size
-  cog = np.sum(vertices_seg, axis=0)
-  cog /= nn 
+  center_of_gravity = np.sum(vertices_seg, axis=0)
+  center_of_gravity /= nn 
 
   # Convert mesh to binary image
-  outimage = np.zeros((2*int(round(cog[0]))+1, 2*int(round(cog[1]))+1, 2*int(round(cog[2]))+1), dtype=np.int16)
+  outimage = np.zeros((2*int(round(center_of_gravity[0]))+1, 2*int(round(center_of_gravity[1]))+1, 2*int(round(center_of_gravity[2]))+1), dtype=np.int16)
   for i in range(nn):
     outimage[int(round(vertices_seg[i,0])), int(round(vertices_seg[i,1])), int(round(vertices_seg[i,2]))] = 1
 

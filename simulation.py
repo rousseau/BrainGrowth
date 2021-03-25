@@ -209,7 +209,7 @@ if __name__ == '__main__':
   # Simulation loop
   start_time_simulation = time.time ()
   while t < 1.0:
-
+    
     # Calculate the relative growth rate
     if args.growthmethod.__eq__("regional"):
       if args.halforwholebrain.__eq__("half"):

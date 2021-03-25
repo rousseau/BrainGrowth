@@ -7,21 +7,21 @@ from numba import jit, njit, prange
 
 # Calculate elastic forces
 @njit(parallel=True)
-def tetraElasticity(At, A0, Ft, G, bulk_modulus, k, mu, tets, Vn, Vn0, n_tets, eps):
+def tetraElasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
 
   # Deformed volume
   #vol = det(At)/6.0
 
   # Apply growth to reference state
   Ar = np.zeros((n_tets,3,3), dtype=np.float64)
-  Ar[:] = dot_mat_dim_3(G[:], A0[:])
-  #Ar[:] = dot_const_mat_dim_3(G, A0[:])
+  Ar[:] = dot_mat_dim_3(tan_growth_tensor[:], ref_state_tets[:])
+  #Ar[:] = dot_const_mat_dim_3(G, ref_state_tets[:])
   #Ar = np.dot(At, G)
-  #Ar = G*np.array(A0)
+  #Ar = G*np.array(ref_state_tets)
 
   # Calculate deformation gradient
   F = np.zeros((n_tets,3,3), dtype=np.float64)
-  F[:] = dot_mat_dim_3(At[:], inv_dim_3(Ar[:]))   # Ar: rest tetra, At: material tetra
+  F[:] = dot_mat_dim_3(material_tets[:], inv_dim_3(Ar[:]))   # Ar: rest tetra, At: material tetra
 
   # Calculate left Cauchy-Green strain tensor
   B = np.zeros((n_tets,3,3), dtype=np.float64)
@@ -95,11 +95,11 @@ def tetraElasticity(At, A0, Ft, G, bulk_modulus, k, mu, tets, Vn, Vn0, n_tets, e
 
       Pd = np.identity(3)
       pow23 = np.power(eps*l2*l3, 2.0/3.0)
-      Pd[0,0] = mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23 + k*(l1-eps) + bulk_modulus*(Ja[i]-1.0)*l2*l3
+      Pd[0,0] = mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23 + k_param*(l1-eps) + bulk_modulus*(Ja[i]-1.0)*l2*l3
       Pd[1,1] = mu[i]/3.0*(-eps*eps/l2 + 2.0*l2 - l3*l3/l2)/pow23 + mu[i]/9.0*(-4.0*eps/l2 - 4.0/eps*l2 + 2.0/eps/l2*l3*l3)/pow23*(l1-eps) + bulk_modulus*(Ja[i]-1.0)*l1*l3
       Pd[2,2] = mu[i]/3.0*(-eps*eps/l3 - l2*l2/l3 + 2.0*l3)/pow23 + mu[i]/9.0*(-4.0*eps/l3 + 2.0/eps*l2*l2/l3 - 4.0/eps*l3)/pow23*(l1-eps) + bulk_modulus*(Ja[i]-1.0)*l1*l2
       P = np.dot(U, np.dot(Pd, v2.transpose()))
-      W = 0.5*mu[i]*((eps*eps + l2*l2 + l3*l3)/pow23 - 3.0) + mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23*(l1-eps) + 0.5*k*(l1-eps)*(l1-eps) + 0.5*bulk_modulus*((J1[i]-1.0)*(J1[i]-1.0) + (J2[i]-1.0)*(J2[i]-1.0) + (J3[i]-1.0)*(J3[i]-1.0) + (J4[i]-1.0)*(J4[i]-1.0))/4.0
+      W = 0.5*mu[i]*((eps*eps + l2*l2 + l3*l3)/pow23 - 3.0) + mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23*(l1-eps) + 0.5*k_param*(l1-eps)*(l1-eps) + 0.5*bulk_modulus*((J1[i]-1.0)*(J1[i]-1.0) + (J2[i]-1.0)*(J2[i]-1.0) + (J3[i]-1.0)*(J3[i]-1.0) + (J4[i]-1.0)*(J4[i]-1.0))/4.0
 
   # Increment total elastic energy
   #if J*J > 1e-50:

@@ -40,14 +40,14 @@ def createNNLtriangle(NNLt, coordinates, faces, nodal_idx, n_surface_nodes, n_fa
 
 # Calculate contact forces
 #@jit
-def contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, kc, mesh_spacing, gr):
+def contactProcess(coordinates, Ft, nodal_idx, coordinates_old, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, contact_stiffness, mesh_spacing, gr):
   maxDist = 0.0
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
-  maxDist = max(norm_dim_3(coordinates[nodal_idx[:]] - Utold[:]))
+  maxDist = max(norm_dim_3(coordinates[nodal_idx[:]] - coordinates_old[:]))
   if maxDist > 0.5*(prox_skin-repuls_skin):
     NNLt = createNNLtriangle(NNLt, coordinates, faces, nodal_idx, n_surface_nodes, n_faces, prox_skin, bounding_box, cell_width) # Generates point-triangle proximity lists (NNLt[n_surface_nodes]) using the linked cell algorithm
     for i in range(n_surface_nodes):
-      Utold[i] = coordinates[nodal_idx[i]]
+      coordinates_old[i] = coordinates[nodal_idx[i]]
   for i in range(n_surface_nodes): # Loop through surface points
     for tp in range(len(NNLt[i])):
       pt = nodal_idx[i] # A surface point index
@@ -60,7 +60,7 @@ def contactProcess(coordinates, Ft, nodal_idx, Utold, n_surface_nodes, NNLt, fac
         cc *= 1.0/rc
         Ntri = cross_dim_2(coordinates[faces[tri,1]] - coordinates[faces[tri,0]], coordinates[faces[tri,2]] - coordinates[faces[tri,0]]) # Triangle normal
         Ntri *= 1.0/np.linalg.norm(Ntri)
-        fn = cc*(rc-repuls_skin)/repuls_skin*kc*mesh_spacing*mesh_spacing # kc = 10.0*K Contact stiffness
+        fn = cc*(rc-repuls_skin)/repuls_skin*contact_stiffness*mesh_spacing*mesh_spacing # kc = 10.0*K Contact stiffness
         if np.dot(fn,Ntri) < 0.0:
           fn -= Ntri*np.dot(fn,Ntri)*2.0
         Ft[faces[tri,0]] -= fn*ubt

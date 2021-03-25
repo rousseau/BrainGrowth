@@ -7,21 +7,21 @@ from scipy import spatial
 from scipy import pi,sqrt,exp
 import scipy.special as sp
 
-# Find the nearest surface nodes to nodes (csn) and distances to them (d2s) - these are needed to set up the growth of the gray matter
+# Find the nearest surface nodes to nodes (csn) and distances to them (dist_2_surf) - these are needed to set up the growth of the gray matter
 @jit
 def dist2surf(coordinates0, nodal_idx):
   #csn = np.zeros(nn)  # Nearest surface nodes
-  #d2s = np.zeros(nn)  # Distances to nearest surface node
+  #dist_2_surf = np.zeros(nn)  # Distances to nearest surface node
   """for i in prange(nn):
     d2 = dot_vec_dim_3(Ut0[SN[:]] - Ut0[i], Ut0[SN[:]] - Ut0[i])
     csn[i] = np.argmin(d2)
-    d2s[i] = sqrt(np.min(d2))"""
+    dist_2_surf[i] = sqrt(np.min(d2))"""
   tree = spatial.KDTree(coordinates0[nodal_idx[:]])
   pp = tree.query(coordinates0)
   csn = pp[1]  # Nearest surface nodes
-  d2s = pp[0]  # Distances to nearest surface node
+  dist_2_surf = pp[0]  # Distances to nearest surface node
 
-  return csn, d2s
+  return csn, dist_2_surf
 
 # Calculate the global relative growth rate for half or whole brain
 @jit
@@ -89,42 +89,42 @@ def cortexThickness(THICKNESS_CORTEX, t):
 
 # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
 @njit(parallel=True)
-def shearModulus(d2s, cortex_thickness, tets, n_tets, muw, mug, gr):
+def shearModulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):
   gm = np.zeros(n_tets, dtype=np.float64)
   mu = np.zeros(n_tets, dtype=np.float64)
   for i in prange(n_tets):
-    gm[i] = 1.0/(1.0 + math.exp(10.0*(0.25*(d2s[tets[i,0]] + d2s[tets[i,1]] + d2s[tets[i,2]] + d2s[tets[i,3]])/cortex_thickness - 1.0)))*0.25*(gr[tets[i,0]] + gr[tets[i,1]] + gr[tets[i,2]] + gr[tets[i,3]])
+    gm[i] = 1.0/(1.0 + math.exp(10.0*(0.25*(dist_2_surf[tets[i,0]] + dist_2_surf[tets[i,1]] + dist_2_surf[tets[i,2]] + dist_2_surf[tets[i,3]])/cortex_thickness - 1.0)))*0.25*(gr[tets[i,0]] + gr[tets[i,1]] + gr[tets[i,2]] + gr[tets[i,3]])
     #wm[i] = 1.0 - gm[i]
     mu[i] = muw*(1.0 - gm[i]) + mug*gm[i]  # Global modulus of white matter and gray matter
 
   return gm, mu
 
-# Calculate relative (relates to d2s) tangential growth factor G
+# Calculate relative (relates to dist_2_surf) tangential growth factor G
 @jit
-def growthTensor_tangen(Nt, gm, at, G, n_tets):
+def growthTensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
   A = np.zeros((n_tets,3,3), dtype=np.float64)
-  A[:,0,0] = Nt[:,0]*Nt[:,0]
-  A[:,0,1] = Nt[:,0]*Nt[:,1]
-  A[:,0,2] = Nt[:,0]*Nt[:,2]
-  A[:,1,0] = Nt[:,0]*Nt[:,1]
-  A[:,1,1] = Nt[:,1]*Nt[:,1]
-  A[:,1,2] = Nt[:,1]*Nt[:,2]
-  A[:,2,0] = Nt[:,0]*Nt[:,2]
-  A[:,2,1] = Nt[:,1]*Nt[:,2]
-  A[:,2,2] = Nt[:,2]*Nt[:,2]
+  A[:,0,0] = tet_norms[:,0]*tet_norms[:,0]
+  A[:,0,1] = tet_norms[:,0]*tet_norms[:,1]
+  A[:,0,2] = tet_norms[:,0]*tet_norms[:,2]
+  A[:,1,0] = tet_norms[:,0]*tet_norms[:,1]
+  A[:,1,1] = tet_norms[:,1]*tet_norms[:,1]
+  A[:,1,2] = tet_norms[:,1]*tet_norms[:,2]
+  A[:,2,0] = tet_norms[:,0]*tet_norms[:,2]
+  A[:,2,1] = tet_norms[:,1]*tet_norms[:,2]
+  A[:,2,2] = tet_norms[:,2]*tet_norms[:,2]
   for i in prange(n_tets):
-    G[i] = np.identity(3) + (np.identity(3) - A[i])*gm[i]*at[i]
+    tan_growth_tensor[i] = np.identity(3) + (np.identity(3) - A[i])*gm[i]*at[i]
   #G[i] = np.identity(3) + (np.identity(3) - np.matrix([[Nt[0]*Nt[0], Nt[0]*Nt[1], Nt[0]*Nt[2]], [Nt[0]*Nt[1], Nt[1]*Nt[1], Nt[1]*Nt[2]], [Nt[0]*Nt[2], Nt[1]*Nt[2], Nt[2]*Nt[2]]]))*gm*at
 
-  return G
+  return tan_growth_tensor
 
 # Calculate homogeneous growth factor G
 @jit
-def growthTensor_homo(G, n_tets, GROWTH_RELATIVE, t):
+def growthTensor_homo(tan_growth_tensor, n_tets, GROWTH_RELATIVE, t):
   for i in prange(n_tets):
-    G[i] = 1.0 + GROWTH_RELATIVE*t
+    tan_growth_tensor[i] = 1.0 + GROWTH_RELATIVE*t
 
-  return G
+  return tan_growth_tensor
 
 # Calculate homogeneous growth factor G (2nd version)
 @jit
@@ -134,7 +134,7 @@ def growthTensor_homo_2(G, n_tets, GROWTH_RELATIVE):
 
   return G
 
-# Calculate cortical layer (relates to d2s) homogeneous growth factor G
+# Calculate cortical layer (relates to dist_2_surf) homogeneous growth factor G
 @jit
 def growthTensor_relahomo(gm, G, n_tets, GROWTH_RELATIVE, t):
   for i in prange(n_tets):
