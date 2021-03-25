@@ -14,8 +14,31 @@ from scipy.sparse.linalg import eigs
 from sklearn.cluster import KMeans
 import scipy.special as spe
 
-# Import mesh, each line as a list
+'''
+TODO: state purpose of geometry and explain data structure with indexes and stuff
+'''
+
 def importMesh(path):
+  '''
+  Converts a netgen mesh to a list of np.arrays
+
+  Structure of mesh data:
+  mesh [0] = number of nodes
+  mesh[1:6761]: nodes, defined as 3 point numpy arrays
+
+  mesh [6762] = number of tets
+  mesh [6763:42259]: tests, defines as 1 indicator for handeness + 4 summits.
+
+  mesh [42260] = number of faces
+  mesh [42261:46424] = faces, defines as 1 indicator for handeness + 3 indexes. 
+
+  Args:
+  path (string): path of mesh file
+
+  Returns:
+  mesh (list): lsit of np.arrays
+  
+  '''
   mesh = []
   with open(path) as inputfile:
     for line in inputfile:
@@ -23,12 +46,20 @@ def importMesh(path):
     for i in range(len(mesh)):
       mesh[i] = list(filter(None, mesh[i]))
       mesh[i] = np.array([float(a) for a in mesh[i]])
-  #mesh = np.asarray(mesh, dtype=np.float64)
   return mesh
 
-# Read nodes, get undeformed coordinates x y z and save them in Ut0, initialize deformed coordinates Ut
 @njit(parallel=True)
 def vertex(mesh):
+  '''
+  Extract coordinates and number of nodes from mesh
+
+  Args:
+  mesh (list): mesh file as a list of np.arrays
+
+  Returns:
+  coordinates (np.array): list of 3 cartesian points
+  n_nodes (int): number of nodes
+  '''
   n_nodes = np.int64(mesh[0][0])
   coordinates0 = np.zeros((n_nodes,3), dtype=np.float64) # Undeformed coordinates of nodes
   #Ut = np.zeros((n_nodes,3), dtype = float) # Deformed coordinates of nodes
@@ -39,9 +70,19 @@ def vertex(mesh):
   
   return coordinates0, coordinates, n_nodes
 
-# Read element indices (tets: index of four vertices of tetrahedra) and get number of elements (ne)
 @njit(parallel=True)
 def tetraVerticesIndices(mesh, n_nodes):
+  '''
+  Takes a list of arrays as an input and returns tets and number of tets. Tets are defined as 4 indexes of vertices from the coordinate list
+
+  Args:
+  mesh (list): mesh file as a list of np.arrays
+  n_nodes (int): number of nodes
+
+  Returns:
+  tets (np.array): list of 4 vertices indexes
+  n_tets(int): number of tets in the mesh
+  '''
   n_tets = np.int64(mesh[n_nodes+1][0])
   tets = np.zeros((n_tets,4), dtype=np.int64) # Index of four vertices of tetrahedra
   for i in prange(n_tets):
@@ -49,9 +90,19 @@ def tetraVerticesIndices(mesh, n_nodes):
   
   return tets, n_tets
 
-# Read surface triangle indices (faces: index of three vertices of triangles) and get number of surface triangles (nf)
 @njit(parallel=True)
 def triangleIndices(mesh, n_nodes, n_tets):
+  '''
+  Takes a list of arrays as an input and returns faces and number of faces. Faces are defined as 3 indexes of vertices from the coordinate list, only on the surface
+
+  Args:
+  mesh (list): mesh file as a list of np.arrays
+  n_nodes (int): number of nodes
+
+  Returns:
+  faces (np.array): list of 3 vertices indexes
+  n_faces(int): number of faces in the mesh
+  '''
   n_faces = np.int64(mesh[n_nodes+n_tets+2][0])
   faces = np.zeros((n_faces,3), dtype=np.int64) # Index of three vertices of triangles
   for i in prange(n_faces):
@@ -59,9 +110,19 @@ def triangleIndices(mesh, n_nodes, n_tets):
 
   return faces, n_faces
 
-# Determine surface nodes and index maps
 @jit
 def numberSurfaceNodes(faces, n_nodes, n_faces):
+  """
+  Define number of surface nodes and nodal indexes used for contact processing and NNLt triangle
+  Args:
+  faces (numpy array): faces index
+  n_nodes (int): number of nodes
+  n_faces (int): number of faces
+  Returns:
+  n_surface_nodes (int): Number of surface nodes
+  nodal_idx (list): list of surface nodes, stops at last surface node
+  nodal_idxb (list): list of surface nodes, non surface nodes are labelled with 0
+  """
   n_surface_nodes = 0 # Number of nodes at the surface
   nodal_idx_b = np.zeros(n_nodes, dtype=int) # nodal_idx_b: Nodal index map from full mesh to surface. Initialization nodal_idx_b with all 0
   nodal_idx_b[faces[:,0]] = nodal_idx_b[faces[:,1]] = nodal_idx_b[faces[:,2]] = 1
@@ -78,42 +139,63 @@ def numberSurfaceNodes(faces, n_nodes, n_faces):
 
   return n_surface_nodes, nodal_idx, nodal_idx_b
 
-# Check minimum, maximum and average edge lengths (average mesh spacing) at the surface
+
 @jit(nopython=True, parallel=True)
-def edge_length(Ut, faces, n_faces):
+def edge_length(coordinates, faces, n_faces):
+  """
+  Calculate minimum, maximum and average edge length at the surface of mesh
+  Args:
+  coordinates (numpy array): cartesian cooridnates of vertices
+  faces (numpy array): faces index
+  n_faces (int): number of faces
+  Returns:
+  mine (float): minimum edge length
+  maxe (float): maximum edge length
+  ave: average edge length
+  """
   mine = 1e9
   maxe = ave = 0.0
   for i in range(n_faces):
-    mine = min(np.linalg.norm(Ut[faces[i,1]] - Ut[faces[i,0]]), mine)
-    mine = min(np.linalg.norm(Ut[faces[i,2]] - Ut[faces[i,0]]), mine)
-    mine = min(np.linalg.norm(Ut[faces[i,2]] - Ut[faces[i,1]]), mine)
-    maxe = max(np.linalg.norm(Ut[faces[i,1]] - Ut[faces[i,0]]), maxe)
-    maxe = max(np.linalg.norm(Ut[faces[i,2]] - Ut[faces[i,0]]), maxe)
-    maxe = max(np.linalg.norm(Ut[faces[i,2]] - Ut[faces[i,1]]), maxe)
-    ave += np.linalg.norm(Ut[faces[i,2]] - Ut[faces[i,1]]) + np.linalg.norm(Ut[faces[i,2]] - Ut[faces[i,0]]) + np.linalg.norm(Ut[faces[i,1]] - Ut[faces[i,0]])
+    mine = min(np.linalg.norm(coordinates[faces[i,1]] - coordinates[faces[i,0]]), mine)
+    mine = min(np.linalg.norm(coordinates[faces[i,2]] - coordinates[faces[i,0]]), mine)
+    mine = min(np.linalg.norm(coordinates[faces[i,2]] - coordinates[faces[i,1]]), mine)
+    maxe = max(np.linalg.norm(coordinates[faces[i,1]] - coordinates[faces[i,0]]), maxe)
+    maxe = max(np.linalg.norm(coordinates[faces[i,2]] - coordinates[faces[i,0]]), maxe)
+    maxe = max(np.linalg.norm(coordinates[faces[i,2]] - coordinates[faces[i,1]]), maxe)
+    ave += np.linalg.norm(coordinates[faces[i,2]] - coordinates[faces[i,1]]) + np.linalg.norm(coordinates[faces[i,2]] - coordinates[faces[i,0]]) + np.linalg.norm(coordinates[faces[i,1]] - coordinates[faces[i,0]])
   ave /= 3.0*n_faces
 
   return mine, maxe, ave
 
 # Return the total volume of a tetrahedral mesh
 @jit(nopython=True, parallel=True)
-def volume_mesh(n_nodes, n_tets, tets, Ut):
+def volume_mesh(n_nodes, n_tets, tets, coordinates):
+  '''
+  Calculate total volume of the mesh
+  Args:
+  n_nodes (int): number of nodes
+  n_tets (int): number of tets
+  tets (numpy array): tetras index
+  coordinates (numpy array): 
+  Returns:
+  Vm_init (float): total volume of mesh (sign for inversion)
+  '''
+
   Vn_init = np.zeros(n_nodes, dtype = np.float64)
   A_init = np.zeros((n_tets,3,3), dtype=np.float64)
   vol_init = np.zeros(n_tets, dtype=np.float64)
 
-  A_init[:,0] = Ut[tets[:,1]] - Ut[tets[:,0]]
-  A_init[:,1] = Ut[tets[:,2]] - Ut[tets[:,0]]
-  A_init[:,2] = Ut[tets[:,3]] - Ut[tets[:,0]]
+  A_init[:,0] = coordinates[tets[:,1]] - coordinates[tets[:,0]]
+  A_init[:,1] = coordinates[tets[:,2]] - coordinates[tets[:,0]]
+  A_init[:,2] = coordinates[tets[:,3]] - coordinates[tets[:,0]]
   vol_init[:] = det_dim_3(transpose_dim_3(A_init[:]))/6.0
 
   for i in range(n_tets):
-    #vol_init[i] = np.linalg.det(np.transpose(A_init[i]))/6.0
     Vn_init[tets[i,:]] += vol_init[i]/4.0
 
   Vm_init = np.sum(Vn_init)
 
-  return Vm_init
+  return -Vm_init
 
 # Define the label for each surface node for half brain
 @jit
@@ -455,7 +537,7 @@ def configDeform(coordinates, tets, n_tets):
   return At
 
 # Calculate normals of each surface triangle and apply these normals to surface nodes
-@jit(nopython=True, parallel=True) 
+@jit(nopython=False, parallel=True) 
 def normalSurfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes,surf_node_norms):
   Ntmp = np.zeros((n_faces,3), dtype=np.float64)
   Ntmp = cross_dim_3(coordinates0[faces[:,1]] - coordinates0[faces[:,0]], coordinates0[faces[:,2]] - coordinates0[faces[:,0]])

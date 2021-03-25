@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
   # Calculate the total volume of a tetrahedral mesh
   Vm = volume_mesh(n_nodes, n_tets, tets, coordinates)
-  print ('Volume of mesh is ' + str(-Vm))
+  print ('Volume of mesh is ' + str(Vm))
 
   # Calculate the total surface area of a tetrahedral mesh
   Area = 0.0
