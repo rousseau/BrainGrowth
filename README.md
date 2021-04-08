@@ -77,3 +77,7 @@ For sphere5.mesh:
 
 #### Input mesh image， output dynamic process
 <img src="./docs/B0.png" width = "430px" /><img src="./docs/sphere5.gif" width = "430px" />
+
+## Publications
+Wang, X., Lefèvre, J., Bohi, A. et al. The influence of biophysical parameters in a biomechanical model of cortical folding patterns. Sci Rep 11, 7686 (2021). https://doi.org/10.1038/s41598-021-87124-y
+
