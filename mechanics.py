@@ -48,7 +48,7 @@ def tetraElasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_m
 
     if ll3 >= eps**2 and J[i] > 0.0: # No need for SVD
 
-     # Calculate Cauchy stress (S), Piola-Kirchhoff stress (P) and volumetric strain energy density of Neo-Hookean (W)
+      # Calculate Cauchy stress (S), Piola-Kirchhoff stress (P) and volumetric strain energy density of Neo-Hookean (W)
       powJ23 = np.power(J[i], 2.0/3.0)
       S = (B[i] - np.identity(3)*np.trace(B[i])/3.0)*mu[i]/(J[i]*powJ23) + np.identity(3)*bulk_modulus*(Ja[i]-1.0)
       P = np.dot(S, inv(F[i].transpose()))*J[i]
