@@ -61,12 +61,13 @@ faces = np.array(faces).astype(int) - 1
 mesh_o.faces = faces
 mesh_o.vertices = vertices/10
 
+steps = np.array([14500])
+q = 0
+
 # Create matrices of intersection points and depths (EUD distances)
 inters = np.zeros((np.size(mesh_o.vertices, 0), 3), dtype = np.float32)
 depth = np.zeros((np.size(steps), np.size(mesh_o.vertices, 0)), dtype = np.float32)
 
-steps = np.array([14500])
-q = 0
 for i in steps:
     # Load the deformed mesh (.stl and .txt files)
     mesh_file = "B%d.stl"%(i)
