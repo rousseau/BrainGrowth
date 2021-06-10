@@ -61,13 +61,12 @@ faces = np.array(faces).astype(int) - 1
 mesh_o.faces = faces
 mesh_o.vertices = vertices/10
 
-steps = np.array([14500])
-q = 0
-
 # Create matrices for intersection points and depths (EUD distances)
 inters = np.zeros((np.size(mesh_o.vertices, 0), 3), dtype = np.float32)
 depth = np.zeros((np.size(steps), np.size(mesh_o.vertices, 0)), dtype = np.float32)
 
+steps = np.array([14500])
+q = 0
 for i in steps:
     # Load the deformed mesh (.stl and .txt files)
     mesh_file = "B%d.stl"%(i)
@@ -119,7 +118,7 @@ for i in steps:
     q += 1
 
 
-# 3D GI
+# 3D Gyrification Index (defined as the ratio of the cortical surface area to the area of its smooth convex hull)
 folder='/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/data/sphere5_402133/pov_H0.042000AT1.829000/'
 mesh_file_2 = 'B0.gii'
 G1 = []
