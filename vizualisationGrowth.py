@@ -40,7 +40,7 @@ for i in steps:
     A.append(curvature_mean)
 
 
-# Sulcal depth by using the EUD distance between the deformed mesh surface and the corresponding convex hull
+# Sulcal depth by using the EUD distance between the surface of deformed mesh and the corresponding convex hull
 folder='/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/data/sphere5_realsphpt/pov_H0.046100AT1.829000/'
 
 # Load the initial mesh (.stl and .txt files)
@@ -112,7 +112,7 @@ for i in steps:
 				    # Return the intersection point
                     inters[j, :] = intersections
 
-    # the EUD distance between the vertices of deformed mesh and the intersection points on the convex hull
+    # Calculate the EUD distance between the vertices of deformed mesh and the intersection points on the convex hull
     depth[q, :] = np.sqrt((mesh1.vertices[:,0] - inters[:, 0])**2+(mesh1.vertices[:,1] - inters[:, 1])**2+(mesh1.vertices[:,2] - inters[:, 2])**2)
 
     q += 1
