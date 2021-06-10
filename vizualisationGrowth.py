@@ -18,6 +18,9 @@ splt.pyglet_plot(mesh, curvature)
 
 
 # Mean curvature computed by Rusinkiewicz estimation
+""" Rusinkiewicz, Szymon. "Estimating curvatures and their derivatives on triangle meshes." Proceedings. 2nd International Symposium 
+on 3D Data Processing, Visualization and Transmission, 2004. 3DPVT 2004.. IEEE, 2004."""
+
 folder='/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/data/sphere5_402133/pov_H0.042000AT1.829000/'
 steps = np.arange(0, 45000, 1000)
 A = []
