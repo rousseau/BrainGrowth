@@ -42,11 +42,13 @@ for i in steps:
 
 # Sulcal depth by using the EUD distance between the deformed mesh surface and the corresponding convex hull
 folder='/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/data/sphere5_realsphpt/pov_H0.046100AT1.829000/'
-mesh_file_2 = 'B0.stl'
-mesh_o = trimesh.load(folder+mesh_file_2)
+
+# Load the initial mesh (.stl and .txt files)
+mesh_file_o = 'B0.stl'
+mesh_o = trimesh.load(folder+mesh_file_o)
 m = []
-txt_file_2 = "B0.txt"
-with open(folder + txt_file_2) as inputfile:
+txt_file_o = "B0.txt"
+with open(folder + txt_file_o) as inputfile:
     for line in inputfile:
         m.append(line.strip().split(' '))
     for j in range(len(m)):
@@ -62,10 +64,12 @@ mesh_o.vertices = vertices/10
 steps = np.array([14500])
 q = 0
 
-inters_1 = np.zeros((np.size(mesh_o.vertices, 0), 3), dtype = np.float32)
-A = np.zeros((np.size(steps), np.size(mesh_o.vertices, 0)), dtype = np.float32)
+# Create matrices for intersection points and depths (EUD distances)
+inters = np.zeros((np.size(mesh_o.vertices, 0), 3), dtype = np.float32)
+depth = np.zeros((np.size(steps), np.size(mesh_o.vertices, 0)), dtype = np.float32)
 
 for i in steps:
+    # Load the deformed mesh (.stl and .txt files)
     mesh_file = "B%d.stl"%(i)
     mesh1 =  trimesh.load(folder+mesh_file)
     m = []
@@ -82,21 +86,35 @@ for i in steps:
     faces = np.array(faces).astype(int) - 1
     mesh1.faces = faces
     mesh1.vertices = vertices
+	
+	# Calculate the convex hull of the deformed mesh
     mesh_2 = trimesh.convex.convex_hull(mesh1, qhull_options='QbB Pp Qt')
+	
+	# Iterate through all vertices of mesh
     for j in range(np.size(mesh_o.vertices, 0)):
+		# Calculate the endpoints of line segment
         endpoints = np.array([mesh_o.vertices[j,:], mesh_o.vertices[j,:]+10000*(mesh1.vertices[j,:]-mesh_o.vertices[j,:])])
-        for k in range(np.size(mesh_2.faces, 0)):
+        # Iterate through all triangles of convex hull
+		for k in range(np.size(mesh_2.faces, 0)):
+		    # Calculate the normal of the plane where the triangle lies
             plane_normal = np.cross(mesh_2.vertices[mesh_2.faces[k,1], :]-mesh_2.vertices[mesh_2.faces[k,0], :], mesh_2.vertices[mesh_2.faces[k,2], :]-mesh_2.vertices[mesh_2.faces[k,0], :])
-            intersections, valid = trimesh.intersections.plane_lines(mesh_2.vertices[mesh_2.faces[k,0], :], plane_normal, endpoints, line_segments=True)
-            if valid == True:
+            # Calculate the intersection of line segment and plane 
+			intersections, valid = trimesh.intersections.plane_lines(mesh_2.vertices[mesh_2.faces[k,0], :], plane_normal, endpoints, line_segments=True) #line_segments(bool) if True, only returns intersections as valid if vertices from endpoints are on different sides of the plane
+            # Indicate whether a valid intersection exists for input line segment
+			if valid == True:
+			    # Calculate the area of the intersection point and any two points of the triangle 
                 Area1 = 0.5 * np.linalg.norm(np.cross(mesh_2.vertices[mesh_2.faces[k,0], :] - intersections, mesh_2.vertices[mesh_2.faces[k,1], :] - intersections))  
                 Area2 = 0.5 * np.linalg.norm(np.cross(mesh_2.vertices[mesh_2.faces[k,0], :] - intersections, mesh_2.vertices[mesh_2.faces[k,2], :] - intersections))  
                 Area3 = 0.5 * np.linalg.norm(np.cross(mesh_2.vertices[mesh_2.faces[k,1], :] - intersections, mesh_2.vertices[mesh_2.faces[k,2], :] - intersections))  
-                Area4 = 0.5 * np.linalg.norm(np.cross(mesh_2.vertices[mesh_2.faces[k,1], :] - mesh_2.vertices[mesh_2.faces[k,0], :], mesh_2.vertices[mesh_2.faces[k,2], :] - mesh_2.vertices[mesh_2.faces[k,0], :]))
-                if np.absolute(Area1 + Area2 + Area3 - Area4) < 1e-10:
-                    inters_1[j, :] = intersections   
-    
-    A[q, :] = np.sqrt((mesh1.vertices[:,0] - inters_1[:, 0])**2+(mesh1.vertices[:,1] - inters_1[:, 1])**2+(mesh1.vertices[:,2] - inters_1[:, 2])**2)
+                # Calculate the area of the triangle 
+				Area4 = 0.5 * np.linalg.norm(np.cross(mesh_2.vertices[mesh_2.faces[k,1], :] - mesh_2.vertices[mesh_2.faces[k,0], :], mesh_2.vertices[mesh_2.faces[k,2], :] - mesh_2.vertices[mesh_2.faces[k,0], :]))
+                # Determine whether the intersection point is inside the triangle
+				if np.absolute(Area1 + Area2 + Area3 - Area4) < 1e-10:
+				    # Return the intersection point
+                    inters[j, :] = intersections
+
+    # the EUD distance between the vertices of deformed mesh and the intersection points on the convex hull
+    depth[q, :] = np.sqrt((mesh1.vertices[:,0] - inters[:, 0])**2+(mesh1.vertices[:,1] - inters[:, 1])**2+(mesh1.vertices[:,2] - inters[:, 2])**2)
 
     q += 1
 
