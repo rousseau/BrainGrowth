@@ -40,7 +40,7 @@ for i in steps:
     A.append(curvature_mean)
 
 
-# Sulcal depth
+# Sulcal depth by using the EUD distance between the deformed mesh surface and the corresponding convex hull
 folder='/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/data/sphere5_realsphpt/pov_H0.046100AT1.829000/'
 mesh_file_2 = 'B0.stl'
 mesh_o = trimesh.load(folder+mesh_file_2)
