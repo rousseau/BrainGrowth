@@ -4,6 +4,7 @@ from curvatureCoarse import curvatureTopologic
 import slam.plot as splt
 import numpy as np
 import slam.curvature as scurv
+from numba import prange
 
 # Visualization of the biomechanical model simulations
 
@@ -91,11 +92,11 @@ for i in steps:
     mesh_2 = trimesh.convex.convex_hull(mesh1, qhull_options='QbB Pp Qt')
 	
     # Iterate through all vertices of mesh
-    for j in range(np.size(mesh_o.vertices, 0)):
+    for j in prange(np.size(mesh_o.vertices, 0)):
 	# Calculate the endpoints of line segment
         endpoints = np.array([mesh_o.vertices[j,:], mesh_o.vertices[j,:]+10000*(mesh1.vertices[j,:]-mesh_o.vertices[j,:])])
         # Iterate through all triangles of convex hull
-        for k in range(np.size(mesh_2.faces, 0)):
+        for k in prange(np.size(mesh_2.faces, 0)):
             # Calculate the normal of the plane where the triangle lies
             plane_normal = np.cross(mesh_2.vertices[mesh_2.faces[k,1], :]-mesh_2.vertices[mesh_2.faces[k,0], :], mesh_2.vertices[mesh_2.faces[k,2], :]-mesh_2.vertices[mesh_2.faces[k,0], :])
             # Calculate the intersection of line segment and plane
@@ -112,7 +113,8 @@ for i in steps:
                 if np.absolute(Area1 + Area2 + Area3 - Area4) < 1e-10:
 	            # Return the intersection point
                     inters[j, :] = intersections
-
+                    break
+		
     # Calculate the EUD distance between the vertices of deformed mesh and the intersection points on the convex hull
     depth[q, :] = np.sqrt((mesh1.vertices[:,0] - inters[:, 0])**2+(mesh1.vertices[:,1] - inters[:, 1])**2+(mesh1.vertices[:,2] - inters[:, 2])**2)
 
