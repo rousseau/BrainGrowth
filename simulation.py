@@ -25,7 +25,6 @@ from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthT
 from normalisation import normalise_coord
 from collision_Tallinen import contactProcess
 from mechanics import tetraElasticity, tetraElasticity2, move, move2
-from vectorization_elasticity import tetraElasticity3, create_masks
 from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl, point3d_to_voxel, mesh_to_image, stl_to_image, writeTex, mesh_to_gifti
 from mathfunc import make_2D_array
 import slam.io as sio #Slam modification from marseille version including IO
