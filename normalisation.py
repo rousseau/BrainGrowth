@@ -5,6 +5,20 @@ from numba import jit, njit, prange
 # Normalize initial mesh coordinates
 @jit
 def normalise_coord(coordinates0, coordinates, n_nodes, halforwholebrain):
+  """
+  Normalizes inital mesh coordinates
+  Args:
+  coordinates0 (array): undeformed coordinates of vertices
+  coordinates (array): deformed coordinates of vertices
+  n_node (int): number of nodes
+  halfofwholebrain (string): type of normalisation depending on number of hemispheres
+  Returns:
+  coordinates0 (array): undeformed coordinates of vertices
+  coordinates (array): deformed coordinates of vertices
+  center_of_gravity (float):
+  maxd (float):
+  mind (float):
+  """
   # Find center of mass and dimension of the mesh
   maxx = maxy = maxz = -1e9
   minx = miny = minz = 1e9

@@ -7,47 +7,60 @@ from scipy import spatial
 from scipy import pi,sqrt,exp
 import scipy.special as sp
 
-# Find the nearest surface nodes to nodes (csn) and distances to them (dist_2_surf) - these are needed to set up the growth of the gray matter
 @jit
 def dist2surf(coordinates0, nodal_idx):
-  #csn = np.zeros(nn)  # Nearest surface nodes
-  #dist_2_surf = np.zeros(nn)  # Distances to nearest surface node
-  """for i in prange(nn):
-    d2 = dot_vec_dim_3(Ut0[SN[:]] - Ut0[i], Ut0[SN[:]] - Ut0[i])
-    csn[i] = np.argmin(d2)
-    dist_2_surf[i] = sqrt(np.min(d2))"""
+  """
+  Find the nearest surface node to each node and associated distance. Function needed to set up growth of gray matter
+  Args:
+  coordinates0 (array): vertice coordinates
+  nodal_idx (array): index of surface nodes
+  Returns:
+  csn (array): nearest surface node for each node
+  dist_2_surf: distance to surface for each node
+  """
   tree = spatial.KDTree(coordinates0[nodal_idx[:]])
   pp = tree.query(coordinates0)
-  csn = pp[1]  # Nearest surface nodes
-  dist_2_surf = pp[0]  # Distances to nearest surface node
+  csn = pp[1]  
+  dist_2_surf = pp[0] 
 
   return csn, dist_2_surf
 
-# Calculate the global relative growth rate for half or whole brain
 @jit
-def growthRate(GROWTH_RELATIVE, t, n_tets):
+def growthRate(GROWTH_RELATIVE, t, n_tets, filter = 1.0):
+  """
+  Calculates global relative growth rate for half or whole brain
+  Args:
+  GROWTH_RELATIVE (float): Constante set at simulation level
+  t (float): current time of the simulation
+  n_tets(int): number of tetrahedrons in the model
+  Returns:
+  at (array): growth rate per tetrahedre
+  filter (array): Optional factor for smoothing
+  """
   at = np.zeros(n_tets, dtype=np.float64)
-  #if t < 0.0:
-  #at[indices_b[:]] = 1.5*GROWTH_RELATIVE*t   #3.658
-  #at[indices_a[:]] = GROWTH_RELATIVE*t     #1.829
-  #for i in prange(ne):
-    #at[i] = 2.0*GROWTH_RELATIVE*t/(1+math.exp((Ut0[tets[i,0],2]+Ut0[tets[i,1],2]+Ut0[tets[i,2],2]+Ut0[tets[i,3],2])/4))  #~1.829*2max, ~1.829min
-  at[:] = GROWTH_RELATIVE*t
-    #at[i] = GROWTH_RELATIVE + 7.4*t
-  #if t >= 0.0: 
-    #at = GROWTH_RELATIVE - GROWTH_RELATIVE*t
-
+  at[:] = GROWTH_RELATIVE*t*filter
   return at
 
-# Calculate the regional relative growth rate for half brain
 @jit
-def growthRate_2_half(t, n_tets, n_surface_nodes, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, lobes):
+def growthRate_2_half(t, n_tets, n_surface_nodes, labels_surface, labels_volume, peak, amplitude, latency, lobes):
+  """
+  TODO: test and finish function
+  Calculates the regional relative growth rate for half brain
+  Args:
+  t (float): current time of simulation
+  n_tets (int): number of tetrahedrons in model
+  n_surface_nodes (int): number of surface nodes
+  labels_surface: ???
+  labels_volume: ???
+  peak: ???
+  aplitude ???
+  latency: ???
+  lobes: ???
+  """
   at = np.zeros(n_tets, dtype=np.float64)
   bt = np.zeros(n_surface_nodes, dtype=np.float64)
-  #for i in range(n_clusters):
   m = 0
   for i in np.unique(lobes):
-    #at[np.where(labels == i)[0]] = 2*np.exp(-((t-peak[i])/latency[i])**2/2)/np.sqrt(2*np.pi) * 1/latency[i] * sp.ndtr(amplitude[i]*(t-peak[i])/latency[i])
     at[np.where(labels_volume == i)[0]] = amplitude[m]*np.exp(-np.exp(-peak[m]*(t-latency[m])))
     bt[np.where(labels_surface == i)[0]] = amplitude[m]*np.exp(-np.exp(-peak[m]*(t-latency[m])))
     m += 1
@@ -58,7 +71,7 @@ def growthRate_2_half(t, n_tets, n_surface_nodes, n_clusters, labels_surface, la
 
 # Calculate the regional relative growth rate for whole brain
 @jit
-def growthRate_2_whole(t, n_tets, n_surface_nodes, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2, indices_a, indices_b, indices_c, indices_d):
+def growthRate_2_whole(t, n_tets, n_surface_nodes, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, lobes, lobes_2, indices_a, indices_b, indices_c, indices_d):
   at = np.zeros(n_tets, dtype=np.float64)
   bt = np.zeros(n_surface_nodes, dtype=np.float64)
   #for i in range(n_clusters):
@@ -77,31 +90,50 @@ def growthRate_2_whole(t, n_tets, n_surface_nodes, n_clusters, labels_surface, l
 
   return at, bt
 
-# Calculate the thickness of growing layer
 @jit
 def cortexThickness(THICKNESS_CORTEX, t):
-  #if t < 0.0:
+  """
+  Calculates thickness of growing layer
+  Args:
+  THICKNESS_CORTEX (float): constante set at simulation level
+  t (float): current time of simulation
+  Returns:
+  H (float): current growing layer thickness
+  """
   H = THICKNESS_CORTEX + 0.01*t
-  #if t >= 0.0:
-    #H = THICKNESS_CORTEX + THICKNESS_CORTEX*t
-
   return H
 
 # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
 @njit(parallel=True)
 def shearModulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):
+  """
+  Calculates global shear modulus for white and gray matter for each tetrahedron
+  Args:
+  dist_2_surf (array): distance to surface for each node
+  cortex_thickness (float): thickness of growing layer
+  tets (array): tetrahedrons index
+  n_tets (int): number of tetrahedron
+  muw (float): Shear modulus of white matter
+  mug (float): Shear modulus of gray matter
+  gr (array): yes/no growth mask for each node.
+  Returns:
+  gm (array): gray matter shear modulus for each tetrahedron
+  mu (array): white matter shear modulus for each tetrahedron
+  """
   gm = np.zeros(n_tets, dtype=np.float64)
   mu = np.zeros(n_tets, dtype=np.float64)
   for i in prange(n_tets):
     gm[i] = 1.0/(1.0 + math.exp(10.0*(0.25*(dist_2_surf[tets[i,0]] + dist_2_surf[tets[i,1]] + dist_2_surf[tets[i,2]] + dist_2_surf[tets[i,3]])/cortex_thickness - 1.0)))*0.25*(gr[tets[i,0]] + gr[tets[i,1]] + gr[tets[i,2]] + gr[tets[i,3]])
-    #wm[i] = 1.0 - gm[i]
     mu[i] = muw*(1.0 - gm[i]) + mug*gm[i]  # Global modulus of white matter and gray matter
 
   return gm, mu
 
 # Calculate relative (relates to dist_2_surf) tangential growth factor G
-@jit
-def growthTensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
+@jit(nopython=True)
+def growthTensor_tangen_leg(tet_norms, gm, at, tan_growth_tensor, n_tets):
+  '''
+  TODO: vectorizable
+  '''
   A = np.zeros((n_tets,3,3), dtype=np.float64)
   A[:,0,0] = tet_norms[:,0]*tet_norms[:,0]
   A[:,0,1] = tet_norms[:,0]*tet_norms[:,1]
@@ -118,9 +150,39 @@ def growthTensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
 
   return tan_growth_tensor
 
-# Calculate homogeneous growth factor G
+# Calculate relative (relates to dist_2_surf) tangential growth factor G
+@jit (nopython=True)
+def growthTensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
+    A = np.zeros((n_tets,3,3), dtype=np.float64)
+    A[:,0,0] = tet_norms[:,0]*tet_norms[:,0]
+    A[:,0,1] = tet_norms[:,0]*tet_norms[:,1]
+    A[:,0,2] = tet_norms[:,0]*tet_norms[:,2]
+    A[:,1,0] = tet_norms[:,0]*tet_norms[:,1]
+    A[:,1,1] = tet_norms[:,1]*tet_norms[:,1]
+    A[:,1,2] = tet_norms[:,1]*tet_norms[:,2]
+    A[:,2,0] = tet_norms[:,0]*tet_norms[:,2]
+    A[:,2,1] = tet_norms[:,1]*tet_norms[:,2]
+    A[:,2,2] = tet_norms[:,2]*tet_norms[:,2]
+
+    gm = np.reshape(np.repeat(gm, 9), (n_tets, 3, 3))
+    at = np.reshape(np.repeat(at, 9), (n_tets, 3, 3))
+    #identity = np.resize(identity, (n_tets, 3, 3)) // not compatible numba, but apparently broacasting similar
+    tan_growth_tensor = np.identity(3) + (np.identity(3) - A) * gm * at
+
+    return tan_growth_tensor
+
 @jit
 def growthTensor_homo(G, n_tets, GROWTH_RELATIVE, t):
+  """
+  Calculates homogenous growth factor G
+  Args:
+  G (array): normals for each tetrahedron
+  n_tets (int): number of tetrahedrons
+  GROWTH_RELATIVE (float): constante set at simulation level
+  t (float): current time of simulation
+  Returns:
+  G (array): homogenous growth factor G
+  """
   for i in prange(n_tets):
     G[i] = 1.0 + GROWTH_RELATIVE*t
 
@@ -134,9 +196,11 @@ def growthTensor_homo_2(G, n_tets, GROWTH_RELATIVE):
 
   return G
 
-# Calculate cortical layer (relates to dist_2_surf) homogeneous growth factor G
 @jit
 def growthTensor_relahomo(gm, G, n_tets, GROWTH_RELATIVE, t):
+  """
+  Calculates cortical layer (related to dist_2_surf) homogenous growth factor G
+  """
   for i in prange(n_tets):
   #G[i] = np.full((3, 3), gm*GROWTH_RELATIVE)
     G[i] = 1.0 + GROWTH_RELATIVE*t*gm

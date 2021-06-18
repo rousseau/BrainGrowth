@@ -32,9 +32,9 @@ def closestPointTriangle(p, a, b, c, u, v, w):
     w = 0.0
     return a + ab * v, u, v, w
 
-  cp = p - c;
-  d5 = np.dot(ab,cp);
-  d6 = np.dot(ac,cp);
+  cp = p - c
+  d5 = np.dot(ab,cp)
+  d6 = np.dot(ac,cp)
   if d6 >= 0.0 and d5 <= d6:
     u = 0.0
     v = 0.0
@@ -62,8 +62,11 @@ def closestPointTriangle(p, a, b, c, u, v, w):
 
   return a + ab * v + ac * w, u, v, w
 
-@jit
+@jit (nopython = True)
 def EV(X):
+  """
+  Returns eigenvectors of a 3 x 3 matrix
+  """
   c1 = X[0,0]*X[1,1] + X[0,0]*X[2,2] + X[1,1]*X[2,2] - X[0,1]*X[0,1] - X[1,2]*X[1,2] - X[0,2]*X[0,2]
   c0 = X[2,2]*X[0,1]*X[0,1] + X[0,0]*X[1,2]*X[1,2] + X[1,1]*X[0,2]*X[0,2] - X[0,0]*X[1,1]*X[2,2] - 2.0*X[0,2]*X[0,1]*X[1,2]
   p = np.trace(X)*np.trace(X) - 3.0*c1
@@ -80,7 +83,7 @@ def EV(X):
 
   return l1, l2, l3
 
-@jit
+@jit (nopython = True)
 def tred2(n, V, d, e):
   """Symmetric Householder reduction to tridiagonal form.
 
@@ -187,19 +190,19 @@ def tred2(n, V, d, e):
 
   return V, d, e
 
-@jit
-def hypot(a, b):
-  """Computes sqrt(a**2 + b**2) without under/overflow."""
-  if abs(a) > abs(b):
-    r = b / a
-    r = abs(a) * math.sqrt(1 + r*r)
-  elif b != 0.0:
-    r = a / b
-    r = abs(b) * math.sqrt(1 + r*r)
+# @jit NOT used anymore
+# def hypot(a, b):
+#   """Computes sqrt(a**2 + b**2) without under/overflow."""
+#   if abs(a) > abs(b):
+#     r = b / a
+#     r = abs(a) * math.sqrt(1 + r*r)
+#   elif b != 0.0:
+#     r = a / b
+#     r = abs(b) * math.sqrt(1 + r*r)
 
-  return r
+#   return r
 
-@jit
+@jit (nopython = True)
 def tql2(n, V, d, e):
   """Symmetric tridiagonal QL algorithm.
 
@@ -304,10 +307,10 @@ def tql2(n, V, d, e):
 
   return V, d, e
 
-@jit
+@jit (nopython = True, parallel=True)
 def eigen_decomposition(n, A, V, d):
   e = [0.0]*n
-  for i in range(n):
+  for i in prange(n):
     for j in range(n):
       V[i][j] = A[i,j]
   V, d, e = tred2(n, V, d, e)
@@ -315,7 +318,7 @@ def eigen_decomposition(n, A, V, d):
 
   return V, d
 
-@jit
+@jit (nopython = True)
 def Eigensystem(n, A, V, d):
   A_ = np.zeros((n,n))
   V_ = np.zeros((n,n))
@@ -330,12 +333,14 @@ def Eigensystem(n, A, V, d):
 
 @jit
 def cross_dim_2(a, b):
+  #pure equivalent of np.cross (a, b) when dimension maintained
   c = np.array([a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]])
 
   return c
 
-@jit
+@jit (nopython = True)
 def cross_dim_3(a, b):
+  #pure equivalent of np.cross (a, b) when dimensions maintained
   c = np.zeros((len(a),3), dtype=np.float64)
   c[:,0] = a[:,1]*b[:,2] - a[:,2]*b[:,1]
   c[:,1] = a[:,2]*b[:,0] - a[:,0]*b[:,2]
@@ -343,8 +348,9 @@ def cross_dim_3(a, b):
 
   return c
 
-@jit
+@jit (nopython = True)
 def det_dim_3(a):
+  #pure equivalent of np.linalg.det (a)
   b = np.zeros(len(a), dtype=np.float64)
   b[:] = a[:,0,0]*a[:,1,1]*a[:,2,2] - a[:,0,0]*a[:,1,2]*a[:,2,1] - a[:,0,1]*a[:,1,0]*a[:,2,2] + a[:,0,1]*a[:,1,2]*a[:,2,0] + a[:,0,2]*a[:,1,0]*a[:,2,1] - a[:,0,2]*a[:,1,1]*a[:,2,0]
 
@@ -352,6 +358,7 @@ def det_dim_3(a):
 
 @jit
 def det_dim_2(a):
+  #pure equivalent of np.linalg.det (a) 
   b = a[0,0]*a[1,1]*a[2,2] - a[0,0]*a[1,2]*a[2,1] - a[0,1]*a[1,0]*a[2,2] + a[0,1]*a[1,2]*a[2,0] + a[0,2]*a[1,0]*a[2,1] - a[0,2]*a[1,1]*a[2,0]
 
   return b
@@ -361,15 +368,16 @@ def inv(a):
 
   return np.linalg.inv(a)
 
-@njit
+@jit (parallel = True, nopython = True)
 def inv_dim_3(a):
+  #pure equivalent from np.linalg.inv(a)
   b = np.zeros((len(a),3,3), dtype=np.float64)
   for i in prange(len(a)):
     b[i] = np.linalg.inv(a[i])
 
   return b
 
-@jit
+@jit (nopython = True)
 def norm_dim_3(a):
   b = np.zeros(len(a), dtype=np.float64)
   b[:] = np.sqrt(a[:,0]*a[:,0] + a[:,1]*a[:,1] + a[:,2]*a[:,2])
@@ -382,13 +390,26 @@ def normalize_dim_3(a):
 
   return b
 
+@jit (nopython=True) #version needed for tetraNormals2
+def normalize(a):
+    temp = (1/np.sqrt(a[:,0]*a[:,0] + a[:,1]*a[:,1] + a[:,2]*a[:,2]))
+    a[:,0] *= temp
+    a[:,1] *= temp
+    a[:,2] *= temp
+    
+    return np.transpose (a.T)
+
 @jit
 def dot_vec(a, b):
 
   return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]
 
-@jit
+@jit (nopython = True)
 def dot_mat_dim_3(a, b):
+  #WARNING: not a dot product per se, not equal to np.dot
+  #perf leakage at this level, equal @
+  #matmul not supported by numba, but @ operator is, UPDATE: not for 3D matrices
+
   c = np.zeros((len(a),3,3), dtype=np.float64)
   c[:,0,0] = a[:,0,0]*b[:,0,0]+a[:,0,1]*b[:,1,0]+a[:,0,2]*b[:,2,0]
   c[:,0,1] = a[:,0,0]*b[:,0,1]+a[:,0,1]*b[:,1,1]+a[:,0,2]*b[:,2,1]
@@ -399,8 +420,9 @@ def dot_mat_dim_3(a, b):
   c[:,2,0] = a[:,2,0]*b[:,0,0]+a[:,2,1]*b[:,1,0]+a[:,2,2]*b[:,2,0]
   c[:,2,1] = a[:,2,0]*b[:,0,1]+a[:,2,1]*b[:,1,1]+a[:,2,2]*b[:,2,1]
   c[:,2,2] = a[:,2,0]*b[:,0,2]+a[:,2,1]*b[:,1,2]+a[:,2,2]*b[:,2,2]
-
+  
   return c
+
 
 @jit
 def dot_const_mat_dim_3(a, b):
@@ -426,6 +448,7 @@ def dot_vec_dim_3(a, b):
 
 @jit
 def transpose_dim_3(a):
+  #Purely equal to np.transpose (a, (0, 2, 1))
   b = np.zeros((len(a),3,3), dtype=np.float64)
   b[:,0,0] = a[:,0,0]
   b[:,1,0] = a[:,0,1]
@@ -445,7 +468,7 @@ def dot_mat_vec(a, b):
   return np.array([a[0,0]*b[0]+a[0,1]*b[1]+a[0,2]*b[2], a[1,0]*b[0]+a[1,1]*b[1]+a[1,2]*b[2], a[2,0]*b[0]+a[2,1]*b[1]+a[2,2]*b[2]])
 
 def make_2D_array(lis):
-  """Funciton to get 2D array from a list of lists"""
+  """Function to get 2D array from a list of lists"""
   n = len(lis)
   lengths = np.array([len(x) for x in lis])
   max_len = max(lengths)

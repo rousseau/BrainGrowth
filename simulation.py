@@ -6,17 +6,13 @@
   
 """
 
-#mock comment to test branch functionnality from git
-
 #global modules
 from __future__ import division
 import argparse
 import numpy as np
-import math
-import numba as nb
 from numba import jit, prange 
 import time
-import os
+import slam.io as sio #Slam modification from marseille version including IO
 
 #global modules for tracking
 import cProfile
@@ -25,14 +21,13 @@ import io
 import sys
 
 #local modules
-from geometry import importMesh, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, edge_length, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, Curve_fitting_whole
-from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthTensor_homo, growthTensor_homo_2, growthTensor_relahomo, growthRate_2_half, growthRate_2_whole
+from geometry import importMesh, tetraNormals, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, edge_length, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, Curve_fitting_whole
+from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthRate_2_half, growthRate_2_whole
 from normalisation import normalise_coord
 from collision_Tallinen import contactProcess
 from mechanics import tetraElasticity, move
 from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl, point3d_to_voxel, mesh_to_image, stl_to_image, writeTex, mesh_to_gifti
-from mathfunc import make_2D_array
-import slam.io as sio #Slam modification from marseille version including IO
+
 
 if __name__ == '__main__':
   start_time_initialization = time.time ()
@@ -137,7 +132,6 @@ if __name__ == '__main__':
   # End of parameters
  
   ## Parcel brain in lobes
-
   if args.growthmethod.__eq__("regional"):
     n_clusters = 10   #Number of lobes
     method = 'User-defined lobes' #Method of parcellation in lobes
@@ -204,6 +198,11 @@ if __name__ == '__main__':
   # Calculate normals of each surface triangle and apply these normals to surface nodes
   surf_node_norms = normalSurfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes, surf_node_norms)
 
+  #optional gaussian filtering on at
+  # centroids = calc_tets_center (coordinates, tets)
+
+  # gauss = gaussian_filter (centroids)
+
   end_time_initialization = time.time () - start_time_initialization
   print ('Time required for initialization : ' + str (end_time_initialization) )
 
@@ -214,9 +213,9 @@ if __name__ == '__main__':
     # Calculate the relative growth rate
     if args.growthmethod.__eq__("regional"):
       if args.halforwholebrain.__eq__("half"):
-        at, bt = growthRate_2_half(t, n_tets, n_surface_nodes, n_clusters, labels_surface, labels_volume, peak, amplitude, latency, lobes)
+        at, bt = growthRate_2_half(t, n_tets, n_surface_nodes, labels_surface, labels_volume, peak, amplitude, latency, lobes)
       else:
-        at, bt = growthRate_2_whole(t, n_tets, n_surface_nodes, n_clusters, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, peak_2, amplitude_2, latency_2, lobes, lobes_2, indices_a, indices_b, indices_c, indices_d)
+        at, bt = growthRate_2_whole(t, n_tets, n_surface_nodes, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, lobes, lobes_2, indices_a, indices_b, indices_c, indices_d)
     else:
       at = growthRate(GROWTH_RELATIVE, t, n_tets)
       
@@ -231,7 +230,7 @@ if __name__ == '__main__':
 
     # Calculate contact forces
     Ft, NNLt = contactProcess(coordinates, Ft, nodal_idx, coordinates_old, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, contact_stiffness, mesh_spacing, gr)
-    #myfile.write("%s\n" % NNLt)
+  
     # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
     gm, mu = shearModulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr)
 
@@ -246,8 +245,6 @@ if __name__ == '__main__':
 
     # Calculate relative tangential growth factor G
     tan_growth_tensor = growthTensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets)
-    #G[i] = growthTensor_homo_2(G, i, GROWTH_RELATIVE)
-    #G = 1.0 + GROWTH_RELATIVE*t
 
     # Midplane
     Ft = midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, midplane_pos, mesh_spacing, repuls_skin, bulk_modulus)
@@ -259,7 +256,7 @@ if __name__ == '__main__':
       #writeTex(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, bt)
 
       # Obtain zoom parameter by checking the longitudinal length of the brain model
-      zoom_pos = paraZoom(coordinates, nodal_idx, longi_length, n_surface_nodes)
+      zoom_pos = paraZoom(coordinates, nodal_idx, longi_length)
 
       # Write .pov files and output mesh in .png files
       writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom, zoom_pos)
@@ -301,3 +298,35 @@ if __name__ == '__main__':
     step += 1
 
   #myfile.close()
+
+
+"""
+##############################################
+###LEGACY code for reference, safely ignore###
+##############################################
+
+#Smoothing using slam
+    if step == 0:
+        #create filtering for each surface node
+        stl_path = "./res/sphere5/pov_H0.042000AT1.829000/B0.stl"
+        stl_mesh = trimesh.load (stl_path)
+        filtering = np.ones (len(stl_mesh.vertices))
+        filtering = laplacian_texture_smoothing (stl_mesh, filtering, 10, dt)
+
+        #Expand filtering via nearest surface node (vectorisable)
+        gauss = np.ones (n_nodes, dtype = np.float64)
+        for i in range (len(gauss)):
+          gauss[i] = filtering[nearest_surf_node[i]]
+        
+        #conversion from node to tet length, take the average from nodes
+        gauss_tets = np.ones (n_tets, dtype = np.float64)
+        for i in range (len(tets)):
+          x = 0
+          for j in tets[i]:
+            x += gauss [j]
+          gauss_tets [i] = x/4
+    
+    #apply filter (why not before ? Because stl not available at this point)
+    at *= gauss_tets
+
+    """

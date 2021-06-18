@@ -103,3 +103,10 @@ venv.bak/
 # mypy
 .mypy_cache/
 changelog.txt
+res/sphere5/pov_H0.042000AT1.829000/B0.gii
+res/sphere5/pov_H0.042000AT1.829000/B0.png
+res/sphere5/pov_H0.042000AT1.829000/B500.gii
+res/sphere5/pov_H0.042000AT1.829000/B500.png
+res/sphere5/pov_H0.042000AT1.829000/B500.stl
+res/sphere5/pov_H0.042000AT1.829000/B500.txt
+

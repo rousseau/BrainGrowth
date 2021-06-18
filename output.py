@@ -6,7 +6,6 @@ from geometry import normalSurfaces
 import nibabel as nib
 from scipy import ndimage
 from scipy.interpolate import RegularGridInterpolator
-from stl import mesh, Mode
 import trimesh
 import slam.io as sio
 #import mayavi.mlab
