@@ -1,10 +1,6 @@
 import numpy as np
-import math
-import numba
 from numba import jit, njit, prange
-from numpy.lib.function_base import corrcoef
-from scipy.sparse import coo
-from mathfunc import det_dim_3, det_dim_2, cross_dim_3, dot_mat_dim_3, transpose_dim_3, normalize_dim_3
+from mathfunc import det_dim_3, cross_dim_3, dot_mat_dim_3, transpose_dim_3, normalize_dim_3, normalize
 import slam.io as sio
 from scipy import spatial
 from scipy.optimize import curve_fit
@@ -16,13 +12,8 @@ import scipy.special as spe
 
 '''
 TODO: state purpose of geometry and explain data structure with indexes and stuff
-'''
 
-def importMesh(path):
-  '''
-  Converts a netgen mesh to a list of np.arrays
-
-  Structure of mesh data:
+Structure of netgen mesh data:
   mesh [0] = number of nodes
   mesh[1:6761]: nodes, defined as 3 point numpy arrays
 
@@ -30,13 +21,19 @@ def importMesh(path):
   mesh [6763:42259]: tests, defines as 1 indicator for handeness + 4 summits.
 
   mesh [42260] = number of faces
-  mesh [42261:46424] = faces, defines as 1 indicator for handeness + 3 indexes. 
+  mesh [42261:46424] = faces, defines as 1 indicator for handeness + 3 indexes.
+
+'''
+
+def importMesh(path):
+  '''
+  Converts a netgen mesh to a list of np.arrays
 
   Args:
   path (string): path of mesh file
 
   Returns:
-  mesh (list): lsit of np.arrays
+  mesh (list): list of np.arrays
   
   '''
   mesh = []
@@ -62,9 +59,8 @@ def vertex(mesh):
   '''
   n_nodes = np.int64(mesh[0][0])
   coordinates0 = np.zeros((n_nodes,3), dtype=np.float64) # Undeformed coordinates of nodes
-  #Ut = np.zeros((n_nodes,3), dtype = float) # Deformed coordinates of nodes
   for i in prange(n_nodes):
-    coordinates0[i] = np.array([float(mesh[i+1][1]),float(mesh[i+1][0]),float(mesh[i+1][2])]) # Change x, y (Netgen?)
+    coordinates0[i] = np.array([float(mesh[i+1][1]),float(mesh[i+1][0]),float(mesh[i+1][2])]) # Change x, y (Netgen)
     
   coordinates = coordinates0 # Initialize deformed coordinates of nodes
   
@@ -123,7 +119,7 @@ def numberSurfaceNodes(faces, n_nodes, n_faces):
   nodal_idx (list): list of surface nodes, stops at last surface node
   nodal_idxb (list): list of surface nodes, non surface nodes are labelled with 0
   """
-  n_surface_nodes = 0 # Number of nodes at the surface
+  n_surface_nodes = 0 
   nodal_idx_b = np.zeros(n_nodes, dtype=int) # nodal_idx_b: Nodal index map from full mesh to surface. Initialization nodal_idx_b with all 0
   nodal_idx_b[faces[:,0]] = nodal_idx_b[faces[:,1]] = nodal_idx_b[faces[:,2]] = 1
   for i in range(n_nodes):
@@ -167,7 +163,6 @@ def edge_length(coordinates, faces, n_faces):
 
   return mine, maxe, ave
 
-# Return the total volume of a tetrahedral mesh
 @jit(nopython=True, parallel=True)
 def volume_mesh(n_nodes, n_tets, tets, coordinates):
   '''
@@ -180,7 +175,6 @@ def volume_mesh(n_nodes, n_tets, tets, coordinates):
   Returns:
   Vm_init (float): total volume of mesh (sign for inversion)
   '''
-
   Vn_init = np.zeros(n_nodes, dtype = np.float64)
   A_init = np.zeros((n_tets,3,3), dtype=np.float64)
   vol_init = np.zeros(n_tets, dtype=np.float64)
@@ -215,7 +209,7 @@ def tetra_labels_surface_half(mesh_file, method, n_clusters, coordinates0, nodal
   labels = lobes #kmeans.labels_ 
   # Find the nearest reference surface nodes to our surface nodes (nearest_surf_node) and distribute the labels to our surface nodes (labels_surface)
   mesh.vertices[:,[0,1]]=mesh.vertices[:,[1,0]]
-  tree = spatial.KDTree(mesh.vertices)
+  tree = spatial.cKDTree(mesh.vertices)
   nearest_surf_node = tree.query(coordinates0[nodal_idx[:]])
   #labels_surface = np.zeros(n_surface_nodes, dtype = np.int64)
   #labels_surface_2 = np.zeros(n_surface_nodes, dtype = np.int64)
@@ -228,7 +222,7 @@ def tetra_labels_surface_half(mesh_file, method, n_clusters, coordinates0, nodal
 def tetra_labels_volume_half(coordinates0, nodal_idx, tets, labels_surface):
   # Find the nearest surface nodes to barycenters of tetahedra (nearest_surf_node_t) and distribute the label to each tetahedra (labels_volume)
   Ut_barycenter = (coordinates0[tets[:,0]] + coordinates0[tets[:,1]] + coordinates0[tets[:,2]] + coordinates0[tets[:,3]])/4.0
-  tree = spatial.KDTree(coordinates0[nodal_idx[:]])
+  tree = spatial.cKDTree(coordinates0[nodal_idx[:]])
   nearest_surf_node_t = tree.query(Ut_barycenter[:,:])
   #labels_volume = np.zeros(ne, dtype = np.int64)
   labels_volume = labels_surface[nearest_surf_node_t[1]]
@@ -262,8 +256,8 @@ def tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, coord
   # Find the nearest reference surface nodes to our surface nodes (nearest_surf_node) and distribute the labels to our surface nodes (labels_surface)
   mesh.vertices[:,[0,1]]=mesh.vertices[:,[1,0]]
   mesh_2.vertices[:,[0,1]]=mesh_2.vertices[:,[1,0]]
-  tree_1 = spatial.KDTree(mesh.vertices)
-  tree_2 = spatial.KDTree(mesh_2.vertices)
+  tree_1 = spatial.cKDTree(mesh.vertices)
+  tree_2 = spatial.cKDTree(mesh_2.vertices)
   nearest_surf_node = tree_1.query(coordinates0[nodal_idx[indices_a]])
   nearest_surf_node_2 = tree_2.query(coordinates0[nodal_idx[indices_b]])
   #labels_surface = np.zeros(n_surface_nodes, dtype = np.int64)
@@ -281,9 +275,9 @@ def tetra_labels_volume_whole(coordinates0, nodal_idx, tets, indices_a, indices_
   #indices_d = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 < 0.0)[0]  #upper part
   Ut_barycenter_c = (coordinates0[tets[indices_c,0]] + coordinates0[tets[indices_c,1]] + coordinates0[tets[indices_c,2]] + coordinates0[tets[indices_c,3]])/4.0
   Ut_barycenter_d = (coordinates0[tets[indices_d,0]] + coordinates0[tets[indices_d,1]] + coordinates0[tets[indices_d,2]] + coordinates0[tets[indices_d,3]])/4.0
-  tree_3 = spatial.KDTree(coordinates0[nodal_idx[indices_a]])
+  tree_3 = spatial.cKDTree(coordinates0[nodal_idx[indices_a]])
   nearest_surf_node_t = tree_3.query(Ut_barycenter_c[:,:])
-  tree_4 = spatial.KDTree(coordinates0[nodal_idx[indices_b]])
+  tree_4 = spatial.cKDTree(coordinates0[nodal_idx[indices_b]])
   nearest_surf_node_t_2 = tree_4.query(Ut_barycenter_d[:,:])
   #labels_volume = np.zeros(ne, dtype = np.int64)
   labels_volume = labels_surface[nearest_surf_node_t[1]]
@@ -525,7 +519,7 @@ def configRefer(coordinates0, tets, n_tets):
   return ref_state_tets
 
 # Configuration of a deformed tetrahedron (At)
-@jit
+@jit(nopython=True)
 def configDeform(coordinates, tets, n_tets):
   At = np.zeros((n_tets,3,3), dtype=np.float64)
   At[:,0] = coordinates[tets[:,1]] - coordinates[tets[:,0]]
@@ -537,7 +531,7 @@ def configDeform(coordinates, tets, n_tets):
   return At
 
 # Calculate normals of each surface triangle and apply these normals to surface nodes
-@jit(nopython=False, parallel=True) 
+#@jit(nopython=False, parallel=True) 
 def normalSurfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes,surf_node_norms):
   Ntmp = np.zeros((n_faces,3), dtype=np.float64)
   Ntmp = cross_dim_3(coordinates0[faces[:,1]] - coordinates0[faces[:,0]], coordinates0[faces[:,2]] - coordinates0[faces[:,0]])
@@ -553,15 +547,30 @@ def normalSurfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes,su
 def tetraNormals(surf_node_norms, nearest_surf_node, tets, n_tets):
   Nt = np.zeros((n_tets,3), dtype=np.float64)
   Nt[:] = surf_node_norms[nearest_surf_node[tets[:,0]]] + surf_node_norms[nearest_surf_node[tets[:,1]]] + surf_node_norms[nearest_surf_node[tets[:,2]]] + surf_node_norms[nearest_surf_node[tets[:,3]]]
-  Nt = normalize_dim_3(Nt)
-  """for i in prange(ne):
-    Nt[i] *= 1.0/np.linalg.norm(Nt[i])"""
+  Nt = normalize_dim_3(Nt) #prob line for nopython mode
 
+  return Nt
+# Calculate normals of each deformed tetrahedron  
+@jit(nopython=True)
+def tetraNormals2(surf_node_norms, nearest_surf_node, tets, n_tets):
+  Nt = np.zeros((n_tets,3), dtype=np.float64)
+  Nt[:] = surf_node_norms[nearest_surf_node[tets[:,0]]] + surf_node_norms[nearest_surf_node[tets[:,1]]] + surf_node_norms[nearest_surf_node[tets[:,2]]] + surf_node_norms[nearest_surf_node[tets[:,3]]]
+  Nt = normalize(Nt) #prob line for nopython mode
+
+  return Nt
+
+#pure equivalent of tetraNormals, longer than vectorized version, so vec is the way
+@jit(nopython=True, parallel=True)
+def tetraNormals3(surf_node_norms, nearest_surf_node, tets, n_tets):
+  Nt = np.zeros((n_tets, 3), dtype=np.float64)
+  for i in prange(n_tets):
+    Nt[i] = surf_node_norms[nearest_surf_node[tets[i][0]]] + surf_node_norms[nearest_surf_node[tets[i][1]]] + surf_node_norms[nearest_surf_node[tets[i][2]]] + surf_node_norms[nearest_surf_node[tets[i][3]]]
+    Nt[i] *= 1.0/np.linalg.norm(Nt[i])
   return Nt
 
 # Calculate undeformed (Vn0) and deformed (Vn) nodal volume
 # Computes the volume measured at each point of a tetrahedral mesh as the sum of 1/4 of the volume of each of the tetrahedra to which it belongs
-@jit(nopython=True, parallel=True)   #(nopython=True, parallel=True)
+@jit(nopython=True)   #cannot be //
 def volumeNodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes):
   Vn0 = np.zeros(n_nodes, dtype=np.float64) #Initialize nodal volumes in reference state
   Vn = np.zeros(n_nodes, dtype=np.float64)  #Initialize deformed nodal volumes
@@ -572,11 +581,8 @@ def volumeNodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_
   At[:,1] = coordinates[tets[:,2]] - coordinates[tets[:,0]]
   At[:,2] = coordinates[tets[:,3]] - coordinates[tets[:,0]]
   vol0[:] = det_dim_3(dot_mat_dim_3(tan_growth_tensor[:], ref_state_tets[:]))/6.0
-  #vol0[:] = det_dim_3(dot_const_mat_dim_3(G, ref_state_tets[:]))/6.0
   vol[:] = det_dim_3(transpose_dim_3(At[:]))/6.0
   for i in range(n_tets):
-    #vol0[i] = np.linalg.det(np.dot(G[i], ref_state_tets[i]))/6.0
-    #vol[i] = np.linalg.det(np.transpose(At[i]))/6.0
     Vn0[tets[i,:]] += vol0[i]/4.0
     Vn[tets[i,:]] += vol[i]/4.0
 
@@ -605,7 +611,7 @@ def longitLength(t):
 
 # Obtain zoom parameter by checking the longitudinal length of the brain model
 @jit
-def paraZoom(coordinates, nodal_idx, longi_length, n_surface_nodes):
+def paraZoom(coordinates, nodal_idx, longi_length):
   #xmin = ymin = 1.0
   #xmax = ymax = -1.0
 

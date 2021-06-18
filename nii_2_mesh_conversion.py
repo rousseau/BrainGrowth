@@ -1,6 +1,7 @@
 import vtk
 import argparse
 
+
 def nii_2_mesh(filename_nii, filename_stl, label):
 
     """
