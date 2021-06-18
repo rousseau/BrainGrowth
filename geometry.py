@@ -544,7 +544,7 @@ def normalSurfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes,su
 
 # Calculate normals of each deformed tetrahedron
 @jit
-def tetraNormals(surf_node_norms, nearest_surf_node, tets, n_tets):
+def tetraNormals_leg(surf_node_norms, nearest_surf_node, tets, n_tets):
   Nt = np.zeros((n_tets,3), dtype=np.float64)
   Nt[:] = surf_node_norms[nearest_surf_node[tets[:,0]]] + surf_node_norms[nearest_surf_node[tets[:,1]]] + surf_node_norms[nearest_surf_node[tets[:,2]]] + surf_node_norms[nearest_surf_node[tets[:,3]]]
   Nt = normalize_dim_3(Nt) #prob line for nopython mode
@@ -552,23 +552,13 @@ def tetraNormals(surf_node_norms, nearest_surf_node, tets, n_tets):
   return Nt
 # Calculate normals of each deformed tetrahedron  
 @jit(nopython=True)
-def tetraNormals2(surf_node_norms, nearest_surf_node, tets, n_tets):
+def tetraNormals(surf_node_norms, nearest_surf_node, tets, n_tets):
   Nt = np.zeros((n_tets,3), dtype=np.float64)
   Nt[:] = surf_node_norms[nearest_surf_node[tets[:,0]]] + surf_node_norms[nearest_surf_node[tets[:,1]]] + surf_node_norms[nearest_surf_node[tets[:,2]]] + surf_node_norms[nearest_surf_node[tets[:,3]]]
-  Nt = normalize(Nt) #prob line for nopython mode
+  Nt = normalize(Nt)
 
   return Nt
 
-#pure equivalent of tetraNormals, longer than vectorized version, so vec is the way
-@jit(nopython=True, parallel=True)
-def tetraNormals3(surf_node_norms, nearest_surf_node, tets, n_tets):
-  Nt = np.zeros((n_tets, 3), dtype=np.float64)
-  for i in prange(n_tets):
-    Nt[i] = surf_node_norms[nearest_surf_node[tets[i][0]]] + surf_node_norms[nearest_surf_node[tets[i][1]]] + surf_node_norms[nearest_surf_node[tets[i][2]]] + surf_node_norms[nearest_surf_node[tets[i][3]]]
-    Nt[i] *= 1.0/np.linalg.norm(Nt[i])
-  return Nt
-
-# Calculate undeformed (Vn0) and deformed (Vn) nodal volume
 # Computes the volume measured at each point of a tetrahedral mesh as the sum of 1/4 of the volume of each of the tetrahedra to which it belongs
 @jit(nopython=True)   #cannot be //
 def volumeNodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes):

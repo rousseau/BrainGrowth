@@ -12,6 +12,7 @@ import argparse
 import numpy as np
 from numba import jit, prange 
 import time
+import slam.io as sio #Slam modification from marseille version including IO
 
 #global modules for tracking
 import cProfile
@@ -20,14 +21,13 @@ import io
 import sys
 
 #local modules
-from geometry import importMesh, tetraNormals, tetraNormals2, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, edge_length, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, Curve_fitting_whole
-from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthTensor_tangen2, growthRate_2_half, growthRate_2_whole
+from geometry import importMesh, tetraNormals, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, edge_length, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, Curve_fitting_whole
+from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthRate_2_half, growthRate_2_whole
 from normalisation import normalise_coord
 from collision_Tallinen import contactProcess
-from mechanics import tetraElasticity, tetraElasticity2, move, move2
+from mechanics import tetraElasticity, move
 from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl, point3d_to_voxel, mesh_to_image, stl_to_image, writeTex, mesh_to_gifti
-from mathfunc import make_2D_array
-import slam.io as sio #Slam modification from marseille version including IO
+
 
 if __name__ == '__main__':
   start_time_initialization = time.time ()
@@ -238,13 +238,13 @@ if __name__ == '__main__':
     material_tets = configDeform(coordinates, tets, n_tets)
 
     # Calculate elastic forces
-    Ft = tetraElasticity2(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps)
+    Ft = tetraElasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps)
 
     # Calculate normals of each deformed tetrahedron 
-    tet_norms = tetraNormals2(surf_node_norms, nearest_surf_node, tets, n_tets)
+    tet_norms = tetraNormals(surf_node_norms, nearest_surf_node, tets, n_tets)
 
     # Calculate relative tangential growth factor G
-    tan_growth_tensor = growthTensor_tangen2(tet_norms, gm, at, tan_growth_tensor, n_tets)
+    tan_growth_tensor = growthTensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets)
 
     # Midplane
     Ft = midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, midplane_pos, mesh_spacing, repuls_skin, bulk_modulus)
@@ -292,7 +292,7 @@ if __name__ == '__main__':
       start_time_simulation = time.time ()
 
     # Newton dynamics
-    Ft, coordinates, Vt = move2(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt)
+    Ft, coordinates, Vt = move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt)
 
     t += dt
     step += 1

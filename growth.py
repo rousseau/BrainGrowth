@@ -130,7 +130,7 @@ def shearModulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):
 
 # Calculate relative (relates to dist_2_surf) tangential growth factor G
 @jit(nopython=True)
-def growthTensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
+def growthTensor_tangen_leg(tet_norms, gm, at, tan_growth_tensor, n_tets):
   '''
   TODO: vectorizable
   '''
@@ -150,9 +150,9 @@ def growthTensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
 
   return tan_growth_tensor
 
-#full vectorized version, results checked against V1. nopython compatible with latest numba version but not 373
+# Calculate relative (relates to dist_2_surf) tangential growth factor G
 @jit (nopython=True)
-def growthTensor_tangen2(tet_norms, gm, at, tan_growth_tensor, n_tets):
+def growthTensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
     A = np.zeros((n_tets,3,3), dtype=np.float64)
     A[:,0,0] = tet_norms[:,0]*tet_norms[:,0]
     A[:,0,1] = tet_norms[:,0]*tet_norms[:,1]

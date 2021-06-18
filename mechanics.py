@@ -6,7 +6,7 @@ from numba import jit, njit, prange
 
 # Calculate elastic forces
 @jit(nopython=True, parallel=True)
-def tetraElasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
+def tetraElasticity_leg(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
   """
   Calculates elastic forces
   Args:
@@ -124,7 +124,7 @@ def tetraElasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_m
 
 #updated version for last numba, small deviation of Ft at ~7th decimale against tetraElasticity
 @jit(nopython=True, parallel=True)   
-def tetraElasticity2(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
+def tetraElasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
     
     #tetraelasticty variables
     ref_state_growth = np.zeros ((n_tets, 3, 3), dtype=np.float64) #Ar
@@ -329,7 +329,7 @@ def tetraElasticity_np(material_tets, ref_state_tets, Ft, tan_growth_tensor, bul
   return Ft
 
 @njit(parallel=True)
-def move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt):
+def move_leg(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt):
   """
   TODO: Vectorizable
   Integrate forces and velocities to displacement
@@ -352,11 +352,24 @@ def move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt):
   return Ft, coordinates, Vt
 
 @jit(nopython=True) #vectorized version
-def move2(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt):
-    vol = np.reshape(np.repeat(Vn0, 3), (n_nodes, 3))
-    Ft -= Vt * damping_coef * vol
-    Vt += Ft/(vol*mass_density)*dt
-    coordinates += Vt*dt
-    Ft = np.zeros((n_nodes, 3), dtype = np.float64)
+def move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt):
+  """
+  TODO: Vectorizable
+  Integrate forces and velocities to displacement
+  Args:
+  n_nodes (int): number of nodes
+  Ft (array): forces applied to nodes
+  Vt (array): Velocity of nodes
+  coordinates (array): coordinates of vertices
+  damping coef (float): 
+  Vn0 (array): volume for each node
+  mass_density (float): 
+  dt (float): 
+  """ 
+  vol = np.reshape(np.repeat(Vn0, 3), (n_nodes, 3))
+  Ft -= Vt * damping_coef * vol
+  Vt += Ft/(vol*mass_density)*dt
+  coordinates += Vt*dt
+  Ft = np.zeros((n_nodes, 3), dtype = np.float64)
     
-    return Ft, coordinates, Vt
+  return Ft, coordinates, Vt
