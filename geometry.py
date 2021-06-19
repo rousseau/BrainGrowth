@@ -116,8 +116,8 @@ def numberSurfaceNodes(faces, n_nodes, n_faces):
   n_faces (int): number of faces
   Returns:
   n_surface_nodes (int): Number of surface nodes
-  nodal_idx (list): list of surface nodes, stops at last surface node
-  nodal_idxb (list): list of surface nodes, non surface nodes are labelled with 0
+  nodal_idx (list): nodal index map from surface to full mesh, stops at last surface node
+  nodal_idxb (list): nodal index map from full mesh to surface, non surface nodes are labelled with 0
   """
   n_surface_nodes = 0 
   nodal_idx_b = np.zeros(n_nodes, dtype=int) # nodal_idx_b: Nodal index map from full mesh to surface. Initialization nodal_idx_b with all 0
@@ -171,7 +171,7 @@ def volume_mesh(n_nodes, n_tets, tets, coordinates):
   n_nodes (int): number of nodes
   n_tets (int): number of tets
   tets (numpy array): tetras index
-  coordinates (numpy array): 
+  coordinates (numpy array): cartesian cooridnates of vertices
   Returns:
   Vm_init (float): total volume of mesh (sign for inversion)
   '''
@@ -191,9 +191,23 @@ def volume_mesh(n_nodes, n_tets, tets, coordinates):
 
   return -Vm_init
 
-# Define the label for each surface node for half brain
 @jit
 def tetra_labels_surface_half(mesh_file, method, n_clusters, coordinates0, nodal_idx, tets, lobes):
+  '''
+  Define the label for each surface node for half brain
+  Args:
+  mesh_file (str): path of mesh file
+  method (str): method for clustering
+  n_clusters (int): number of clusters
+  coordinates0 (numpy array): initial cartesian cooridnates of vertices
+  nodal_idx (list): nodal index map from surface to full mesh, stops at last surface node
+  tets(numpy array): tetras index
+  lobes: lobar labels of all nodes of mesh
+  
+  Returns:
+  labels_surface: lobar labels of all surface nodes
+  labels: lobar labels of all nodes of mesh after clustering
+  '''
   mesh = sio.load_mesh(mesh_file)
   if method.__eq__("Kmeans"):
   # 1) Simple K-means to start simply
