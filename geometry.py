@@ -205,8 +205,8 @@ def tetra_labels_surface_half(mesh_file, method, n_clusters, coordinates0, nodal
   lobes: lobar labels of all nodes of surface mesh
   
   Returns:
-  labels_surface: lobar labels of all surface nodes
-  labels: lobar labels of all nodes of surface mesh after clustering
+  labels_surface: lobar labels of all surface nodes of mesh for simulation
+  labels: labels of all nodes of surface mesh after clustering
   '''
   mesh = sio.load_mesh(mesh_file)
   if method.__eq__("Kmeans"):
@@ -231,9 +231,19 @@ def tetra_labels_surface_half(mesh_file, method, n_clusters, coordinates0, nodal
 
   return labels_surface, labels
 
-# Define the label for each tetrahedron for half brain
 @jit
 def tetra_labels_volume_half(coordinates0, nodal_idx, tets, labels_surface):
+  '''
+  Define the label for each tetrahedron for half brain
+  Args:
+  coordinates0 (numpy array): initial cartesian cooridnates of vertices
+  nodal_idx (list): nodal index map from surface to full mesh, stops at last surface node
+  tets(numpy array): tetras index
+  labels_surface: lobar labels of all surface nodes of mesh for simulation
+  
+  Returns:
+  labels_volume: lobar labels of all tetrahedrons of mesh for simulation
+  '''
   # Find the nearest surface nodes to barycenters of tetahedra (nearest_surf_node_t) and distribute the label to each tetahedra (labels_volume)
   Ut_barycenter = (coordinates0[tets[:,0]] + coordinates0[tets[:,1]] + coordinates0[tets[:,2]] + coordinates0[tets[:,3]])/4.0
   tree = spatial.cKDTree(coordinates0[nodal_idx[:]])
