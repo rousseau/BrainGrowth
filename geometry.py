@@ -196,17 +196,17 @@ def tetra_labels_surface_half(mesh_file, method, n_clusters, coordinates0, nodal
   '''
   Define the label for each surface node for half brain
   Args:
-  mesh_file (str): path of mesh file
+  mesh_file (str): path of surface mesh file
   method (str): method for clustering
   n_clusters (int): number of clusters
   coordinates0 (numpy array): initial cartesian cooridnates of vertices
   nodal_idx (list): nodal index map from surface to full mesh, stops at last surface node
   tets(numpy array): tetras index
-  lobes: lobar labels of all nodes of mesh
+  lobes: lobar labels of all nodes of surface mesh
   
   Returns:
   labels_surface: lobar labels of all surface nodes
-  labels: lobar labels of all nodes of mesh after clustering
+  labels: lobar labels of all nodes of surface mesh after clustering
   '''
   mesh = sio.load_mesh(mesh_file)
   if method.__eq__("Kmeans"):
