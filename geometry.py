@@ -135,7 +135,6 @@ def numberSurfaceNodes(faces, n_nodes, n_faces):
 
   return n_surface_nodes, nodal_idx, nodal_idx_b
 
-
 @jit(nopython=True, parallel=True)
 def edge_length(coordinates, faces, n_faces):
   """
