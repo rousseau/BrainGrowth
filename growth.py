@@ -50,12 +50,12 @@ def growthRate_2_half(t, n_tets, n_surface_nodes, labels_surface, labels_volume,
   t (float): current time of simulation
   n_tets (int): number of tetrahedrons in model
   n_surface_nodes (int): number of surface nodes
-  labels_surface: ???
-  labels_volume: ???
-  peak: ???
-  aplitude ???
-  latency: ???
-  lobes: ???
+  labels_surface: lobar labels of surafces nodes
+  labels_volume: lobar labels of tetrahedrons
+  peak: parameter of Gompertz function
+  aplitude: parameter of Gompertz function
+  latency: parameter of Gompertz function
+  lobes: lobar labels of mesh nodes
   """
   at = np.zeros(n_tets, dtype=np.float64)
   bt = np.zeros(n_surface_nodes, dtype=np.float64)
