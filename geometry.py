@@ -293,6 +293,24 @@ def tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, coord
 # Define the label for each tetrahedron for whole brain
 @jit
 def tetra_labels_volume_whole(coordinates0, nodal_idx, tets, indices_a, indices_b, indices_c, indices_d, labels_surface, labels_surface_2):
+  '''
+  Define the label for each tetrahedron for whole brain
+  Args:
+  coordinates0 (numpy array): initial cartesian cooridnates of vertices
+  nodal_idx (list): nodal index map from surface to full mesh, stops at last surface node
+  tets(numpy array): tetras index
+  indices_a:
+  indices_b:
+  indices_c:
+  indices_d:
+  labels_surface: lobar labels of all surface nodes of mesh for simulation
+  labels_surface_2: lobar labels of all surface nodes of mesh for simulation
+  
+  Returns:
+  labels_volume: lobar labels of all tetrahedrons of mesh for simulation
+  labels_volume_2: lobar labels of all tetrahedrons of mesh for simulation
+  '''
+  
   # Find the nearest surface nodes to barycenters of tetahedra (nearest_surf_node_t) and distribute the label to each tetahedra (labels_volume)
   #indices_c = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 >= 0.0)[0]  #lower part
   #indices_d = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 < 0.0)[0]  #upper part
