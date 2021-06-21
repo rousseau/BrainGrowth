@@ -1,15 +1,10 @@
 import numpy as np
-import math
 import os
 from vapory import *
-from geometry import normalSurfaces
+from geometry import normals_surfaces
 import nibabel as nib
-from scipy import ndimage
-from scipy.interpolate import RegularGridInterpolator
 import trimesh
 import slam.io as sio
-#import mayavi.mlab
-#import pymesh
 
 # Calculate surface area and mesh volume
 def area_volume(Ut, faces, gr, Vn):
@@ -41,7 +36,7 @@ def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal
 
   # Normals in deformed state
   N_init = np.zeros((n_surface_nodes,3), dtype = float)
-  N = normalSurfaces(Ut, faces, nodal_idx_b, len(faces), n_surface_nodes, N_init)
+  N = normals_surfaces(Ut, faces, nodal_idx_b, len(faces), n_surface_nodes, N_init)
 
   #os.path.dirname(povname)
 
@@ -100,7 +95,7 @@ def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, noda
 
   # Normals in deformed state
   N_init = np.zeros((n_surface_nodes,3), dtype = float)
-  N = normalSurfaces(Ut, faces, nodal_idx_b, len(faces), n_surface_nodes, N_init)
+  N = normals_surfaces(Ut, faces, nodal_idx_b, len(faces), n_surface_nodes, N_init)
 
   """for i in range(len(faces)):
     Ntmp = np.cross(Ut[faces[i][1]] - Ut[faces[i][0]], Ut[faces[i][2]] - Ut[faces[i][0]])

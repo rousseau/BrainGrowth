@@ -1,14 +1,10 @@
 import numpy as np
 import math
-from math import sqrt
 from numba import jit, njit, prange
-from mathfunc import dot_vec_dim_3
 from scipy import spatial
-from scipy import pi,sqrt,exp
-import scipy.special as sp
 
 @jit
-def dist2surf(coordinates0, nodal_idx):
+def calc_dist_2_surf(coordinates0, nodal_idx):
   """
   Find the nearest surface node to each node and associated distance. Function needed to set up growth of gray matter
   Args:
@@ -91,7 +87,7 @@ def growthRate_2_whole(t, n_tets, n_surface_nodes, labels_surface, labels_surfac
   return at, bt
 
 @jit
-def cortexThickness(THICKNESS_CORTEX, t):
+def calc_cortex_thickness(THICKNESS_CORTEX, t):
   """
   Calculates thickness of growing layer
   Args:
@@ -105,7 +101,7 @@ def cortexThickness(THICKNESS_CORTEX, t):
 
 # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
 @njit(parallel=True)
-def shearModulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):
+def shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):
   """
   Calculates global shear modulus for white and gray matter for each tetrahedron
   Args:
@@ -152,7 +148,7 @@ def growthTensor_tangen_leg(tet_norms, gm, at, tan_growth_tensor, n_tets):
 
 # Calculate relative (relates to dist_2_surf) tangential growth factor G
 @jit (nopython=True)
-def growthTensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
+def growth_tensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
     A = np.zeros((n_tets,3,3), dtype=np.float64)
     A[:,0,0] = tet_norms[:,0]*tet_norms[:,0]
     A[:,0,1] = tet_norms[:,0]*tet_norms[:,1]

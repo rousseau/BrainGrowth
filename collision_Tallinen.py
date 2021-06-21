@@ -1,7 +1,6 @@
 from mathfunc import closestPointTriangle, cross_dim_2, norm_dim_3
 import numpy as np
-import math
-from numba import jit, njit, prange
+from numba import jit
 
 # Generates point-triangle proximity lists (NNLt) using the linked cell algorithm
 @jit(forceobj=True)
@@ -40,7 +39,7 @@ def createNNLtriangle(NNLt, coordinates, faces, nodal_idx, n_surface_nodes, n_fa
 
 # Calculate contact forces
 #@jit
-def contactProcess(coordinates, Ft, nodal_idx, coordinates_old, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, contact_stiffness, mesh_spacing, gr):
+def contact_process(coordinates, Ft, nodal_idx, coordinates_old, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, contact_stiffness, mesh_spacing, gr):
   maxDist = 0.0
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
   maxDist = max(norm_dim_3(coordinates[nodal_idx[:]] - coordinates_old[:]))
