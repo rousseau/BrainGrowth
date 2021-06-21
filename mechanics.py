@@ -354,7 +354,6 @@ def move_leg(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt):
 @jit(nopython=True) #vectorized version
 def move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt):
   """
-  TODO: Vectorizable
   Integrate forces and velocities to displacement
   Args:
   n_nodes (int): number of nodes

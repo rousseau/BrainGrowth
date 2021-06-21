@@ -54,14 +54,11 @@ if __name__ == '__main__':
   THICKNESS_CORTEX = args.thickness
   GROWTH_RELATIVE = args.growth
 
-  # Path of mesh
-  mesh_path = args.input #"/home/x17wang/Bureau/xiaoyu/Brain_code_and_meshes/week23-3M-tets.mesh"  # "./data/prm001_25W_Rwhite.mesh" #"/home/x17wang/Bureau/xiaoyu/ Brain_code_and_meshes/week23-3M-tets.mesh" #"/home/x17wang/Codes/BrainGrowth/brain_2.mesh"
-
   # Import mesh, each line as a list
-  mesh = importMesh(mesh_path)
+  mesh = importMesh(args.input)
 
   # Read nodes, get undeformed coordinates (Ut0) and initialize deformed coordinates (Ut) of all nodes
-  coordinates0, coordinates, n_nodes = vertex(mesh)
+  coordinates0, coordinates, n_nodes = vertex(mesh) #get vertex ?
 
   # Read element indices (tets: index of four vertices of tetrahedra) and get number of elements (ne)
   tets, n_tets = tetraVerticesIndices(mesh, n_nodes)
