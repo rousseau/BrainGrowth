@@ -4,15 +4,12 @@ from mathfunc import det_dim_3, cross_dim_3, dot_mat_dim_3, transpose_dim_3, nor
 import slam.io as sio
 from scipy import spatial
 from scipy.optimize import curve_fit
-from slam import topology as stop
 from curvatureCoarse import graph_laplacian
 from scipy.sparse.linalg import eigs
 from sklearn.cluster import KMeans
 import scipy.special as spe
 
 '''
-TODO: state purpose of geometry and explain data structure with indexes and stuff
-
 Structure of netgen mesh data:
   mesh [0] = number of nodes
   mesh[1:6761]: nodes, defined as 3 point numpy arrays
@@ -25,7 +22,7 @@ Structure of netgen mesh data:
 
 '''
 
-def importMesh(path):
+def import_mesh(path):
   '''
   Converts a netgen mesh to a list of np.arrays
 
@@ -46,7 +43,7 @@ def importMesh(path):
   return mesh
 
 @njit(parallel=True)
-def vertex(mesh):
+def get_vertices(mesh):
   '''
   Extract coordinates and number of nodes from mesh
 
@@ -67,7 +64,7 @@ def vertex(mesh):
   return coordinates0, coordinates, n_nodes
 
 @njit(parallel=True)
-def tetraVerticesIndices(mesh, n_nodes):
+def get_tetra_vertices_indices(mesh, n_nodes):
   '''
   Takes a list of arrays as an input and returns tets and number of tets. Tets are defined as 4 indexes of vertices from the coordinate list
 
@@ -87,7 +84,7 @@ def tetraVerticesIndices(mesh, n_nodes):
   return tets, n_tets
 
 @njit(parallel=True)
-def triangleIndices(mesh, n_nodes, n_tets):
+def get_triangle_indices(mesh, n_nodes, n_tets):
   '''
   Takes a list of arrays as an input and returns faces and number of faces. Faces are defined as 3 indexes of vertices from the coordinate list, only on the surface
 
@@ -107,7 +104,7 @@ def triangleIndices(mesh, n_nodes, n_tets):
   return faces, n_faces
 
 @jit
-def numberSurfaceNodes(faces, n_nodes, n_faces):
+def get_nb_surface_nodes(faces, n_nodes):
   """
   Define number of surface nodes and nodal indexes used for contact processing and NNLt triangle
   Args:
@@ -578,7 +575,7 @@ def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_cluste
   return peak, amplitude, latency, peak_2, amplitude_2, latency_2
 
 @njit(parallel=True)
-def markgrowth(coordinates0, n_nodes):
+def mark_nogrowth(coordinates0, n_nodes):
   '''
   Mark non-growing areas
   Args:
@@ -599,7 +596,7 @@ def markgrowth(coordinates0, n_nodes):
 
 # Configuration of tetrahedra at reference state (ref_state_tets)
 @jit
-def configRefer(coordinates0, tets, n_tets):
+def config_refer(coordinates0, tets, n_tets):
   ref_state_tets = np.zeros((n_tets,3,3), dtype=np.float64)
   ref_state_tets[:,0] = coordinates0[tets[:,1]] - coordinates0[tets[:,0]] # Reference state
   ref_state_tets[:,1] = coordinates0[tets[:,2]] - coordinates0[tets[:,0]]
@@ -610,7 +607,7 @@ def configRefer(coordinates0, tets, n_tets):
 
 # Configuration of a deformed tetrahedron (At)
 @jit(nopython=True)
-def configDeform(coordinates, tets, n_tets):
+def config_deform(coordinates, tets, n_tets):
   At = np.zeros((n_tets,3,3), dtype=np.float64)
   At[:,0] = coordinates[tets[:,1]] - coordinates[tets[:,0]]
   At[:,1] = coordinates[tets[:,2]] - coordinates[tets[:,0]]
@@ -621,20 +618,20 @@ def configDeform(coordinates, tets, n_tets):
   return At
 
 # Calculate normals of each surface triangle and apply these normals to surface nodes
-#@jit(nopython=False, parallel=True) 
-def normalSurfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes,surf_node_norms):
+@jit(forceobj=True, parallel=True) 
+def normals_surfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes,surf_node_norms):
   Ntmp = np.zeros((n_faces,3), dtype=np.float64)
   Ntmp = cross_dim_3(coordinates0[faces[:,1]] - coordinates0[faces[:,0]], coordinates0[faces[:,2]] - coordinates0[faces[:,0]])
-  for i in range(n_faces):
+  for i in prange(n_faces):
     surf_node_norms[nodal_idx_b[faces[i,:]]] += Ntmp[i]
-  for i in range(n_surface_nodes):
+  for i in prange(n_surface_nodes):
     surf_node_norms[i] *= 1.0/np.linalg.norm(surf_node_norms[i])
 
   return surf_node_norms
 
 # Calculate normals of each deformed tetrahedron
 @jit
-def tetraNormals_leg(surf_node_norms, nearest_surf_node, tets, n_tets):
+def tetra_normals_leg(surf_node_norms, nearest_surf_node, tets, n_tets):
   Nt = np.zeros((n_tets,3), dtype=np.float64)
   Nt[:] = surf_node_norms[nearest_surf_node[tets[:,0]]] + surf_node_norms[nearest_surf_node[tets[:,1]]] + surf_node_norms[nearest_surf_node[tets[:,2]]] + surf_node_norms[nearest_surf_node[tets[:,3]]]
   Nt = normalize_dim_3(Nt) #prob line for nopython mode
@@ -642,7 +639,7 @@ def tetraNormals_leg(surf_node_norms, nearest_surf_node, tets, n_tets):
   return Nt
 # Calculate normals of each deformed tetrahedron  
 @jit(nopython=True)
-def tetraNormals(surf_node_norms, nearest_surf_node, tets, n_tets):
+def tetra_normals(surf_node_norms, nearest_surf_node, tets, n_tets):
   Nt = np.zeros((n_tets,3), dtype=np.float64)
   Nt[:] = surf_node_norms[nearest_surf_node[tets[:,0]]] + surf_node_norms[nearest_surf_node[tets[:,1]]] + surf_node_norms[nearest_surf_node[tets[:,2]]] + surf_node_norms[nearest_surf_node[tets[:,3]]]
   Nt = normalize(Nt)
@@ -651,7 +648,7 @@ def tetraNormals(surf_node_norms, nearest_surf_node, tets, n_tets):
 
 # Computes the volume measured at each point of a tetrahedral mesh as the sum of 1/4 of the volume of each of the tetrahedra to which it belongs
 @jit(nopython=True)   #cannot be //
-def volumeNodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes):
+def calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes):
   Vn0 = np.zeros(n_nodes, dtype=np.float64) #Initialize nodal volumes in reference state
   Vn = np.zeros(n_nodes, dtype=np.float64)  #Initialize deformed nodal volumes
   At = np.zeros((n_tets,3,3), dtype=np.float64)
@@ -670,7 +667,7 @@ def volumeNodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_
 
 # Midplane
 @njit(parallel=True)
-def midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, midplane_pos, mesh_spacing, repuls_skin, bulk_modulus):
+def calc_mid_plane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, midplane_pos, mesh_spacing, repuls_skin, bulk_modulus):
   for i in prange(n_surface_nodes):
     pt = nodal_idx[i]
     if coordinates0[pt,1] < midplane_pos - 0.5*mesh_spacing and coordinates[pt,1] > midplane_pos:
@@ -682,7 +679,7 @@ def midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, midplane
 
 # Calculate the longitudinal length of the real brain
 @jit
-def longitLength(t):
+def calc_longi_length(t):
   #L = -0.81643*t**2+2.1246*t+1.3475
   longi_length = -0.98153*t**2+3.4214*t+1.9936
   #L = -41.6607*t**2+101.7986*t+58.843 #for the case without normalisation

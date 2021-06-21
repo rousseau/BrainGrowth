@@ -124,7 +124,7 @@ def tetraElasticity_leg(material_tets, ref_state_tets, Ft, tan_growth_tensor, bu
 
 #updated version for last numba, small deviation of Ft at ~7th decimale against tetraElasticity
 @jit(nopython=True, parallel=True)   
-def tetraElasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
+def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
     
     #tetraelasticty variables
     ref_state_growth = np.zeros ((n_tets, 3, 3), dtype=np.float64) #Ar

@@ -10,9 +10,8 @@
 from __future__ import division
 import argparse
 import numpy as np
-from numba import jit, prange 
 import time
-import slam.io as sio #Slam modification from marseille version including IO
+import slam.io as sio
 
 #global modules for tracking
 import cProfile
@@ -21,12 +20,12 @@ import io
 import sys
 
 #local modules
-from geometry import importMesh, tetraNormals, vertex, tetraVerticesIndices, triangleIndices, numberSurfaceNodes, edge_length, volume_mesh, markgrowth, configRefer, configDeform, normalSurfaces, tetraNormals, volumeNodal, midPlane, longitLength, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, Curve_fitting_whole
-from growth import dist2surf, growthRate, cortexThickness, shearModulus, growthTensor_tangen, growthRate_2_half, growthRate_2_whole
+from geometry import import_mesh, tetra_normals, get_vertices, get_tetra_vertices_indices, get_triangle_indices, get_nb_surface_nodes, edge_length, volume_mesh, mark_nogrowth, config_refer, config_deform, normals_surfaces, calc_vol_nodal, calc_mid_plane, calc_longi_length, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, Curve_fitting_whole
+from growth import calc_dist_2_surf, growthRate, calc_cortex_thickness, shear_modulus, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole
 from normalisation import normalise_coord
-from collision_Tallinen import contactProcess
-from mechanics import tetraElasticity, move
-from output import area_volume, writePov, writePov2, writeTXT, mesh_to_stl, point3d_to_voxel, mesh_to_image, stl_to_image, writeTex, mesh_to_gifti
+from collision_Tallinen import contact_process
+from mechanics import tetra_elasticity, move
+from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti
 
 
 if __name__ == '__main__':
@@ -55,19 +54,19 @@ if __name__ == '__main__':
   GROWTH_RELATIVE = args.growth
 
   # Import mesh, each line as a list
-  mesh = importMesh(args.input)
+  mesh = import_mesh(args.input)
 
   # Read nodes, get undeformed coordinates (Ut0) and initialize deformed coordinates (Ut) of all nodes
-  coordinates0, coordinates, n_nodes = vertex(mesh) #get vertex ?
+  coordinates0, coordinates, n_nodes = get_vertices(mesh) 
 
   # Read element indices (tets: index of four vertices of tetrahedra) and get number of elements (ne)
-  tets, n_tets = tetraVerticesIndices(mesh, n_nodes)
+  tets, n_tets = get_tetra_vertices_indices(mesh, n_nodes)
 
   # Read surface triangle indices (faces: index of three vertices of triangles) and get number of surface triangles (nf)
-  faces, n_faces = triangleIndices(mesh, n_nodes, n_tets)
+  faces, n_faces = get_triangle_indices(mesh, n_nodes, n_tets)
 
   # Determine surface nodes and index maps  n_surface_nodes: number of nodes at the surface, SN: Nodal index map from surface to full mesh, nodal_idx_b: Nodal index map from full mesh to surface)
-  n_surface_nodes, nodal_idx, nodal_idx_b = numberSurfaceNodes(faces, n_nodes, n_faces)
+  n_surface_nodes, nodal_idx, nodal_idx_b = get_nb_surface_nodes(faces, n_nodes)
 
   # Check minimum, maximum and average edge lengths (average mesh spacing) at the surface
   mine, maxe, ave = edge_length(coordinates, faces, n_faces)
@@ -95,11 +94,11 @@ if __name__ == '__main__':
   di = 500 #Output data once every di steps
 
   bounding_box = 3.2 #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
-  cell_width = 8*mesh_spacing #Width of a cell in the linked cell algorithm for proximity detection
-  prox_skin = 0.6*mesh_spacing #Thickness of proximity skin
-  repuls_skin = 0.2*mesh_spacing #Thickness of repulsive skin
-  contact_stiffness = 10.0*bulk_modulus #100.0*K Contact stiffness
-  dt = args.stepcontrol*np.sqrt(mass_density*mesh_spacing*mesh_spacing/bulk_modulus) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
+  cell_width = 8 * mesh_spacing #Width of a cell in the linked cell algorithm for proximity detection
+  prox_skin = 0.6 * mesh_spacing #Thickness of proximity skin
+  repuls_skin = 0.2 * mesh_spacing #Thickness of repulsive skin
+  contact_stiffness = 10.0 * bulk_modulus #100.0*K Contact stiffness
+  dt = args.stepcontrol*np.sqrt(mass_density * mesh_spacing * mesh_spacing / bulk_modulus) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
   print('dt is ' + str(dt))
   eps = 0.1 #Epsilon
   k_param = 0.0
@@ -119,14 +118,10 @@ if __name__ == '__main__':
 
   NNLt = [[] for _ in range (n_surface_nodes)] #Triangle-proximity lists for surface nodes
   coordinates_old = np.zeros( (n_surface_nodes,3), dtype = np.float64)  #Stores positions when proximity list is updated
-  #ub = vb = wb = 0 #Barycentric coordinates of triangles
-  #G = np.array([np.identity(3)]*ne)  
+
   shape = (n_tets,3,3)
   tan_growth_tensor = np.zeros(shape, dtype = np.float64)  # Initial tangential growth tensor
   tan_growth_tensor[:,np.arange(3),np.arange(3)] = 1.0
-  #G = [1.0]*ne
-  #G = 1.0
-  # End of parameters
  
   ## Parcel brain in lobes
   if args.growthmethod.__eq__("regional"):
@@ -180,20 +175,17 @@ if __name__ == '__main__':
   # Normalize initial mesh coordinates, change mesh information by values normalized
   coordinates0, coordinates, center_of_gravity, maxd, miny = normalise_coord(coordinates0, coordinates, n_nodes, args.halforwholebrain)
 
-  '''# Initialize deformed coordinates
-  Ut = Ut0'''
-
   # Find the nearest surface nodes (nearest_surf_node) to nodes and distances to them (dist_2_surf)
-  nearest_surf_node, dist_2_surf = dist2surf(coordinates0, nodal_idx)
+  nearest_surf_node, dist_2_surf = calc_dist_2_surf(coordinates0, nodal_idx)
 
   # Configuration of tetrahedra at reference state (ref_state_tets)
-  ref_state_tets = configRefer(coordinates0, tets, n_tets)
+  ref_state_tets = config_refer(coordinates0, tets, n_tets)
 
   # Mark non-growing areas
-  gr = markgrowth(coordinates0, n_nodes)
+  gr = mark_nogrowth(coordinates0, n_nodes)
 
   # Calculate normals of each surface triangle and apply these normals to surface nodes
-  surf_node_norms = normalSurfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes, surf_node_norms)
+  surf_node_norms = normals_surfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes, surf_node_norms)
 
   #optional gaussian filtering on at
   # centroids = calc_tets_center (coordinates, tets)
@@ -217,34 +209,34 @@ if __name__ == '__main__':
       at = growthRate(GROWTH_RELATIVE, t, n_tets)
       
     # Calculate the longitudinal length of the real brain
-    longi_length = longitLength(t)
+    longi_length = calc_longi_length(t)
 
     # Calculate the thickness of growing layer
-    cortex_thickness = cortexThickness(THICKNESS_CORTEX, t)
+    cortex_thickness = calc_cortex_thickness(THICKNESS_CORTEX, t)
 
     # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn)
-    Vn0, Vn = volumeNodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes)
+    Vn0, Vn = calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes)
 
     # Calculate contact forces
-    Ft, NNLt = contactProcess(coordinates, Ft, nodal_idx, coordinates_old, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, contact_stiffness, mesh_spacing, gr)
+    Ft, NNLt = contact_process(coordinates, Ft, nodal_idx, coordinates_old, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, contact_stiffness, mesh_spacing, gr)
   
     # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
-    gm, mu = shearModulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr)
+    gm, mu = shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr)
 
     # Deformed configuration of tetrahedra (At)
-    material_tets = configDeform(coordinates, tets, n_tets)
+    material_tets = config_deform(coordinates, tets, n_tets)
 
     # Calculate elastic forces
-    Ft = tetraElasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps)
+    Ft = tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps)
 
     # Calculate normals of each deformed tetrahedron 
-    tet_norms = tetraNormals(surf_node_norms, nearest_surf_node, tets, n_tets)
+    tet_norms = tetra_normals(surf_node_norms, nearest_surf_node, tets, n_tets)
 
     # Calculate relative tangential growth factor G
-    tan_growth_tensor = growthTensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets)
+    tan_growth_tensor = growth_tensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets)
 
     # Midplane
-    Ft = midPlane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, midplane_pos, mesh_spacing, repuls_skin, bulk_modulus)
+    Ft = calc_mid_plane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, midplane_pos, mesh_spacing, repuls_skin, bulk_modulus)
 
     # Output
     if step % di == 0:
