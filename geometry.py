@@ -116,8 +116,8 @@ def numberSurfaceNodes(faces, n_nodes, n_faces):
   n_faces (int): number of faces
   Returns:
   n_surface_nodes (int): Number of surface nodes
-  nodal_idx (list): list of surface nodes, stops at last surface node
-  nodal_idxb (list): list of surface nodes, non surface nodes are labelled with 0
+  nodal_idx (list): nodal index map from surface to full mesh, stops at last surface node
+  nodal_idxb (list): nodal index map from full mesh to surface, non surface nodes are labelled with 0
   """
   n_surface_nodes = 0 
   nodal_idx_b = np.zeros(n_nodes, dtype=int) # nodal_idx_b: Nodal index map from full mesh to surface. Initialization nodal_idx_b with all 0
@@ -134,7 +134,6 @@ def numberSurfaceNodes(faces, n_nodes, n_faces):
       p += 1
 
   return n_surface_nodes, nodal_idx, nodal_idx_b
-
 
 @jit(nopython=True, parallel=True)
 def edge_length(coordinates, faces, n_faces):
@@ -171,7 +170,7 @@ def volume_mesh(n_nodes, n_tets, tets, coordinates):
   n_nodes (int): number of nodes
   n_tets (int): number of tets
   tets (numpy array): tetras index
-  coordinates (numpy array): 
+  coordinates (numpy array): cartesian cooridnates of vertices
   Returns:
   Vm_init (float): total volume of mesh (sign for inversion)
   '''
@@ -191,9 +190,23 @@ def volume_mesh(n_nodes, n_tets, tets, coordinates):
 
   return -Vm_init
 
-# Define the label for each surface node for half brain
 @jit
 def tetra_labels_surface_half(mesh_file, method, n_clusters, coordinates0, nodal_idx, tets, lobes):
+  '''
+  Define the label for each surface node for half brain
+  Args:
+  mesh_file (str): path of surface mesh file
+  method (str): method for clustering
+  n_clusters (int): number of clusters
+  coordinates0 (numpy array): initial cartesian cooridnates of vertices
+  nodal_idx (list): nodal index map from surface to full mesh, stops at last surface node
+  tets (numpy array): tetras index
+  lobes (numpy array): lobar labels of all nodes of surface mesh
+  
+  Returns:
+  labels_surface (numpy array): lobar labels of all surface nodes of mesh for simulation
+  labels (numpy array): labels of all nodes of surface mesh after clustering
+  '''
   mesh = sio.load_mesh(mesh_file)
   if method.__eq__("Kmeans"):
   # 1) Simple K-means to start simply
@@ -217,9 +230,19 @@ def tetra_labels_surface_half(mesh_file, method, n_clusters, coordinates0, nodal
 
   return labels_surface, labels
 
-# Define the label for each tetrahedron for half brain
 @jit
 def tetra_labels_volume_half(coordinates0, nodal_idx, tets, labels_surface):
+  '''
+  Define the label for each tetrahedron for half brain
+  Args:
+  coordinates0 (numpy array): initial cartesian cooridnates of vertices
+  nodal_idx (list): nodal index map from surface to full mesh, stops at last surface node
+  tets (numpy array): tetras index
+  labels_surface (numpy array): lobar labels of all surface nodes of mesh for simulation
+  
+  Returns:
+  labels_volume (numpy array): lobar labels of all tetrahedrons of mesh for simulation
+  '''
   # Find the nearest surface nodes to barycenters of tetahedra (nearest_surf_node_t) and distribute the label to each tetahedra (labels_volume)
   Ut_barycenter = (coordinates0[tets[:,0]] + coordinates0[tets[:,1]] + coordinates0[tets[:,2]] + coordinates0[tets[:,3]])/4.0
   tree = spatial.cKDTree(coordinates0[nodal_idx[:]])
@@ -229,9 +252,29 @@ def tetra_labels_volume_half(coordinates0, nodal_idx, tets, labels_surface):
 
   return labels_volume
 
-# Define the label for each surface node for whole brain
 @jit
 def tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, coordinates0, nodal_idx, tets, indices_a, indices_b, lobes, lobes_2):
+  '''
+  Define the label for each surface node for whole brain
+  Args:
+  mesh_file (str): path of right hemisphere surface mesh file
+  mesh_file_2 (str): path of left hemisphere surface mesh file
+  method (str): method for clustering
+  n_clusters (int): number of clusters
+  coordinates0 (numpy array): initial cartesian cooridnates of vertices
+  nodal_idx (list): nodal index map from surface to full mesh, stops at last surface node
+  tets (numpy array): tetras index
+  indices_a (numpy array): right hemisphere surface node indices
+  indices_b (numpy array): left hemisphere surface node indices
+  lobes (numpy array): lobar labels of all nodes of right hemisphere surface mesh
+  lobes_2 (numpy array): lobar labels of all nodes of left hemisphere surface mesh
+  
+  Returns:
+  labels_surface (numpy array): lobar labels of right hemisphere surface nodes of mesh for simulation
+  labels_surface_2 (numpy array): lobar labels of left hemisphere surface nodes of mesh for simulation
+  labels (numpy array): labels of all nodes of right hemisphere surface mesh after clustering
+  labels_2 (numpy array): labels of all nodes of left hemisphere surface mesh after clustering
+  '''
   mesh = sio.load_mesh(mesh_file)
   mesh_2 = sio.load_mesh(mesh_file_2)
   if method.__eq__("Kmeans"):
@@ -267,9 +310,25 @@ def tetra_labels_surface_whole(mesh_file, mesh_file_2, method, n_clusters, coord
 
   return labels_surface, labels_surface_2, labels, labels_2
 
-# Define the label for each tetrahedron for whole brain
 @jit
 def tetra_labels_volume_whole(coordinates0, nodal_idx, tets, indices_a, indices_b, indices_c, indices_d, labels_surface, labels_surface_2):
+  '''
+  Define the label for each tetrahedron for whole brain
+  Args:
+  coordinates0 (numpy array): initial cartesian cooridnates of vertices
+  nodal_idx (list): nodal index map from surface to full mesh, stops at last surface node
+  tets (numpy array): tetras indices
+  indices_a (numpy array): right hemisphere surface node indices
+  indices_b (numpy array): left hemisphere surface node indices
+  indices_c (numpy array): right hemisphere tetras indices
+  indices_d (numpy array): left hemisphere tetras indices
+  labels_surface (numpy array): lobar labels of right hemisphere surface nodes of mesh for simulation
+  labels_surface_2 (numpy array): lobar labels of left hemisphere surface nodes of mesh for simulation
+  
+  Returns:
+  labels_volume (numpy array): lobar labels of right hemisphere tetras of mesh for simulation
+  labels_volume_2 (numpy array): lobar labels of left hemisphere tetras of mesh for simulation
+  '''
   # Find the nearest surface nodes to barycenters of tetahedra (nearest_surf_node_t) and distribute the label to each tetahedra (labels_volume)
   #indices_c = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 >= 0.0)[0]  #lower part
   #indices_d = np.where((Ut0[tets[:,0],1]+Ut0[tets[:,1],1]+Ut0[tets[:,2],1]+Ut0[tets[:,3],1])/4 < 0.0)[0]  #upper part
@@ -312,9 +371,19 @@ def gompertz(x, a, b, c):
 
   return a*np.exp(-np.exp(-b*(x-c)))
 
-# Curve-fit of temporal growth for each label for half brain
 #@jit
 def Curve_fitting_half(texture_file, labels, n_clusters, lobes):
+  '''
+  Curve-fit of temporal growth for each label for half brain
+  Args:
+  texture_file (str): path of .gii texture file
+  labels (numpy array): labels of all nodes of hemisphere surface mesh after clustering
+  n_clusters (int): number of clusters
+  lobes (numpy array): lobar labels of all nodes of hemisphere surface mesh
+  
+  Returns:
+  amplitude, peak, latency (numpy array): parameters of Gompertz function for each lobe of hemisphere
+  '''
   ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
   xdata=np.array(ages)
   
@@ -358,9 +427,23 @@ def Curve_fitting_half(texture_file, labels, n_clusters, lobes):
 
   return peak, amplitude, latency
 
-# Curve-fit of temporal growth for each label for whole brain
 #@jit
 def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2):
+  '''
+  Curve-fit of temporal growth for each label for whole brain
+  Args:
+  texture_file (str): path of .gii texture file of right hemisphere
+  texture_file_2 (str): path of .gii texture file of left hemisphere
+  labels (numpy array): labels of all nodes of right hemisphere surface mesh after clustering
+  labels_2 (numpy array): labels of all nodes of left hemisphere surface mesh after clustering
+  n_clusters (int): number of clusters
+  lobes (numpy array): lobar labels of all nodes of right hemisphere surface mesh
+  lobes (numpy array): lobar labels of all nodes of left hemisphere surface mesh
+  
+  Returns:
+  amplitude, peak, latency (numpy array): parameters of Gompertz function for each lobe of right hemisphere
+  amplitude_2, peak_2, latency_2 (numpy array): parameters of Gompertz function for each lobe of left hemisphere
+  '''
   ages=[29, 29, 28, 28.5, 31.5, 32, 31, 32, 30.5, 32, 32, 31, 35.5, 35, 34.5, 35, 34.5, 35, 36, 34.5, 37.5, 35, 34.5, 36, 34.5, 33, 33]
   xdata=np.array(ages)
   
@@ -494,9 +577,16 @@ def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_cluste
 
   return peak, amplitude, latency, peak_2, amplitude_2, latency_2
 
-# Mark non-growing areas
 @njit(parallel=True)
 def markgrowth(coordinates0, n_nodes):
+  '''
+  Mark non-growing areas
+  Args:
+  coordinates0 (numpy array): initial cartesian cooridnates of vertices
+  n_nodes (int): number of nodes
+  Returns:
+  gr (numpy array): growth factors that control the magnitude of growth of each region
+  '''
   gr = np.zeros(n_nodes, dtype = np.float64)
   for i in prange(n_nodes):
     rqp = np.linalg.norm(np.array([(coordinates0[i,0]+0.1)*0.714, coordinates0[i,1], coordinates0[i,2]-0.05]))
