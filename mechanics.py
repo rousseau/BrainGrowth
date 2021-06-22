@@ -9,10 +9,6 @@ from numba import jit, njit, prange
 def tetraElasticity_leg(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
   """
   Calculates elastic forces
-  Args:
-  Too long
-  Returns:
-  Ft (array): forces to be applied on nodes
   """
 
   # Apply growth to reference state
