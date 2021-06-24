@@ -174,6 +174,7 @@ if __name__ == '__main__':
 
   # Normalize initial mesh coordinates, change mesh information by values normalized
   coordinates0, coordinates, center_of_gravity, maxd, miny = normalise_coord(coordinates0, coordinates, n_nodes, args.halforwholebrain)
+  coord_initial = coordinates0.copy() #used for deformation quantification
 
   # Find the nearest surface nodes (nearest_surf_node) to nodes and distances to them (dist_2_surf)
   nearest_surf_node, dist_2_surf = calc_dist_2_surf(coordinates0, nodal_idx)
@@ -285,9 +286,9 @@ if __name__ == '__main__':
 
     t += dt
     step += 1
+  
 
   #myfile.close()
-
 
 """
 ##############################################
