@@ -5,7 +5,6 @@
   python simulation.py -i './data/sphere5.mesh' -o './res/sphere5' -hc 'whole' -t 0.042 -g 1.829 -gm 'global'
   
 """
-
 #global modules
 from __future__ import division
 import argparse

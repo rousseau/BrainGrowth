@@ -327,28 +327,6 @@ def tetraElasticity_np(material_tets, ref_state_tets, Ft, tan_growth_tensor, bul
 
   return Ft
 
-@njit(parallel=True)
-def move_leg(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt):
-  """
-  Integrate forces and velocities to displacement
-  Args:
-  n_nodes (int): number of nodes
-  Ft (array): forces applied to nodes
-  Vt (array): Velocity of nodes
-  coordinates (array): coordinates of vertices
-  damping coef (float): 
-  Vn0 (array): volume for each node
-  mass_density (float): 
-  dt (float): 
-  """
-  for i in prange(n_nodes):
-    Ft[i] -= Vt[i]*damping_coef*Vn0[i]
-    Vt[i] += Ft[i]/(Vn0[i]*mass_density)*dt
-  coordinates[:] += Vt[:]*dt
-  Ft[:] = np.zeros((n_nodes,3), dtype = np.float64)
-
-  return Ft, coordinates, Vt
-
 @jit(nopython=True) #vectorized version
 def move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt):
   """

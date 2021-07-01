@@ -355,3 +355,5 @@ res/distorted_sphere/pov_H0.042000AT1.829000/B7000.gii
 res/distorted_sphere/pov_H0.042000AT1.829000/B7000.png
 res/distorted_sphere/pov_H0.042000AT1.829000/B7000.stl
 res/distorted_sphere/pov_H0.042000AT1.829000/B7000.txt
+profiler.py
+simulation2.py
