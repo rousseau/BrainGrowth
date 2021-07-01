@@ -4,6 +4,7 @@ from curvatureCoarse import curvatureTopologic
 import slam.plot as splt
 import numpy as np
 import slam.curvature as scurv
+import trimesh as tr
 
 # Visualization of the biomechanical model simulations
 
@@ -129,3 +130,11 @@ for i in steps:
     GI_1 = Area/Area_2
     
     G1.append(GI_1)
+
+def stress_visualisation (path, Ft):
+    mesh = tr.load(path)
+    for i in range(len(mesh.visual.vertex_colors)):
+        mesh.visual.vertex_colors[i] = [Ft[i][0]*10000, Ft[i][1]*10000, Ft[i][2]*10000, 1]
+    mesh.export('/home/benjamin/Documents/mesh.ply')
+    return mesh
+

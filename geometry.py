@@ -640,15 +640,28 @@ def tetra_normals_leg(surf_node_norms, nearest_surf_node, tets, n_tets):
 # Calculate normals of each deformed tetrahedron  
 @jit(nopython=True)
 def tetra_normals(surf_node_norms, nearest_surf_node, tets, n_tets):
-  Nt = np.zeros((n_tets,3), dtype=np.float64)
-  Nt[:] = surf_node_norms[nearest_surf_node[tets[:,0]]] + surf_node_norms[nearest_surf_node[tets[:,1]]] + surf_node_norms[nearest_surf_node[tets[:,2]]] + surf_node_norms[nearest_surf_node[tets[:,3]]]
-  Nt = normalize(Nt)
+  """
+  Calculates the normal for each tetrahedron
+  Args:
+  surf_node_norms (np array): normals of surface nodes
+  nearest_surf_node (np array): nearest surface node for each node
+  test (np array): node indices of tetrahedrons
+  n_tets (int): number of tets
+  Returns:
+  tet_norms (np array): normal for each tetrahedron
+  """
+  tet_norms = np.zeros((n_tets,3), dtype=np.float64)
+  tet_norms[:] = surf_node_norms[nearest_surf_node[tets[:,0]]] + surf_node_norms[nearest_surf_node[tets[:,1]]] + surf_node_norms[nearest_surf_node[tets[:,2]]] + surf_node_norms[nearest_surf_node[tets[:,3]]]
+  tet_norms = normalize(tet_norms)
 
-  return Nt
+  return tet_norms
 
 # Computes the volume measured at each point of a tetrahedral mesh as the sum of 1/4 of the volume of each of the tetrahedra to which it belongs
 @jit(nopython=True)   #cannot be //
 def calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes):
+  """
+  Calculcates the undeformed and deformed nodal volume for each node
+  """
   Vn0 = np.zeros(n_nodes, dtype=np.float64) #Initialize nodal volumes in reference state
   Vn = np.zeros(n_nodes, dtype=np.float64)  #Initialize deformed nodal volumes
   At = np.zeros((n_tets,3,3), dtype=np.float64)

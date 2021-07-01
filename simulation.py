@@ -5,7 +5,6 @@
   python simulation.py -i './data/sphere5.mesh' -o './res/sphere5' -hc 'whole' -t 0.042 -g 1.829 -gm 'global'
   
 """
-
 #global modules
 from __future__ import division
 import argparse
@@ -45,7 +44,7 @@ if __name__ == '__main__':
   parser.add_argument('-ll', '--lobesleft', help='User-defined lobes of left brain', type=str, required=False)
   parser.add_argument('-sc', '--stepcontrol', help='Step length regulation', type=float, default=0.1, required=False) #increase for speed, 0.01 is default
   parser.add_argument('-ms', '--meshspacing', help='Average spacing in the mesh', type=float, default=0.01, required=False) #default is 0.01
-  parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh', type=float, default=0.01, required=False) #increase for speed, too high brings negativ jakobians, default is 0.01
+  parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh', type=float, default=0.1, required=False) #increase for speed, too high brings negativ jakobians, default is 0.01
   args = parser.parse_args()
 
   # Parameters to change
@@ -174,6 +173,7 @@ if __name__ == '__main__':
 
   # Normalize initial mesh coordinates, change mesh information by values normalized
   coordinates0, coordinates, center_of_gravity, maxd, miny = normalise_coord(coordinates0, coordinates, n_nodes, args.halforwholebrain)
+  coord_initial = coordinates0.copy() #used for deformation quantification
 
   # Find the nearest surface nodes (nearest_surf_node) to nodes and distances to them (dist_2_surf)
   nearest_surf_node, dist_2_surf = calc_dist_2_surf(coordinates0, nodal_idx)
@@ -268,26 +268,26 @@ if __name__ == '__main__':
       # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
       #mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, center_of_gravity, maxd, nn, faces, tets, miny)
 
-      print ('step: ' + str(step) + ' t: ' + str(t) )
+      print('step: ' + str(step) + ' t: ' + str(t) )
 
       # Calculate surface area and mesh volume
       Area, Volume = area_volume(coordinates, faces, gr, Vn)
 
-      print ('Normalized area: ' + str(Area) + ' Normalized volume: ' + str(Volume) )
+      print('Normalized area: ' + str(Area) + ' Normalized volume: ' + str(Volume))
 
       #timestamp for simulation loop
-      end_time_simulation = time.time () - start_time_simulation
-      print ('Time required for simulation loop : ' + str (end_time_simulation) )
-      start_time_simulation = time.time ()
+      end_time_simulation = time.time() - start_time_simulation
+      print('Time required for simulation loop : ' + str (end_time_simulation))
+      start_time_simulation = time.time()
 
     # Newton dynamics
     Ft, coordinates, Vt = move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt)
 
     t += dt
     step += 1
+  
 
   #myfile.close()
-
 
 """
 ##############################################
@@ -317,5 +317,11 @@ if __name__ == '__main__':
     
     #apply filter (why not before ? Because stl not available at this point)
     at *= gauss_tets
+
+
+def background(f):
+    def wrapped(*args, **kwargs):
+        return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
+    return wrapped
 
     """
