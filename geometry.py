@@ -680,7 +680,6 @@ def calc_mid_plane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, mi
 # Calculate the longitudinal length of the real brain
 @jit
 def calc_longi_length(t):
-  #L = -0.81643*t**2+2.1246*t+1.3475
   longi_length = -0.98153*t**2+3.4214*t+1.9936
   #L = -41.6607*t**2+101.7986*t+58.843 #for the case without normalisation
 
