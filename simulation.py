@@ -30,8 +30,8 @@ from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti
 if __name__ == '__main__':
   start_time_initialization = time.time ()
   parser = argparse.ArgumentParser(description='Dynamic simulations')
-  parser.add_argument('-i', '--input', help='Input maillage', type=str, default='./data/sphere5.mesh', required=False)
-  parser.add_argument('-o', '--output', help='Output maillage', type=str, default='./res/sphere5', required=False)
+  parser.add_argument('-i', '--input', help='Input maillage', type=str, default='./data/brain_simp_red.mesh', required=False)
+  parser.add_argument('-o', '--output', help='Output maillage', type=str, default='./res/brain_simp_red', required=False)
   parser.add_argument('-hc', '--halforwholebrain', help='Half or whole brain', type=str, default='whole', required=False)
   parser.add_argument('-t', '--thickness', help='Cortical thickness', type=float, default=0.042, required=False)
   parser.add_argument('-g', '--growth', help='Relative growth rate', type=float, default=1.829, required=False)
@@ -44,7 +44,7 @@ if __name__ == '__main__':
   parser.add_argument('-ll', '--lobesleft', help='User-defined lobes of left brain', type=str, required=False)
   parser.add_argument('-sc', '--stepcontrol', help='Step length regulation', type=float, default=0.1, required=False) #increase for speed, 0.01 is default
   parser.add_argument('-ms', '--meshspacing', help='Average spacing in the mesh', type=float, default=0.01, required=False) #default is 0.01
-  parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh', type=float, default=0.1, required=False) #increase for speed, too high brings negativ jakobians, default is 0.01
+  parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh', type=float, default=0.01, required=False) #increase for speed, too high brings negativ jakobians, default is 0.01
   args = parser.parse_args()
 
   # Parameters to change
@@ -111,6 +111,7 @@ if __name__ == '__main__':
   surf_node_norms = np.zeros((n_surface_nodes,3), dtype = np.float64)  #Normals of surface nodes
   Vt = np.zeros((n_nodes,3), dtype = np.float64)  #Velocities
   Ft = np.zeros((n_nodes,3), dtype = np.float64)  #Forces
+  stress = np.zeros((n_nodes), dtype = np.float64)
   #Vn0 = np.zeros(nn, dtype = float) #Nodal volumes in reference state
   #Vn = np.zeros(nn, dtype = float)  #Deformed nodal volumes
   # Ue = 0 #Elastic energy
@@ -173,7 +174,7 @@ if __name__ == '__main__':
 
   # Normalize initial mesh coordinates, change mesh information by values normalized
   coordinates0, coordinates, center_of_gravity, maxd, miny = normalise_coord(coordinates0, coordinates, n_nodes, args.halforwholebrain)
-  coord_initial = coordinates0.copy() #used for deformation quantification
+  coord_initial = coordinates0.copy() #used for deformation quantification WIP
 
   # Find the nearest surface nodes (nearest_surf_node) to nodes and distances to them (dist_2_surf)
   nearest_surf_node, dist_2_surf = calc_dist_2_surf(coordinates0, nodal_idx)
@@ -259,6 +260,10 @@ if __name__ == '__main__':
       # Convert surface mesh structure (from simulations) to .gii format file
       mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
 
+      #export the stress to csv file
+      # foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+      # np.savetxt(foldname + "stress%d.csv"%(step), stress, delimiter = ',')
+
       # Convert mesh .stl to image .nii.gz
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
 
@@ -280,6 +285,9 @@ if __name__ == '__main__':
       print('Time required for simulation loop : ' + str (end_time_simulation))
       start_time_simulation = time.time()
 
+    #stack stress for visualisation (would be nice to write it in a file)
+    stress += Ft[:,0] + Ft[:,1] + Ft[:,2]
+    
     # Newton dynamics
     Ft, coordinates, Vt = move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt)
 
