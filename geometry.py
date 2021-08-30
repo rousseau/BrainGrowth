@@ -425,7 +425,7 @@ def Curve_fitting_half(texture_file, labels, n_clusters, lobes):
   return peak, amplitude, latency
 
 #@jit
-def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2):
+def curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2):
   '''
   Curve-fit of temporal growth for each label for whole brain
   Args:

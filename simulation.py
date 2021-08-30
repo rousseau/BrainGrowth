@@ -19,8 +19,8 @@ import io
 import sys
 
 #local modules
-from geometry import import_mesh, tetra_normals, get_vertices, get_tetra_vertices_indices, get_triangle_indices, get_nb_surface_nodes, edge_length, volume_mesh, mark_nogrowth, config_refer, config_deform, normals_surfaces, calc_vol_nodal, calc_mid_plane, calc_longi_length, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, Curve_fitting_whole
-from growth import calc_dist_2_surf, growthRate, calc_cortex_thickness, shear_modulus, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole
+from geometry import import_mesh, tetra_normals, get_vertices, get_tetra_vertices_indices, get_triangle_indices, get_nb_surface_nodes, edge_length, volume_mesh, mark_nogrowth, config_refer, config_deform, normals_surfaces, calc_vol_nodal, calc_mid_plane, calc_longi_length, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, curve_fitting_whole
+from growth import calc_dist_2_surf, growthRate, calc_cortex_thickness, shear_modulus, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole, calc_growth_filter
 from normalisation import normalise_coord
 from collision_Tallinen import contact_process
 from mechanics import tetra_elasticity, move
@@ -30,8 +30,8 @@ from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti
 if __name__ == '__main__':
   start_time_initialization = time.time ()
   parser = argparse.ArgumentParser(description='Dynamic simulations')
-  parser.add_argument('-i', '--input', help='Input maillage', type=str, default='./data/brain_simp_red.mesh', required=False)
-  parser.add_argument('-o', '--output', help='Output maillage', type=str, default='./res/brain_simp_red', required=False)
+  parser.add_argument('-i', '--input', help='Input maillage', type=str, default='./data/sphere5.mesh', required=False)
+  parser.add_argument('-o', '--output', help='Output maillage', type=str, default='./res/sphere5', required=False)
   parser.add_argument('-hc', '--halforwholebrain', help='Half or whole brain', type=str, default='whole', required=False)
   parser.add_argument('-t', '--thickness', help='Cortical thickness', type=float, default=0.042, required=False)
   parser.add_argument('-g', '--growth', help='Relative growth rate', type=float, default=1.829, required=False)
@@ -42,9 +42,9 @@ if __name__ == '__main__':
   parser.add_argument('-tl', '--textureleft', help='Texture of template of left brain', type=str, required=False)
   parser.add_argument('-lr', '--lobesright', help='User-defined lobes of right brain', type=str, required=False)
   parser.add_argument('-ll', '--lobesleft', help='User-defined lobes of left brain', type=str, required=False)
-  parser.add_argument('-sc', '--stepcontrol', help='Step length regulation', type=float, default=0.1, required=False) #increase for speed, 0.01 is default
-  parser.add_argument('-ms', '--meshspacing', help='Average spacing in the mesh', type=float, default=0.01, required=False) #default is 0.01
-  parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh', type=float, default=0.01, required=False) #increase for speed, too high brings negativ jakobians, default is 0.01
+  parser.add_argument('-sc', '--stepcontrol', help='Step length regulation', type=float, default=0.01, required=False) #increase for speed, 0.01 is default from Tallinen, 0.1 is limit. No apparent changes in results on sphere5, but compare_stl yield small deviation
+  parser.add_argument('-ms', '--meshspacing', help='Average spacing in the mesh', type=float, default=0.01, required=False) #increase for speed, default is 0.01 from Tallinen, 0.1 is limit, No apparent changes in results on sphere5, but compare_stl yield strong deviation
+  parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh', type=float, default=0.01, required=False) #increase for speed, too high brings negativ jakobians, default is 0.01, changing this value affect results even visually
   args = parser.parse_args()
 
   # Parameters to change
@@ -112,6 +112,7 @@ if __name__ == '__main__':
   Vt = np.zeros((n_nodes,3), dtype = np.float64)  #Velocities
   Ft = np.zeros((n_nodes,3), dtype = np.float64)  #Forces
   stress = np.zeros((n_nodes), dtype = np.float64)
+  growth_filter = np.ones(n_tets, dtype = np.float64)
   #Vn0 = np.zeros(nn, dtype = float) #Nodal volumes in reference state
   #Vn = np.zeros(nn, dtype = float)  #Deformed nodal volumes
   # Ue = 0 #Elastic energy
@@ -170,7 +171,7 @@ if __name__ == '__main__':
       # Curve-fit of temporal growth for each label
       texture_file = args.textureright
       texture_file_2 = args.textureleft
-      peak, amplitude, latency, peak_2, amplitude_2, latency_2 = Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2)
+      peak, amplitude, latency, peak_2, amplitude_2, latency_2 = curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2)
 
   # Normalize initial mesh coordinates, change mesh information by values normalized
   coordinates0, coordinates, center_of_gravity, maxd, miny = normalise_coord(coordinates0, coordinates, n_nodes, args.halforwholebrain)
@@ -207,10 +208,11 @@ if __name__ == '__main__':
       else:
         at, bt = growthRate_2_whole(t, n_tets, n_surface_nodes, labels_surface, labels_surface_2, labels_volume, labels_volume_2, peak, amplitude, latency, lobes, lobes_2, indices_a, indices_b, indices_c, indices_d)
     else:
-      at = growthRate(GROWTH_RELATIVE, t, n_tets)
+      at = growthRate(GROWTH_RELATIVE, t, n_tets, growth_filter)
       
     # Calculate the longitudinal length of the real brain
     longi_length = calc_longi_length(t)
+    growth_filter = calc_growth_filter(growth_filter, dist_2_surf, n_tets, tets, cortex_thickness)
 
     # Calculate the thickness of growing layer
     cortex_thickness = calc_cortex_thickness(THICKNESS_CORTEX, t)
@@ -264,6 +266,10 @@ if __name__ == '__main__':
       # foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
       # np.savetxt(foldname + "stress%d.csv"%(step), stress, delimiter = ',')
 
+      #export the stress to a txt numpy array file
+      foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+      np.savetxt(foldname + "stress%d.txt"%(step), stress, delimiter=',', newline='\n')
+
       # Convert mesh .stl to image .nii.gz
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
 
@@ -285,8 +291,9 @@ if __name__ == '__main__':
       print('Time required for simulation loop : ' + str (end_time_simulation))
       start_time_simulation = time.time()
 
-    #stack stress for visualisation (would be nice to write it in a file)
+    #stack stress for visualisation (would be nice to write it in a file, plus the calculation is not correct)
     stress += Ft[:,0] + Ft[:,1] + Ft[:,2]
+
     
     # Newton dynamics
     Ft, coordinates, Vt = move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt)

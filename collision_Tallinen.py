@@ -68,3 +68,25 @@ def contact_process(coordinates, Ft, nodal_idx, coordinates_old, n_surface_nodes
         Ft[pt] += fn
 
   return Ft, NNLt
+
+
+  ###LEGACY, SAFELY IGNORE###
+  '''
+  Original algo from Tallinen
+  for each surface node:
+    find max displacement of node since last update
+    if displacement > 0,5 (hs - hc) Thickness of proximity skin and repulsive skin, respectively:
+      update proximity list using linked cell algo (create NNLtriangle)
+    
+  for each surface node:
+    for each linked node:
+      find nearest node from barycenter of linked nodes
+      calculate the distance barycenter-nearest node
+      if in contact range:          original formula: rc < hc && gr[pt] + gr[faces[tri].n1] > 0.0
+        calculate contact forces:
+          calculate triangle normal
+          create vector fn = cc * (rc - hs)/ hc * kc * a * a = contact force ??
+          if fn.Ntri negative, meaning if fn goes opposite to the triangle normal, transpose fn so that the triangle normal component is positive
+          then, add fn to total force (and do something with the normals of the triangle but no idea what is happening)
+
+  '''
