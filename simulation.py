@@ -34,7 +34,7 @@ if __name__ == '__main__':
   parser.add_argument('-o', '--output', help='Output maillage', type=str, default='./res/sphere5', required=False)
   parser.add_argument('-hc', '--halforwholebrain', help='Half or whole brain', type=str, default='whole', required=False)
   parser.add_argument('-t', '--thickness', help='Cortical thickness', type=float, default=0.042, required=False)
-  parser.add_argument('-g', '--growth', help='Relative growth rate', type=float, default=1.829, required=False)
+  parser.add_argument('-g', '--growth', help='Relative growth rate', type=float, default=1.829, required=False) #positive correlation between growth and folding
   parser.add_argument('-gm', '--growthmethod', help='Global or regional growth', type=str, default='Global', required=False) 
   parser.add_argument('-mr', '--registermeshright', help='Mesh of right brain after registration', type=str, required=False)
   parser.add_argument('-ml', '--registermeshleft', help='Mesh of left brain after registration', type=str, required=False)
@@ -106,7 +106,7 @@ if __name__ == '__main__':
   step = 0 #Current time step
   zoom = 1.0 #Zoom variable for visualization
 
-  nearest_surf_node = np.zeros(n_nodes, dtype = np.int64)  #Nearest surface nodes for all nodes
+  Ftnearest_surf_node = np.zeros(n_nodes, dtype = np.int64)  #Nearest surface nodes for all nodes
   dist_2_surf = np.zeros(n_nodes, dtype = np.float64)  #Distances to nearest surface nodes for all nodes
   surf_node_norms = np.zeros((n_surface_nodes,3), dtype = np.float64)  #Normals of surface nodes
   Vt = np.zeros((n_nodes,3), dtype = np.float64)  #Velocities
