@@ -58,6 +58,6 @@ def normalise_coord(coordinates0, coordinates, n_nodes, halforwholebrain):
 
   print ('normalized minx is ' + str(min(coordinates0[:,0])) + ' normalized maxx is ' + str(max(coordinates0[:,0])) + ' normalized miny is ' + str(min(coordinates0[:,1])) + ' normalized maxy is ' + str(max(coordinates0[:,1])) + ' normalized minz is ' + str(min(coordinates0[:,2])) + ' normalized maxz is ' + str(max(coordinates0[:,2])))
 
-  coordinates = coordinates0
+  coordinates = coordinates0.copy()
 
   return coordinates0, coordinates, center_of_gravity, maxd, miny
