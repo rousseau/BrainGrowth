@@ -164,6 +164,29 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal
   filetxt.close()
 
 # Convert surface mesh structure (from simulations) to .stl format file
+def mesh_to_stl_pr(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, n_surface_nodes, faces, node_deformation):
+
+  stlname = "B%d_pr.ply"%(step)
+
+  foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+
+  save_path = os.path.join(foldname, stlname)
+
+  # Transform coordinates (because the coordinates are normalized at the beginning)
+  vertices = np.zeros((n_surface_nodes,3), dtype = float)
+
+  vertices[:,:] = Ut[nodal_idx[:],:] #= np.max(faces) +1
+
+  # Create the .stl mesh par Trimesh and save it
+  mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
+  texture = node_deformation.copy()
+  texture = texture / np.max(texture) * 255
+
+  for i in range(len(mesh.vertices)):
+    mesh.visual.vertex_colors[i] = [texture[i], texture[i], texture[i], 255]
+  mesh.export(save_path)
+
+# Convert surface mesh structure (from simulations) to .stl format file
 def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, halforwholebrain):
 
   stlname = "B%d.stl"%(step)
@@ -188,7 +211,7 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx
   vertices_seg[:,2] = center_of_gravity[2] - vertices[:,2]*maxd
   #vertices_seg[:,2] = vertices[:,2]*maxd + center_of_gravity[2]
 
-  f_indices[:,0] = nodal_idx_b[faces[:,0]]
+  f_indices[:,0] = nodal_idx_b[faces[:,0]] #f_indices = faces
   f_indices[:,1] = nodal_idx_b[faces[:,1]]
   f_indices[:,2] = nodal_idx_b[faces[:,2]]
 

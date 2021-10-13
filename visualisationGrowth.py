@@ -138,3 +138,7 @@ def stress_visualisation (path, Ft):
     mesh.export('/home/benjamin/Documents/mesh.ply')
     return mesh
 
+def export_displacement(coordinates, coordinates_initial):
+    """takes two sets of coordinate and return nothing because I am an ididiot"""
+    return np.abs(coordinates - coordinates_initial)
+

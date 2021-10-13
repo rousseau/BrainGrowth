@@ -21,7 +21,7 @@ def calc_dist_2_surf(coordinates0, nodal_idx):
 
   return csn, dist_2_surf
 
-@jit
+@jit(nopython = True)
 def growthRate(GROWTH_RELATIVE, t, n_tets, filter = 1.0):
   """
   Calculates global relative growth rate for half or whole brain
@@ -36,6 +36,15 @@ def growthRate(GROWTH_RELATIVE, t, n_tets, filter = 1.0):
   at = np.zeros(n_tets, dtype=np.float64)
   at[:] = GROWTH_RELATIVE*t*filter
   return at
+
+@jit(nopython = True, parallel = True)
+def calc_growth_filter(growth_filter, dist_2_surf, n_tets, tets, cortex_thickness):
+  for i in prange(n_tets):
+    if float(dist_2_surf[tets[i][0]]) < cortex_thickness:
+      growth_filter[i] = 1.0 #is the first somit of the tet deeper in the brain than cortical tickness?
+    else:
+      growth_filter[i] = 1.2
+    return growth_filter
 
 @jit
 def growthRate_2_half(t, n_tets, n_surface_nodes, labels_surface, labels_volume, peak, amplitude, latency, lobes):

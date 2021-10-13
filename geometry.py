@@ -59,7 +59,7 @@ def get_vertices(mesh):
   for i in prange(n_nodes):
     coordinates0[i] = np.array([float(mesh[i+1][1]),float(mesh[i+1][0]),float(mesh[i+1][2])]) # Change x, y (Netgen)
     
-  coordinates = coordinates0 # Initialize deformed coordinates of nodes
+  coordinates = coordinates0.copy() # Initialize deformed coordinates of nodes
   
   return coordinates0, coordinates, n_nodes
 
@@ -84,7 +84,7 @@ def get_tetra_vertices_indices(mesh, n_nodes):
   return tets, n_tets
 
 @njit(parallel=True)
-def get_triangle_indices(mesh, n_nodes, n_tets):
+def get_face_indices(mesh, n_nodes, n_tets):
   '''
   Takes a list of arrays as an input and returns faces and number of faces. Faces are defined as 3 indexes of vertices from the coordinate list, only on the surface
 
@@ -425,7 +425,7 @@ def Curve_fitting_half(texture_file, labels, n_clusters, lobes):
   return peak, amplitude, latency
 
 #@jit
-def Curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2):
+def curve_fitting_whole(texture_file, texture_file_2, labels, labels_2, n_clusters, lobes, lobes_2):
   '''
   Curve-fit of temporal growth for each label for whole brain
   Args:
@@ -601,7 +601,7 @@ def config_refer(coordinates0, tets, n_tets):
   ref_state_tets[:,0] = coordinates0[tets[:,1]] - coordinates0[tets[:,0]] # Reference state
   ref_state_tets[:,1] = coordinates0[tets[:,2]] - coordinates0[tets[:,0]]
   ref_state_tets[:,2] = coordinates0[tets[:,3]] - coordinates0[tets[:,0]]
-  ref_state_tets[:] = transpose_dim_3(ref_state_tets[:])
+  ref_state_tets[:] = transpose_dim_3(ref_state_tets[:]) 
 
   return ref_state_tets
 
@@ -624,7 +624,7 @@ def normals_surfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes,
   Ntmp = cross_dim_3(coordinates0[faces[:,1]] - coordinates0[faces[:,0]], coordinates0[faces[:,2]] - coordinates0[faces[:,0]])
   for i in prange(n_faces):
     surf_node_norms[nodal_idx_b[faces[i,:]]] += Ntmp[i]
-  for i in prange(n_surface_nodes):
+  for i in prange(n_surface_nodes): #because several norms are added to each face
     surf_node_norms[i] *= 1.0/np.linalg.norm(surf_node_norms[i])
 
   return surf_node_norms
@@ -681,6 +681,10 @@ def calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets,
 # Midplane
 @njit(parallel=True)
 def calc_mid_plane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, midplane_pos, mesh_spacing, repuls_skin, bulk_modulus):
+  '''
+  for each surface node:
+  check a box condition and restrict growth for the outer layer
+  '''
   for i in prange(n_surface_nodes):
     pt = nodal_idx[i]
     if coordinates0[pt,1] < midplane_pos - 0.5*mesh_spacing and coordinates[pt,1] > midplane_pos:
