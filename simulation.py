@@ -9,12 +9,10 @@
   
 """
 #global modules
-#from __future__ import division
 import argparse
 import numpy as np
 import time
 import slam.io as sio
-#import multiprocessing as mp
 
 #global modules for tracking
 import cProfile
@@ -23,7 +21,7 @@ import io
 import sys
 
 #local modules
-from geometry import import_mesh, tetra_normals, get_vertices, get_tetra_vertices_indices, get_face_indices, get_nb_surface_nodes, edge_length, volume_mesh, mark_nogrowth, config_refer, config_deform, normals_surfaces, calc_vol_nodal, calc_mid_plane, calc_longi_length, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, curve_fitting_whole
+from geometry import netgen_to_array, tetra_normals, get_nodes, get_tetra_indices, get_face_indices, get_nb_surface_nodes, edge_length, volume_mesh, mark_nogrowth, config_refer, config_deform, normals_surfaces, calc_vol_nodal, calc_mid_plane, calc_longi_length, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, curve_fitting_whole
 from growth import calc_dist_2_surf, growthRate, calc_cortex_thickness, shear_modulus, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole, calc_growth_filter
 from normalisation import normalise_coord
 from collision_Tallinen import contact_process
@@ -57,18 +55,18 @@ if __name__ == '__main__':
   GROWTH_RELATIVE = args.growth
 
   # Import mesh, each line as a list
-  mesh = import_mesh(args.input)
+  mesh = netgen_to_array(args.input)
 
   # Read nodes, get undeformed coordinates (Ut0) and initialize deformed coordinates (Ut) of all nodes. #X-Y switch at this point
-  coordinates0, coordinates, n_nodes = get_vertices(mesh) 
+  coordinates0, coordinates, n_nodes = get_nodes(mesh) 
 
   # Read element indices (tets: index of four vertices of tetrahedra) and get number of elements (ne). #Handness switch at this point
-  tets, n_tets = get_tetra_vertices_indices(mesh, n_nodes)
+  tets, n_tets = get_tetra_indices(mesh, n_nodes)
 
   # Read surface triangle indices (faces: index of three vertices of triangles) and get number of surface triangles (nf)
   faces, n_faces = get_face_indices(mesh, n_nodes, n_tets)
 
-  # Determine surface nodes and index maps  n_surface_nodes: number of nodes at the surface, SN: Nodal index map from surface to full mesh, nodal_idx_b: Nodal index map from full mesh to surface)
+  # Determine surface nodes and index maps  n_surface_nodes: number of nodes at the surface, Nodal index map (legacy SN) from surface to full mesh, nodal_idx_b: Nodal index map from full mesh to surface)
   n_surface_nodes, nodal_idx, nodal_idx_b = get_nb_surface_nodes(faces, n_nodes)
 
   # Check minimum, maximum and average edge lengths (average mesh spacing) at the surface
@@ -115,7 +113,6 @@ if __name__ == '__main__':
   surf_node_norms = np.zeros((n_surface_nodes,3), dtype = np.float64)  #Normals of surface nodes
   Vt = np.zeros((n_nodes,3), dtype = np.float64)  #Velocities
   Ft = np.zeros((n_nodes,3), dtype = np.float64)  #Forces
-  stress = np.zeros((n_nodes), dtype = np.float64)
   growth_filter = np.ones(n_tets, dtype = np.float64)
   #Vn0 = np.zeros(nn, dtype = float) #Nodal volumes in reference state
   #Vn = np.zeros(nn, dtype = float)  #Deformed nodal volumes
@@ -137,33 +134,6 @@ if __name__ == '__main__':
   rel_vol_chg4 = np.zeros(n_tets, dtype=np.float64)
   rel_vol_chg_av = np.zeros(n_tets, dtype=np.float64)
 
-  # #slices for multiprocessing 4437.125 
-  # slice0 = {0, 4437}
-  # slice1 = {4438, 8875}
-  # slice2 = {8876, 13313}
-  # slice3 = {13314, 17751}
-  # slice4 = {17752, 22189}
-  # slice5 = {22190, 26627}
-  # slice6 = {26628, 31065}
-  # slice7 = {31066,35496}
-
-  # slice0 = 4437
-  # slice1 = 8875
-  # slice2 = 13313
-  # slice3 = 17751
-  # slice4 = 22189
-  # slice5 = 26627
-  # slice6 = 31065
-  # slice7 = 35496
-
-
-  # n_cores = mp.cpu_count()
-  # pool = mp.Pool(n_cores)
-  # Ft0 = np.zeros((n_nodes, 3), dtype=np.float64)
-  # Ft1 = np.zeros((n_nodes, 3), dtype=np.float64)
-
-
- 
   ## Parcel brain in lobes
   if args.growthmethod.__eq__("regional"):
     n_clusters = 10   #Number of lobes
@@ -226,7 +196,7 @@ if __name__ == '__main__':
   # Mark non-growing areas
   gr = mark_nogrowth(coordinates0, n_nodes)
 
-  # Calculate normals of each surface triangle and apply these normals to surface nodes
+  # Calculate normals of each surface triangle at each node
   surf_node_norms = normals_surfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes, surf_node_norms)
 
   #optional gaussian filtering on at
@@ -274,22 +244,7 @@ if __name__ == '__main__':
     left_cauchy_grad, rel_vol_chg, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, rel_vol_chg_av, deformation_grad, ref_state_growth = tetra1(tets, tan_growth_tensor, ref_state_tets, ref_state_growth, material_tets, Vn, Vn0)
 
     Ft = tetra2(n_tets, tets, Ft, left_cauchy_grad, mu, eps, rel_vol_chg, bulk_modulus,rel_vol_chg_av, deformation_grad, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, k_param, ref_state_growth)
-    
-    # start = time.time()
-    # Ft_list = pool.starmap(tetra2, 
-    # [
-    # (slice0, tets[0:slice0], Ft, left_cauchy_grad[0:slice0], mu, eps, rel_vol_chg[0:slice0], bulk_modulus,rel_vol_chg_av[0:slice0], deformation_grad[0:slice0], rel_vol_chg1[0:slice0], rel_vol_chg2[0:slice0], rel_vol_chg3[0:slice0], rel_vol_chg4[0:slice0], k_param, ref_state_growth[0:slice0]),
-    # (slice0, tets[slice0 +1: slice1], Ft, left_cauchy_grad[slice0 +1: slice1], mu, eps, rel_vol_chg[slice0 +1:slice1], bulk_modulus,rel_vol_chg_av[slice0 +1:slice1], deformation_grad[slice0 +1:slice1], rel_vol_chg1[slice0 + 1:slice1], rel_vol_chg2[slice0 +1:slice1], rel_vol_chg3[slice0 + 1:slice1], rel_vol_chg4[slice0 + 1:slice1], k_param, ref_state_growth[slice0 + 1:slice1]),
-    # (slice0, tets[slice1 +1: slice2], Ft, left_cauchy_grad[slice1 +1: slice2], mu, eps, rel_vol_chg[slice1 +1:slice2], bulk_modulus,rel_vol_chg_av[slice1 +1:slice2], deformation_grad[slice1 +1:slice2], rel_vol_chg1[slice1 + 1:slice2], rel_vol_chg2[slice1 +1:slice2], rel_vol_chg3[slice1 + 1:slice2], rel_vol_chg4[slice1 + 1:slice2], k_param, ref_state_growth[slice1 + 1:slice2]),
-    # (slice0, tets[slice2 +1: slice3], Ft, left_cauchy_grad[slice2 +1: slice3], mu, eps, rel_vol_chg[slice2 +1:slice3], bulk_modulus,rel_vol_chg_av[slice2 +1:slice3], deformation_grad[slice2 +1:slice3], rel_vol_chg1[slice2 + 1:slice3], rel_vol_chg2[slice2 +1:slice3], rel_vol_chg3[slice2 + 1:slice3], rel_vol_chg4[slice2 + 1:slice3], k_param, ref_state_growth[slice2 + 1:slice3]),
-    # (slice0, tets[slice3 +1: slice4], Ft, left_cauchy_grad[slice3 +1: slice4], mu, eps, rel_vol_chg[slice3 +1:slice4], bulk_modulus,rel_vol_chg_av[slice3 +1:slice4], deformation_grad[slice3 +1:slice4], rel_vol_chg1[slice3 + 1:slice4], rel_vol_chg2[slice3 +1:slice4], rel_vol_chg3[slice3 + 1:slice4], rel_vol_chg4[slice3 + 1:slice4], k_param, ref_state_growth[slice3 + 1:slice4]),
-    # (slice0, tets[slice4 +1: slice5], Ft, left_cauchy_grad[slice4 +1: slice5], mu, eps, rel_vol_chg[slice4 +1:slice5], bulk_modulus,rel_vol_chg_av[slice4 +1:slice5], deformation_grad[slice4 +1:slice5], rel_vol_chg1[slice4 + 1:slice5], rel_vol_chg2[slice4 +1:slice5], rel_vol_chg3[slice4 + 1:slice5], rel_vol_chg4[slice4 + 1:slice5], k_param, ref_state_growth[slice4 + 1:slice5]),
-    # (slice0, tets[slice5 +1: slice6], Ft, left_cauchy_grad[slice5 +1: slice6], mu, eps, rel_vol_chg[slice5 +1:slice6], bulk_modulus,rel_vol_chg_av[slice5 +1:slice6], deformation_grad[slice5 +1:slice6], rel_vol_chg1[slice5 + 1:slice6], rel_vol_chg2[slice5 +1:slice6], rel_vol_chg3[slice5 + 1:slice6], rel_vol_chg4[slice5 + 1:slice6], k_param, ref_state_growth[slice5 + 1:slice6]),
-    # (4430  , tets[slice6 +1: slice7], Ft, left_cauchy_grad[slice6 +1: slice7], mu, eps, rel_vol_chg[slice6 +1:slice7], bulk_modulus,rel_vol_chg_av[slice6 +1:slice7], deformation_grad[slice6 +1:slice7], rel_vol_chg1[slice6 + 1:slice7], rel_vol_chg2[slice6 +1:slice7], rel_vol_chg3[slice6 + 1:slice7], rel_vol_chg4[slice6 + 1:slice7], k_param, ref_state_growth[slice6 + 1:slice7]),
-    # ])
 
-    # Ft = Ft_list[0] + Ft_list[1] + Ft_list[2] + Ft_list[3] + Ft_list[4] + Ft_list[5] + Ft_list[6] + Ft_list[7]
-    # tag1 = time.time() - start
     # Calculate normals of each deformed tetrahedron 
     tet_norms = tetra_normals(surf_node_norms, nearest_surf_node, tets, n_tets)
 
@@ -372,7 +327,6 @@ if __name__ == '__main__':
   
 
   #myfile.close()
-  pool.close()
 
 """
 ##############################################
