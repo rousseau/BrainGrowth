@@ -1,25 +1,6 @@
 import numpy as np
 import math
 from numba import jit, njit, prange
-from scipy import spatial
-
-@jit
-def calc_dist_2_surf(coordinates0, nodal_idx):
-  """
-  Find the nearest surface node to each node and associated distance. Function needed to set up growth of gray matter
-  Args:
-  coordinates0 (array): vertice coordinates
-  nodal_idx (array): index of surface nodes
-  Returns:
-  csn (array): nearest surface node for each node
-  dist_2_surf: distance to surface for each node
-  """
-  tree = spatial.KDTree(coordinates0[nodal_idx[:]])
-  pp = tree.query(coordinates0)
-  csn = pp[1]  
-  dist_2_surf = pp[0] 
-
-  return csn, dist_2_surf
 
 @jit(nopython = True)
 def growthRate(GROWTH_RELATIVE, t, n_tets, filter = 1.0):
