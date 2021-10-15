@@ -13,6 +13,7 @@ import argparse
 import numpy as np
 import time
 import slam.io as sio
+from scipy.spatial import cKDTree
 
 #global modules for tracking
 import cProfile
@@ -50,7 +51,7 @@ if __name__ == '__main__':
   args = parser.parse_args()
 
   # Parameters to change
-  PATH_DIR = args.output # Path of results
+  PATH_DIR = args.output
   THICKNESS_CORTEX = args.thickness
   GROWTH_RELATIVE = args.growth
 
@@ -58,7 +59,8 @@ if __name__ == '__main__':
   mesh = netgen_to_array(args.input)
 
   # Read nodes, get undeformed coordinates (Ut0) and initialize deformed coordinates (Ut) of all nodes. #X-Y switch at this point
-  coordinates0, coordinates, n_nodes = get_nodes(mesh) 
+  coordinates, n_nodes = get_nodes(mesh) 
+  coordinates0 = coordinates.copy()
 
   # Read element indices (tets: index of four vertices of tetrahedra) and get number of elements (ne). #Handness switch at this point
   tets, n_tets = get_tetra_indices(mesh, n_nodes)
@@ -188,7 +190,8 @@ if __name__ == '__main__':
   #used for deformation quantification WIP
 
   # Find the nearest surface nodes (nearest_surf_node) to nodes and distances to them (dist_2_surf)
-  nearest_surf_node, dist_2_surf = calc_dist_2_surf(coordinates0, nodal_idx)
+  tree = cKDTree(coordinates0[nodal_idx])
+  dist_2_surf, nearest_surf_node = tree.query(coordinates0)
 
   # Configuration of tetrahedra at reference state (ref_state_tets)
   ref_state_tets = config_refer(coordinates0, tets, n_tets)

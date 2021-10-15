@@ -55,13 +55,11 @@ def get_nodes(mesh):
   n_nodes (int): number of nodes
   '''
   n_nodes = np.int64(mesh[0][0])
-  coordinates0 = np.zeros((n_nodes,3), dtype=np.float64) # Undeformed coordinates of nodes
+  coordinates = np.zeros((n_nodes,3), dtype=np.float64) # Undeformed coordinates of nodes
   for i in prange(n_nodes):
-    coordinates0[i] = np.array([float(mesh[i+1][1]),float(mesh[i+1][0]),float(mesh[i+1][2])]) # Change x, y (Netgen)
-    
-  coordinates = coordinates0.copy() # Initialize deformed coordinates of nodes
+    coordinates[i] = np.array([float(mesh[i+1][1]),float(mesh[i+1][0]),float(mesh[i+1][2])]) # Change x, y (Netgen)
   
-  return coordinates0, coordinates, n_nodes
+  return coordinates, n_nodes
 
 @njit(parallel=True)
 def get_tetra_indices(mesh, n_nodes):
