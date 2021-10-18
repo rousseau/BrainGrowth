@@ -76,19 +76,6 @@ def growthRate_2_whole(t, n_tets, n_surface_nodes, labels_surface, labels_surfac
 
   return at, bt
 
-@jit
-def calc_cortex_thickness(THICKNESS_CORTEX, t):
-  """
-  Calculates thickness of growing layer
-  Args:
-  THICKNESS_CORTEX (float): constante set at simulation level
-  t (float): current time of simulation
-  Returns:
-  H (float): current growing layer thickness
-  """
-  H = THICKNESS_CORTEX + 0.01*t
-  return H
-
 # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
 @njit(parallel=True)
 def shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):

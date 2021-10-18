@@ -225,8 +225,7 @@ if __name__ == '__main__':
     longi_length = calc_longi_length(t)
     #growth_filter = calc_growth_filter(growth_filter, dist_2_surf, n_tets, tets, cortex_thickness)
 
-    # Calculate the thickness of growing layer
-    cortex_thickness = calc_cortex_thickness(THICKNESS_CORTEX, t) 
+    cortex_thickness = THICKNESS_CORTEX + 0.01*t
 
     # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn) ###Potential start of pool
     Vn0, Vn = calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes)
