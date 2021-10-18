@@ -23,7 +23,7 @@ import sys
 
 #local modules
 from geometry import netgen_to_array, tetra_normals, get_nodes, get_tetra_indices, get_face_indices, get_nb_surface_nodes, edge_length, volume_mesh, mark_nogrowth, config_refer, config_deform, normals_surfaces, calc_vol_nodal, calc_mid_plane, calc_longi_length, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, curve_fitting_whole
-from growth import calc_dist_2_surf, growthRate, calc_cortex_thickness, shear_modulus, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole, calc_growth_filter
+from growth import growthRate, shear_modulus, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole, calc_growth_filter
 from normalisation import normalise_coord
 from collision_Tallinen import contact_process
 from mechanics import tetra_elasticity, move, tetra1, tetra1_np, tetra2
