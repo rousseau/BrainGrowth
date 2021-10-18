@@ -261,7 +261,7 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
     if ll3 >= eps*eps and rel_vol_chg[i] > 0.0:  # No need for SVD
       powJ23 = np.power(rel_vol_chg[i], 2.0/3.0)
       S = (left_cauchy_grad[i] - np.identity(3)*np.trace(left_cauchy_grad[i])/3.0)*mu[i]/(rel_vol_chg[i]*powJ23) + np.identity(3)*bulk_modulus*(rel_vol_chg_av[i]-1.0)
-      P = np.dot(S, np.linalg.inv(deformation_grad[i].transpose()))*rel_vol_chg[i]
+      P = np.dot(S, np.linalg.inv(deformation_grad[i].transpose()))*rel_vol_chg[i] #P = cauchy stress
       W = 0.5*mu[i]*(np.trace(left_cauchy_grad[i])/powJ23 - 3.0) + 0.5*bulk_modulus*((rel_vol_chg1[i]-1.0)*(rel_vol_chg1[i]-1.0) + (rel_vol_chg2[i]-1.0)*(rel_vol_chg2[i]-1.0) + (rel_vol_chg3[i]-1.0)*(rel_vol_chg3[i]-1.0) + (rel_vol_chg4[i]-1.0)*(rel_vol_chg4[i]-1.0))*0.25
         
         
