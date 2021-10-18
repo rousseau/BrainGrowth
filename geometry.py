@@ -659,7 +659,7 @@ def tetra_normals(surf_node_norms, nearest_surf_node, tets, n_tets):
 @jit(nopython=True)   #cannot be //
 def calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes):
   """
-  Calculcates the undeformed and deformed nodal volume for each node
+  Calculcates the undeformed and deformed nodal volume for each node. Volume per tetra is calculated and then distributed equally on each node
   """
   Vn0 = np.zeros(n_nodes, dtype=np.float64) #Initialize nodal volumes in reference state
   Vn = np.zeros(n_nodes, dtype=np.float64)  #Initialize deformed nodal volumes

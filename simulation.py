@@ -225,6 +225,7 @@ if __name__ == '__main__':
     longi_length = calc_longi_length(t)
     #growth_filter = calc_growth_filter(growth_filter, dist_2_surf, n_tets, tets, cortex_thickness)
 
+    #update cortex thickness
     cortex_thickness = THICKNESS_CORTEX + 0.01*t
 
     # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn) ###Potential start of pool
