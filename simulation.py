@@ -36,6 +36,8 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Dynamic simulations')
   parser.add_argument('-i', '--input', help='Input mesh', type=str, default='./data/template_T2_reduced_z.mesh', required=False)
   parser.add_argument('-o', '--output', help='Output folder', type=str, default='./res/sphere5', required=False)
+  parser.add_argument('-ipo', '--ipoutput', help='Output files containing initial parameters required by the "visualization" package', type=str, default='./visualization/initial_parameters/parameters.npy', required=False)
+  parser.add_argument('-co', '--coutput', help='Output folder containing [step,coordinates] required by the "visualization" package', type=str, default='./visualization/coordinates/', required=False)
   parser.add_argument('-hc', '--halforwholebrain', help='Half or whole brain', type=str, default='whole', required=False)
   parser.add_argument('-t', '--thickness', help='Normalized cortical thickness', type=float, default=0.042, required=False)
   parser.add_argument('-g', '--growth', help='Normalized relative growth rate', type=float, default=1.829, required=False) #positive correlation between growth and folding
@@ -237,9 +239,10 @@ if __name__ == '__main__':
   end_time_initialization = time.time () - start_time_initialization
   print ('Time required for initialization : ' + str (end_time_initialization) )
   
+  ###### data export required by the "visualization" package - for coordinates denormalization and displacements calculation ######
   # Export the initial parameters required for 'visualization' in npy file
   initial_parameters = np.array([n_nodes, maxd, center_of_gravity], dtype = object)
-  np.save('./visualization/initial_parameters/parameters.npy', initial_parameters)
+  np.save(args.ipoutput, initial_parameters)
 
   # Simulation loop
   start_time_simulation = time.time ()
@@ -351,10 +354,11 @@ if __name__ == '__main__':
 
       # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
       #mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, center_of_gravity, maxd, nn, faces, tets, miny)
-
+      
+      ###### data export required by the "visualization" package - for displacements calculation ######
       # Export step and associated coordinates in npy files
       data = np.array([step, coordinates], dtype = object)
-      np.save('./visualization/coordinates/coordinates_%d.npy'%(step), data)
+      np.save(args.coutput + 'coordinates_%d.npy'%(step), data)
       
       print('step: ' + str(step) + ' t: ' + str(t) )
 
