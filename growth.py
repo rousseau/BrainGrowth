@@ -1,25 +1,6 @@
 import numpy as np
 import math
 from numba import jit, njit, prange
-from scipy import spatial
-
-@jit
-def calc_dist_2_surf(coordinates0, nodal_idx):
-  """
-  Find the nearest surface node to each node and associated distance. Function needed to set up growth of gray matter
-  Args:
-  coordinates0 (array): vertice coordinates
-  nodal_idx (array): index of surface nodes
-  Returns:
-  csn (array): nearest surface node for each node
-  dist_2_surf: distance to surface for each node
-  """
-  tree = spatial.KDTree(coordinates0[nodal_idx[:]])
-  pp = tree.query(coordinates0)
-  csn = pp[1]  
-  dist_2_surf = pp[0] 
-
-  return csn, dist_2_surf
 
 @jit(nopython = True)
 def growthRate(GROWTH_RELATIVE, t, n_tets, filter = 1.0):
@@ -95,20 +76,6 @@ def growthRate_2_whole(t, n_tets, n_surface_nodes, labels_surface, labels_surfac
 
   return at, bt
 
-@jit
-def calc_cortex_thickness(THICKNESS_CORTEX, t):
-  """
-  Calculates thickness of growing layer
-  Args:
-  THICKNESS_CORTEX (float): constante set at simulation level
-  t (float): current time of simulation
-  Returns:
-  H (float): current growing layer thickness
-  """
-  H = THICKNESS_CORTEX + 0.01*t
-  return H
-
-# Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
 @njit(parallel=True)
 def shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):
   """
@@ -133,31 +100,11 @@ def shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):
 
   return gm, mu
 
-# Calculate relative (relates to dist_2_surf) tangential growth factor G
-@jit(nopython=True)
-def growthTensor_tangen_leg(tet_norms, gm, at, tan_growth_tensor, n_tets):
-  '''
-  TODO: vectorizable
-  '''
-  A = np.zeros((n_tets,3,3), dtype=np.float64)
-  A[:,0,0] = tet_norms[:,0]*tet_norms[:,0]
-  A[:,0,1] = tet_norms[:,0]*tet_norms[:,1]
-  A[:,0,2] = tet_norms[:,0]*tet_norms[:,2]
-  A[:,1,0] = tet_norms[:,0]*tet_norms[:,1]
-  A[:,1,1] = tet_norms[:,1]*tet_norms[:,1]
-  A[:,1,2] = tet_norms[:,1]*tet_norms[:,2]
-  A[:,2,0] = tet_norms[:,0]*tet_norms[:,2]
-  A[:,2,1] = tet_norms[:,1]*tet_norms[:,2]
-  A[:,2,2] = tet_norms[:,2]*tet_norms[:,2]
-  for i in prange(n_tets):
-    tan_growth_tensor[i] = np.identity(3) + (np.identity(3) - A[i])*gm[i]*at[i]
-  #G[i] = np.identity(3) + (np.identity(3) - np.matrix([[Nt[0]*Nt[0], Nt[0]*Nt[1], Nt[0]*Nt[2]], [Nt[0]*Nt[1], Nt[1]*Nt[1], Nt[1]*Nt[2]], [Nt[0]*Nt[2], Nt[1]*Nt[2], Nt[2]*Nt[2]]]))*gm*at
-
-  return tan_growth_tensor
-
-# Calculate relative (relates to dist_2_surf) tangential growth factor G
 @jit (nopython=True)
 def growth_tensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
+    '''
+    Calculate relative (relates to dist_2_surf) tangential growth factor G
+    '''
     A = np.zeros((n_tets,3,3), dtype=np.float64)
     A[:,0,0] = tet_norms[:,0]*tet_norms[:,0]
     A[:,0,1] = tet_norms[:,0]*tet_norms[:,1]

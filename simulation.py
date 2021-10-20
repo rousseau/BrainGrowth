@@ -13,6 +13,7 @@ import argparse
 import numpy as np
 import time
 import slam.io as sio
+from scipy.spatial import cKDTree
 
 #global modules for tracking
 import cProfile
@@ -22,11 +23,11 @@ import sys
 
 #local modules
 from geometry import netgen_to_array, tetra_normals, get_nodes, get_tetra_indices, get_face_indices, get_nb_surface_nodes, edge_length, volume_mesh, mark_nogrowth, config_refer, config_deform, normals_surfaces, calc_vol_nodal, calc_mid_plane, calc_longi_length, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, curve_fitting_whole
-from growth import calc_dist_2_surf, growthRate, calc_cortex_thickness, shear_modulus, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole, calc_growth_filter
+from growth import growthRate, shear_modulus, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole, calc_growth_filter
 from normalisation import normalise_coord
 from collision_Tallinen import contact_process
 from mechanics import tetra_elasticity, move, tetra1, tetra1_np, tetra2
-from output import area_volume, writePov, writeTXT, mesh_to_stl_pr, mesh_to_stl, mesh_to_gifti
+from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti
 
 
 if __name__ == '__main__':
@@ -50,7 +51,7 @@ if __name__ == '__main__':
   args = parser.parse_args()
 
   # Parameters to change
-  PATH_DIR = args.output # Path of results
+  PATH_DIR = args.output
   THICKNESS_CORTEX = args.thickness
   GROWTH_RELATIVE = args.growth
 
@@ -58,7 +59,8 @@ if __name__ == '__main__':
   mesh = netgen_to_array(args.input)
 
   # Read nodes, get undeformed coordinates (Ut0) and initialize deformed coordinates (Ut) of all nodes. #X-Y switch at this point
-  coordinates0, coordinates, n_nodes = get_nodes(mesh) 
+  coordinates, n_nodes = get_nodes(mesh) 
+  coordinates0 = coordinates.copy()
 
   # Read element indices (tets: index of four vertices of tetrahedra) and get number of elements (ne). #Handness switch at this point
   tets, n_tets = get_tetra_indices(mesh, n_nodes)
@@ -185,10 +187,10 @@ if __name__ == '__main__':
 
   # Normalize initial mesh coordinates, change mesh information by values normalized
   coordinates0, coordinates, center_of_gravity, maxd, miny = normalise_coord(coordinates0, coordinates, n_nodes, args.halforwholebrain)
-  #used for deformation quantification WIP
 
   # Find the nearest surface nodes (nearest_surf_node) to nodes and distances to them (dist_2_surf)
-  nearest_surf_node, dist_2_surf = calc_dist_2_surf(coordinates0, nodal_idx)
+  tree = cKDTree(coordinates0[nodal_idx])
+  dist_2_surf, nearest_surf_node = tree.query(coordinates0)
 
   # Configuration of tetrahedra at reference state (ref_state_tets)
   ref_state_tets = config_refer(coordinates0, tets, n_tets)
@@ -207,10 +209,9 @@ if __name__ == '__main__':
   end_time_initialization = time.time () - start_time_initialization
   print ('Time required for initialization : ' + str (end_time_initialization) )
 
-  # Simulation loopt
+  # Simulation loop
   start_time_simulation = time.time ()
-  while t < 1.0:
-    
+  while t < 1.0: 
     # Calculate the relative growth rate //bt not used
     if args.growthmethod.__eq__("regional"):
       if args.halforwholebrain.__eq__("half"):
@@ -224,8 +225,8 @@ if __name__ == '__main__':
     longi_length = calc_longi_length(t)
     #growth_filter = calc_growth_filter(growth_filter, dist_2_surf, n_tets, tets, cortex_thickness)
 
-    # Calculate the thickness of growing layer
-    cortex_thickness = calc_cortex_thickness(THICKNESS_CORTEX, t) 
+    #update cortex thickness
+    cortex_thickness = THICKNESS_CORTEX + 0.01*t
 
     # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn) ###Potential start of pool
     Vn0, Vn = calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes)
@@ -240,10 +241,11 @@ if __name__ == '__main__':
     material_tets = config_deform(coordinates, tets, n_tets)
 
     # Calculate elastic forces
-    #Ft = tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps)
-    left_cauchy_grad, rel_vol_chg, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, rel_vol_chg_av, deformation_grad, ref_state_growth = tetra1(tets, tan_growth_tensor, ref_state_tets, ref_state_growth, material_tets, Vn, Vn0)
+    Ft = tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps)
 
-    Ft = tetra2(n_tets, tets, Ft, left_cauchy_grad, mu, eps, rel_vol_chg, bulk_modulus,rel_vol_chg_av, deformation_grad, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, k_param, ref_state_growth)
+    #Seperate tetraelasticity initialization and calculatin, useful for optimization purposes. 
+    #left_cauchy_grad, rel_vol_chg, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, rel_vol_chg_av, deformation_grad, ref_state_growth = tetra1(tets, tan_growth_tensor, ref_state_tets, ref_state_growth, material_tets, Vn, Vn0)
+    #Ft = tetra2(n_tets, tets, Ft, left_cauchy_grad, mu, eps, rel_vol_chg, bulk_modulus,rel_vol_chg_av, deformation_grad, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, k_param, ref_state_growth)
 
     # Calculate normals of each deformed tetrahedron 
     tet_norms = tetra_normals(surf_node_norms, nearest_surf_node, tets, n_tets)
@@ -276,23 +278,9 @@ if __name__ == '__main__':
       #creation list deformation
       node_deformation = np.zeros((n_nodes), dtype=np.float64)
       node_deformation = np.linalg.norm(coordinates - coordinates0, axis=1)
-
-      # Convert surface mesh structure to .stl with no transformation
-      mesh_to_stl_pr(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, n_surface_nodes, faces, node_deformation)
       
       # Convert surface mesh structure (from simulations) to .gii format file
       mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
-
-      #export the stress to csv file
-      # foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
-      # np.savetxt(foldname + "stress%d.csv"%(step), stress, delimiter = ',')
-
-      #export the stress to a txt numpy array file
-      foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
-      np.savetxt(foldname + "stress%d.txt"%(step), stress, delimiter=',', newline='\n')
-
-      #option 1: sortie deforation en fichier text
-      #option2: sortie un .ply avec mesh + deformation
 
       # Convert mesh .stl to image .nii.gz
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
@@ -314,11 +302,7 @@ if __name__ == '__main__':
       end_time_simulation = time.time() - start_time_simulation
       print('Time required for simulation loop : ' + str (end_time_simulation))
       start_time_simulation = time.time()
-
-    #stack stress for visualisation (would be nice to write it in a file, plus the calculation is not correct)
-    # stress += Ft[:,0] + Ft[:,1] + Ft[:,2]
-
-    
+ 
     # Newton dynamics
     Ft, coordinates, Vt = move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt)
 

@@ -163,8 +163,10 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal
     filetxt.write(str(nodal_idx_b[faces[i][0]]+1) + " " + str(nodal_idx_b[faces[i][1]]+1) + " " + str(nodal_idx_b[faces[i][2]]+1) + "\n")
   filetxt.close()
 
+
+
 # Convert surface mesh structure (from simulations) to .stl format file
-def mesh_to_stl_pr(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, n_surface_nodes, faces, node_deformation):
+def mesh_to_stl_no_denorm(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, n_surface_nodes, faces, node_deformation):
 
   stlname = "B%d_pr.ply"%(step)
 
