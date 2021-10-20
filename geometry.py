@@ -9,8 +9,6 @@ from scipy.sparse.linalg import eigs
 from sklearn.cluster import KMeans
 import scipy.special as spe
 
-#ceci est un commentaire
-
 '''
 Structure of netgen mesh data:
   mesh [0] = number of nodes
