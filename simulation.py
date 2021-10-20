@@ -3,7 +3,6 @@
   python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -hc 'half' -t 0.042 -g 1.829 -gm 'regional' -mr './data/rh.gii' -tr './data/covariateinteraction2.R.noivh.GGnorm.func.gii' -lr './data/ATLAS30.R.Fiducial.surf.fineregions.gii' -sc 0.01 -ms 0.01
   python simulation.py -i './data/week23-3M-tets.mesh' -o './res/week23-3M-tets_atlas_Garcia' -hc 'whole' -t 0.042 -g 1.829 -gm 'regional' -mr './data/rh.gii' -ml './data/lh.gii' -tr './data/covariateinteraction2.R.noivh.GGnorm.func.gii' -tl './data/covariateinteraction2.L.noivh.GGnorm.func.gii' -lr './data/ATLAS30.R.Fiducial.surf.fineregions.gii' -ll './data/ATLAS30.L.Fiducial.surf.fineregions.gii' -sc 0.01 -ms 0.01
   python simulation.py -i './data/sphere5.mesh' -o './res/sphere5' -hc 'whole' -t 0.042 -g 1.829 -gm 'global'
-
   Env variables for debug:
   NUMBA_DEBUG_ARRAY_OPT_STATS=1
   
@@ -35,6 +34,8 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Dynamic simulations')
   parser.add_argument('-i', '--input', help='Input mesh', type=str, default='./data/sphere5.mesh', required=False)
   parser.add_argument('-o', '--output', help='Output folder', type=str, default='./res/sphere5', required=False)
+  parser.add_argument('-ipo', '--ipoutput', help='Output files containing initial parameters required by the "visualization" package', type=str, default='./visualization/initial_parameters/parameters.npy', required=False)
+  parser.add_argument('-co', '--coutput', help='Output folder containing [step,coordinates] required by the "visualization" package', type=str, default='./visualization/coordinates/', required=False)
   parser.add_argument('-hc', '--halforwholebrain', help='Half or whole brain', type=str, default='whole', required=False)
   parser.add_argument('-t', '--thickness', help='Normalized cortical thickness', type=float, default=0.042, required=False)
   parser.add_argument('-g', '--growth', help='Normalized relative growth rate', type=float, default=1.829, required=False) #positive correlation between growth and folding
@@ -209,6 +210,11 @@ if __name__ == '__main__':
   end_time_initialization = time.time () - start_time_initialization
   print ('Time required for initialization : ' + str (end_time_initialization) )
 
+  ###### data export required by the "visualization" package - for coordinates denormalization and displacements calculation ######
+  # Export the initial parameters required for 'visualization' in npy file
+  initial_parameters = np.array([n_nodes, maxd, center_of_gravity], dtype = object)
+  np.save(args.ipoutput, initial_parameters)
+
   # Simulation loop
   start_time_simulation = time.time ()
   while t < 1.0: 
@@ -291,6 +297,11 @@ if __name__ == '__main__':
       # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
       #mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, center_of_gravity, maxd, nn, faces, tets, miny)
 
+      ###### data export required by the "visualization" package - for displacements calculation ######
+      # Export step and associated coordinates in npy files
+      data = np.array([step, coordinates], dtype = object)
+      np.save(args.coutput + 'coordinates_%d.npy'%(step), data)
+      
       print('step: ' + str(step) + ' t: ' + str(t) )
 
       # Calculate surface area and mesh volume
@@ -316,7 +327,6 @@ if __name__ == '__main__':
 ##############################################
 ###LEGACY code for reference, safely ignore###
 ##############################################
-
 #Smoothing using slam
     if step == 0:
         #create filtering for each surface node
@@ -324,7 +334,6 @@ if __name__ == '__main__':
         stl_mesh = trimesh.load (stl_path)
         filtering = np.ones (len(stl_mesh.vertices))
         filtering = laplacian_texture_smoothing (stl_mesh, filtering, 10, dt)
-
         #Expand filtering via nearest surface node (vectorisable)
         gauss = np.ones (n_nodes, dtype = np.float64)
         for i in range (len(gauss)):
@@ -340,11 +349,8 @@ if __name__ == '__main__':
     
     #apply filter (why not before ? Because stl not available at this point)
     at *= gauss_tets
-
-
 def background(f):
     def wrapped(*args, **kwargs):
         return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
     return wrapped
-
     """
