@@ -34,7 +34,7 @@ from output import area_volume, writePov, writeTXT, mesh_to_stl_pr, mesh_to_stl,
 if __name__ == '__main__':
   start_time_initialization = time.time ()
   parser = argparse.ArgumentParser(description='Dynamic simulations')
-  parser.add_argument('-i', '--input', help='Input mesh', type=str, default='./data/sphere5.mesh', required=False)
+  parser.add_argument('-i', '--input', help='Input mesh', type=str, default='./data/template_T2_reduced_z.mesh', required=False)
   parser.add_argument('-o', '--output', help='Output folder', type=str, default='./res/sphere5', required=False)
   parser.add_argument('-hc', '--halforwholebrain', help='Half or whole brain', type=str, default='whole', required=False)
   parser.add_argument('-t', '--thickness', help='Normalized cortical thickness', type=float, default=0.042, required=False)
@@ -236,8 +236,12 @@ if __name__ == '__main__':
 
   end_time_initialization = time.time () - start_time_initialization
   print ('Time required for initialization : ' + str (end_time_initialization) )
+  
+  # Export the initial parameters in npy file
+  initial_parameters = np.array([n_nodes, maxd, center_of_gravity], dtype = object)
+  np.save('./visualization/initial_parameters/parameters.npy', initial_parameters)
 
-  # Simulation loopt
+  # Simulation loop
   start_time_simulation = time.time ()
   while t < 1.0:
     
@@ -348,6 +352,10 @@ if __name__ == '__main__':
       # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
       #mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, center_of_gravity, maxd, nn, faces, tets, miny)
 
+      # Export step and associated coordinates in npy files
+      data = np.array([step, coordinates], dtype = object)
+      np.save('./visualization/coordinates/coordinates_%d.npy'%(step), data)
+      
       print('step: ' + str(step) + ' t: ' + str(t) )
 
       # Calculate surface area and mesh volume
