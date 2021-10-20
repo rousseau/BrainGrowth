@@ -209,7 +209,7 @@ if __name__ == '__main__':
 
   end_time_initialization = time.time () - start_time_initialization
   print ('Time required for initialization : ' + str (end_time_initialization) )
-  
+
   ###### data export required by the "visualization" package - for coordinates denormalization and displacements calculation ######
   # Export the initial parameters required for 'visualization' in npy file
   initial_parameters = np.array([n_nodes, maxd, center_of_gravity], dtype = object)
@@ -300,7 +300,7 @@ if __name__ == '__main__':
       ###### data export required by the "visualization" package - for displacements calculation ######
       # Export step and associated coordinates in npy files
       data = np.array([step, coordinates], dtype = object)
-      np.save(args.coutput + 'coordinates_%d.npy'%(step), data)      
+      np.save(args.coutput + 'coordinates_%d.npy'%(step), data)
       
       print('step: ' + str(step) + ' t: ' + str(t) )
 
