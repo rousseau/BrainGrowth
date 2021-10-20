@@ -27,7 +27,7 @@ from growth import growthRate, shear_modulus, growth_tensor_tangen, growthRate_2
 from normalisation import normalise_coord
 from collision_Tallinen import contact_process
 from mechanics import tetra_elasticity, move, tetra1, tetra1_np, tetra2
-from output import area_volume, writePov, writeTXT, mesh_to_stl_pr, mesh_to_stl, mesh_to_gifti
+from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti
 
 
 if __name__ == '__main__':

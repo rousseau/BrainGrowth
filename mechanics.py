@@ -324,6 +324,7 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
   return Ft
 
 #pure np/python version
+@jit(nopython=True)
 def tetraElasticity_np(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
 
   # Apply growth to reference state
