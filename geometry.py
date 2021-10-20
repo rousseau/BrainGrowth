@@ -22,7 +22,7 @@ Structure of netgen mesh data:
 
 '''
 
-def import_mesh(path):
+def netgen_to_array(path):
   '''
   Converts a netgen mesh to a list of np.arrays
 
@@ -43,7 +43,7 @@ def import_mesh(path):
   return mesh
 
 @njit(parallel=True)
-def get_vertices(mesh):
+def get_nodes(mesh):
   '''
   Extract coordinates and number of nodes from mesh
 
@@ -55,16 +55,14 @@ def get_vertices(mesh):
   n_nodes (int): number of nodes
   '''
   n_nodes = np.int64(mesh[0][0])
-  coordinates0 = np.zeros((n_nodes,3), dtype=np.float64) # Undeformed coordinates of nodes
+  coordinates = np.zeros((n_nodes,3), dtype=np.float64) # Undeformed coordinates of nodes
   for i in prange(n_nodes):
-    coordinates0[i] = np.array([float(mesh[i+1][1]),float(mesh[i+1][0]),float(mesh[i+1][2])]) # Change x, y (Netgen)
-    
-  coordinates = coordinates0.copy() # Initialize deformed coordinates of nodes
+    coordinates[i] = np.array([float(mesh[i+1][1]),float(mesh[i+1][0]),float(mesh[i+1][2])]) # Change x, y (Netgen)
   
-  return coordinates0, coordinates, n_nodes
+  return coordinates, n_nodes
 
 @njit(parallel=True)
-def get_tetra_vertices_indices(mesh, n_nodes):
+def get_tetra_indices(mesh, n_nodes):
   '''
   Takes a list of arrays as an input and returns tets and number of tets. Tets are defined as 4 indexes of vertices from the coordinate list
 
@@ -617,9 +615,10 @@ def config_deform(coordinates, tets, n_tets):
 
   return At
 
-# Calculate normals of each surface triangle and apply these normals to surface nodes
+# Calculate normals of each surface triangle at each node
 @jit(forceobj=True, parallel=True) 
 def normals_surfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes,surf_node_norms):
+  '''returns node normals'''
   Ntmp = np.zeros((n_faces,3), dtype=np.float64)
   Ntmp = cross_dim_3(coordinates0[faces[:,1]] - coordinates0[faces[:,0]], coordinates0[faces[:,2]] - coordinates0[faces[:,0]])
   for i in prange(n_faces):
@@ -660,7 +659,7 @@ def tetra_normals(surf_node_norms, nearest_surf_node, tets, n_tets):
 @jit(nopython=True)   #cannot be //
 def calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes):
   """
-  Calculcates the undeformed and deformed nodal volume for each node
+  Calculcates the undeformed and deformed nodal volume for each node. Volume per tetra is calculated and then distributed equally on each node
   """
   Vn0 = np.zeros(n_nodes, dtype=np.float64) #Initialize nodal volumes in reference state
   Vn = np.zeros(n_nodes, dtype=np.float64)  #Initialize deformed nodal volumes
@@ -697,6 +696,7 @@ def calc_mid_plane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, mi
 # Calculate the longitudinal length of the real brain
 @jit
 def calc_longi_length(t):
+  #L = -0.81643*t**2+2.1246*t+1.3475
   longi_length = -0.98153*t**2+3.4214*t+1.9936
   #L = -41.6607*t**2+101.7986*t+58.843 #for the case without normalisation
 
