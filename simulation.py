@@ -237,7 +237,7 @@ if __name__ == '__main__':
   end_time_initialization = time.time () - start_time_initialization
   print ('Time required for initialization : ' + str (end_time_initialization) )
   
-  # Export the initial parameters in npy file
+  # Export the initial parameters required for 'visualization' in npy file
   initial_parameters = np.array([n_nodes, maxd, center_of_gravity], dtype = object)
   np.save('./visualization/initial_parameters/parameters.npy', initial_parameters)
 
