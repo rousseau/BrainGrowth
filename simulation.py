@@ -219,7 +219,7 @@ if __name__ == '__main__':
       os.makedirs(args.ipoutput)
   except OSError:
     print ('Error: Creating directory. ' + args.coutput)
-  initial_parameters = np.array([n_nodes, maxd, center_of_gravity], dtype = object)
+  initial_parameters = np.array([n_nodes, maxd, center_of_gravity], dtype=object)
   np.save(args.ipoutput + 'parameters.npy', initial_parameters)
 
   # Simulation loop
