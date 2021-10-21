@@ -244,7 +244,7 @@ if __name__ == '__main__':
     # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn) ###Potential start of pool
     Vn0, Vn = calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes)
 
-    # Calculate contact forces
+    # Calculate contact forces (Reference: Real Time Detection Collision, C. Ericson)
     Ft, NNLt = contact_process(coordinates, Ft, nodal_idx, coordinates_old, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, contact_stiffness, mesh_spacing, gr)
   
     # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
