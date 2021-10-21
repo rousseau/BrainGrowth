@@ -26,8 +26,9 @@ from geometry import netgen_to_array, tetra_normals, get_nodes, get_tetra_indice
 from growth import growthRate, shear_modulus, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole, calc_growth_filter
 from normalisation import normalise_coord
 from collision_Tallinen import contact_process
-from mechanics import tetra_elasticity, move, tetra1, tetra1_np, tetra2
-from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti
+from mechanics import tetra_elasticity, tetra_elasticity_test, move, tetra1, tetra1_np, tetra2
+from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti, mesh_to_vtk
+from visualization.denormalization import coordinates_denormalization
 
 
 if __name__ == '__main__':
@@ -35,8 +36,6 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Dynamic simulations')
   parser.add_argument('-i', '--input', help='Input mesh', type=str, default='./data/sphere5.mesh', required=False)
   parser.add_argument('-o', '--output', help='Output folder', type=str, default='./res/sphere5', required=False)
-  parser.add_argument('-ipo', '--ipoutput', help='Output files containing initial parameters required by the "visualization" package', type=str, default='./visualization/initial_parameters/', required=False)
-  parser.add_argument('-co', '--coutput', help='Output folder containing [step,coordinates] required by the "visualization" package', type=str, default='./visualization/coordinates/', required=False)
   parser.add_argument('-hc', '--halforwholebrain', help='Half or whole brain', type=str, default='whole', required=False)
   parser.add_argument('-t', '--thickness', help='Normalized cortical thickness', type=float, default=0.042, required=False)
   parser.add_argument('-g', '--growth', help='Normalized relative growth rate', type=float, default=1.829, required=False) #positive correlation between growth and folding
@@ -211,17 +210,6 @@ if __name__ == '__main__':
   end_time_initialization = time.time () - start_time_initialization
   print ('Time required for initialization : ' + str (end_time_initialization) )
 
-  ###### data export required by the "visualization" package - for coordinates denormalization and displacements calculation ######
-  # Export the initial parameters required for 'visualization' in npy file
-  #TODO: fixbug when directory does not exist
-  try:
-    if not os.path.exists(args.ipoutput):
-      os.makedirs(args.ipoutput)
-  except OSError:
-    print ('Error: Creating directory. ' + args.coutput)
-  initial_parameters = np.array([n_nodes, maxd, center_of_gravity], dtype=object)
-  np.save(args.ipoutput + 'parameters.npy', initial_parameters)
-
   # Simulation loop
   start_time_simulation = time.time ()
   while t < 1.0: 
@@ -235,39 +223,39 @@ if __name__ == '__main__':
       at = growthRate(GROWTH_RELATIVE, t, n_tets, growth_filter)
       
     # Calculate the longitudinal length of the real brain
-    longi_length = calc_longi_length(t)
+    longi_length = calc_longi_length(t) #negligible
     #growth_filter = calc_growth_filter(growth_filter, dist_2_surf, n_tets, tets, cortex_thickness)
 
     #update cortex thickness
     cortex_thickness = THICKNESS_CORTEX + 0.01*t
 
     # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn) ###Potential start of pool
-    Vn0, Vn = calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes)
+    Vn0, Vn = calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes) #~10% sim time
 
     # Calculate contact forces
-    Ft, NNLt = contact_process(coordinates, Ft, nodal_idx, coordinates_old, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, contact_stiffness, mesh_spacing, gr)
-  
+    Ft, NNLt = contact_process(coordinates, Ft, nodal_idx, coordinates_old, n_surface_nodes, NNLt, faces, n_faces, bounding_box, cell_width, prox_skin, repuls_skin, contact_stiffness, mesh_spacing, gr) #~1% sim time
+
     # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
-    gm, mu = shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr)
+    gm, mu = shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr) #~1% sim time
 
     # Deformed configuration of tetrahedra (At)
-    material_tets = config_deform(coordinates, tets, n_tets)
+    material_tets = config_deform(coordinates, tets, n_tets) #~4% sim time
 
     # Calculate elastic forces
-    Ft = tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps)
+    Ft = tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps) #~73% sim time
 
     #Seperate tetraelasticity initialization and calculatin, useful for optimization purposes. 
     #left_cauchy_grad, rel_vol_chg, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, rel_vol_chg_av, deformation_grad, ref_state_growth = tetra1(tets, tan_growth_tensor, ref_state_tets, ref_state_growth, material_tets, Vn, Vn0)
     #Ft = tetra2(n_tets, tets, Ft, left_cauchy_grad, mu, eps, rel_vol_chg, bulk_modulus,rel_vol_chg_av, deformation_grad, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, k_param, ref_state_growth)
 
     # Calculate normals of each deformed tetrahedron 
-    tet_norms = tetra_normals(surf_node_norms, nearest_surf_node, tets, n_tets)
+    tet_norms = tetra_normals(surf_node_norms, nearest_surf_node, tets, n_tets) #~4% sim time
 
     # Calculate relative tangential growth factor G
-    tan_growth_tensor = growth_tensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets)
+    tan_growth_tensor = growth_tensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets) #~6% sim time
 
     # Midplane
-    Ft = calc_mid_plane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, midplane_pos, mesh_spacing, repuls_skin, bulk_modulus)
+    Ft = calc_mid_plane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, midplane_pos, mesh_spacing, repuls_skin, bulk_modulus) #negligible
     ###Potential end of pool
 
     # Output
@@ -288,12 +276,14 @@ if __name__ == '__main__':
       # Convert surface mesh structure (from simulations) to .stl format file
       mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
 
-      #creation list deformation
+      #creation list deformation TODO: denormalisation of calculation
       node_deformation = np.zeros((n_nodes), dtype=np.float64)
-      node_deformation = np.linalg.norm(coordinates - coordinates0, axis=1)
+      node_deformation = np.linalg.norm(coordinates_denormalization(coordinates, n_nodes, center_of_gravity, maxd) - coordinates_denormalization(coordinates0, n_nodes, center_of_gravity, maxd), axis=1)
       
       # Convert surface mesh structure (from simulations) to .gii format file
       mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
+
+      mesh_to_vtk(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, coordinates, faces, center_of_gravity, step, maxd, miny, node_deformation, args.halforwholebrain)
 
       # Convert mesh .stl to image .nii.gz
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
@@ -303,17 +293,7 @@ if __name__ == '__main__':
 
       # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
       #mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, center_of_gravity, maxd, nn, faces, tets, miny)
-
-      ###### data export required by the "visualization" package - for displacements calculation ######
-      # Export step and associated coordinates in npy files
-      try:
-        if not os.path.exists(args.coutput):
-          os.makedirs(args.coutput)
-      except OSError:
-        print ('Error: Creating directory. ' + args.coutput)
-      data = np.array([step, coordinates], dtype = object)
-      np.save(args.coutput + 'coordinates_%d.npy'%(step), data)
-      
+     
       print('step: ' + str(step) + ' t: ' + str(t) )
 
       # Calculate surface area and mesh volume
@@ -327,7 +307,7 @@ if __name__ == '__main__':
       start_time_simulation = time.time()
  
     # Newton dynamics
-    Ft, coordinates, Vt = move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt)
+    Ft, coordinates, Vt = move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt) #~1% sim time
 
     t += dt
     step += 1

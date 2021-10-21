@@ -1,5 +1,6 @@
 import numpy as np
 
+#TODO: add case for half brain case
 def coordinates_denormalization(coordinates, n_nodes, center_of_gravity, maxd): 
     '''
     Operate denormalization and x<>y of the coordinates (all nodes) of the mesh before using the calculated physical values (deformation, stress, etc.)

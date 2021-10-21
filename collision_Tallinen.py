@@ -44,7 +44,7 @@ def contact_process(coordinates, Ft, nodal_idx, coordinates_old, n_surface_nodes
   maxDist = 0.0
   ub = vb = wb = 0.0  # Barycentric coordinates of triangles
   maxDist = max(norm_dim_3(coordinates[nodal_idx[:]] - coordinates_old[:]))
-  if maxDist > 0.5*(prox_skin-repuls_skin):
+  if maxDist > 0.5*(prox_skin-repuls_skin): #0.4% of the cases, takes about 0.135s
     NNLt = createNNLtriangle(NNLt, coordinates, faces, nodal_idx, n_surface_nodes, n_faces, prox_skin, bounding_box, cell_width) # Generates point-triangle proximity lists (NNLt[n_surface_nodes]) using the linked cell algorithm
     for i in range(n_surface_nodes):
       coordinates_old[i] = coordinates[nodal_idx[i]]
