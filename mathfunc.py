@@ -404,7 +404,7 @@ def dot_vec(a, b):
 
   return a[0]*b[0]+a[1]*b[1]+a[2]*b[2]
 
-@jit (nopython = True)
+@jit(nopython=True)
 def dot_mat_dim_3(a, b):
   #WARNING: not a dot product per se, not equal to np.dot
   #perf leakage at this level, equal @

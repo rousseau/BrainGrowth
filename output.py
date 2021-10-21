@@ -5,6 +5,7 @@ from geometry import normals_surfaces
 import nibabel as nib
 import trimesh
 import slam.io as sio
+import meshio
 
 # Calculate surface area and mesh volume
 def area_volume(Ut, faces, gr, Vn):
@@ -409,6 +410,27 @@ def writeTex(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, bt):
   file_gii_path = os.path.join(foldname, giiname)
 
   sio.write_texture(bt, file_gii_path) 
+
+#TODO: create  list of point data so you can iterate over it and add it to the mesh?
+#TODO: name of point data is hard coded atm.
+def mesh_to_vtk(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, coordinates, faces, center_of_gravity, step, maxd, miny, point_data, halforwholebrain='whole'):
+    vtk_name = "B%d.vtk"%(step)
+    foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+    save_path = os.path.join(foldname, vtk_name)
+    
+    #coordinates denormalisation
+    coordinates_denorm = np.zeros((len(coordinates),3), dtype = float)
+    coordinates_denorm[:,1] = center_of_gravity[0] - coordinates[:,0]*maxd    
+    if halforwholebrain == 'half':
+        coordinates_denorm[:,0] = coordinates[:,1] * maxd + miny
+    else:
+        coordinates_denorm[:,0] = coordinates[:,1] * maxd + center_of_gravity[1]  
+    coordinates_denorm[:,2] = center_of_gravity[2] - coordinates[:,2]*maxd    
+    mesh = meshio.Mesh(coordinates_denorm, [('triangle', faces)],)
+    
+    #add point data
+    mesh.point_data = {'Node_deformation': point_data}
+    mesh.write(save_path)
 
 '''# Convert mesh to binary .nii.gz image
 def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, center_of_gravity, maxd, nn):
