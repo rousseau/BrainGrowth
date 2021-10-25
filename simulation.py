@@ -78,14 +78,14 @@ if __name__ == '__main__':
 
   # Calculate the total volume of a tetrahedral mesh
   Vm = volume_mesh(n_nodes, n_tets, tets, coordinates)
-  print ('Volume of mesh is ' + str(Vm))
+  print('Volume of mesh is ' + str(Vm))
 
   # Calculate the total surface area of a tetrahedral mesh
   Area = 0.0
   for i in range(len(faces)):
     Ntmp = np.cross(coordinates0[faces[i,1]] - coordinates0[faces[i,0]], coordinates0[faces[i,2]] - coordinates0[faces[i,0]])
     Area += 0.5*np.linalg.norm(Ntmp)
-  print ('Area of mesh is ' + str(Area))
+  print('Area of mesh is ' + str(Area))
 
   # Parameters
   cortex_thickness = THICKNESS_CORTEX  #Cortical plate thickness
@@ -242,7 +242,7 @@ if __name__ == '__main__':
     material_tets = config_deform(coordinates, tets, n_tets) #~4% sim time
 
     # Calculate elastic forces
-    Ft = tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps) #~73% sim time
+    Ft = tetra_elasticity_test(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps) #~73% sim time
 
     #Seperate tetraelasticity initialization and calculatin, useful for optimization purposes. 
     #left_cauchy_grad, rel_vol_chg, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, rel_vol_chg_av, deformation_grad, ref_state_growth = tetra1(tets, tan_growth_tensor, ref_state_tets, ref_state_growth, material_tets, Vn, Vn0)

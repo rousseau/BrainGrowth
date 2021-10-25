@@ -161,7 +161,7 @@ def tetra_elasticity_test(material_tets, ref_state_tets, Ft, tan_growth_tensor, 
     W = 0.5*mu[i]*(np.trace(left_cauchy_grad[i])/powJ23 - 3.0) + 0.5*bulk_modulus*((rel_vol_chg1[i]-1.0)*(rel_vol_chg1[i]-1.0) + (rel_vol_chg2[i]-1.0)*(rel_vol_chg2[i]-1.0) + (rel_vol_chg3[i]-1.0)*(rel_vol_chg3[i]-1.0) + (rel_vol_chg4[i]-1.0)*(rel_vol_chg4[i]-1.0))*0.25
         
     
-      #W = 0.5*mu[i]*((eps*eps + l2*l2 + l3*l3)/pow23 - 3.0) + mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23*(l1-eps) + 0.5*k_param*(l1-eps)*(l1-eps) + 0.5*bulk_modulus*((rel_vol_chg1[i]-1.0)*(rel_vol_chg1[i]-1.0) + (rel_vol_chg2[i]-1.0)*(rel_vol_chg2[i]-1.0) + (rel_vol_chg3[i]-1.0)*(rel_vol_chg3[i]-1.0) + (rel_vol_chg4[i]-1.0)*(rel_vol_chg4[i]-1.0))/4.0
+    #W = 0.5*mu[i]*((eps*eps + l2*l2 + l3*l3)/pow23 - 3.0) + mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23*(l1-eps) + 0.5*k_param*(l1-eps)*(l1-eps) + 0.5*bulk_modulus*((rel_vol_chg1[i]-1.0)*(rel_vol_chg1[i]-1.0) + (rel_vol_chg2[i]-1.0)*(rel_vol_chg2[i]-1.0) + (rel_vol_chg3[i]-1.0)*(rel_vol_chg3[i]-1.0) + (rel_vol_chg4[i]-1.0)*(rel_vol_chg4[i]-1.0))/4.0
     # Calculate tetra face negative normals (because traction Ft=-P*n)
     xr1 = np.array([ref_state_growth[i,0,0], ref_state_growth[i,1,0], ref_state_growth[i,2,0]])
     xr2 = np.array([ref_state_growth[i,0,1], ref_state_growth[i,1,1], ref_state_growth[i,2,1]])
@@ -178,6 +178,58 @@ def tetra_elasticity_test(material_tets, ref_state_tets, Ft, tan_growth_tensor, 
     Ft[tets[i,3]] += np.dot(P, (N1 + N2 + N4).T)/6.0
         
   return Ft
+
+@jit(nopython=True, parallel=True, nogil=True)
+def tetra_elasticity_vec(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
+  """
+  Calculates elastic forces
+  """
+  #tetraelasticty variables
+  ref_state_growth = np.zeros ((n_tets, 3, 3), dtype=np.float64) #Ar
+  deformation_grad = np.zeros((n_tets,3,3), dtype=np.float64)
+  left_cauchy_grad = np.zeros((n_tets,3,3), dtype=np.float64)
+  rel_vol_chg = np.zeros(n_tets, dtype=np.float64)
+  rel_vol_chg1 = np.zeros(n_tets, dtype=np.float64)
+  rel_vol_chg2 = np.zeros(n_tets, dtype=np.float64)
+  rel_vol_chg3 = np.zeros(n_tets, dtype=np.float64)
+  rel_vol_chg4 = np.zeros(n_tets, dtype=np.float64)
+  rel_vol_chg_av = np.zeros(n_tets, dtype=np.float64)
+    
+  #Apply growth to reference state
+  ref_state_growth = dot_mat_dim_3(tan_growth_tensor, ref_state_tets)
+  #Calculate deformation gradient F //combine relative volume change ?
+  deformation_grad = dot_mat_dim_3(material_tets, inv_dim_3(ref_state_growth))   
+  #Calculate Left-Cauchy-Green gradient B
+  left_cauchy_grad = dot_mat_dim_3(deformation_grad, np.transpose(deformation_grad, (0, 2, 1)))
+  #relative volume change J
+  rel_vol_chg = det_dim_3(deformation_grad)
+  #averaged volume change
+  rel_vol_chg1 = Vn[tets[:,0]]/Vn0[tets[:,0]]
+  rel_vol_chg2 = Vn[tets[:,1]]/Vn0[tets[:,1]]
+  rel_vol_chg3 = Vn[tets[:,2]]/Vn0[tets[:,2]]
+  rel_vol_chg4 = Vn[tets[:,3]]/Vn0[tets[:,3]]
+  rel_vol_chg_av = (rel_vol_chg1 + rel_vol_chg2 + rel_vol_chg3 + rel_vol_chg4)/4.0   
+
+  powJ23 = np.power (rel_vol_chg, (2.0/3.0))
+
+  ###vectorized trace
+  trace = np.trace(left_cauchy_grad, axis1=1, axis2=2)/3.0
+  trace = np.reshape(np.repeat(trace, 9), (n_tets, 3, 3))  
+  
+  
+  S = np.zeros ((n_tets, 3, 3), dtype=np.float64) 
+  P = np.zeros ((n_tets, 3, 3), dtype=np.float64)
+  mu_vec = np.reshape(np.repeat(mu, 9), (n_tets, 3, 3))
+  rel_vol_chg_vec = np.reshape(np.repeat(rel_vol_chg, 9), (n_tets, 3, 3))
+  powJ23_vec = np.power (rel_vol_chg_vec, (2.0/3.0))
+  rel_vol_chg_av_vec = np.reshape(np.repeat(rel_vol_chg_av, 9), (n_tets, 3, 3))
+  S = (left_cauchy_grad - np.identity(3)*trace)*mu_vec/(rel_vol_chg_vec*powJ23_vec) + np.identity(3)*bulk_modulus*(rel_vol_chg_av_vec-1.0) #CHECKED AGAINST REAL VERSION !!!!
+  P = dot_mat_dim_3 (S, np.linalg.inv(deformation_grad.transpose(0, 2, 1))) * rel_vol_chg_vec
+  
+  #caclulate tetras negative normals(because traction)
+  xr1_vec = np.array([ref_state_growth[:,0,0], ref_state_growth[:,1,0], ref_state_growth[:,2,0]]).transpose()
+  xr2_vec = np.array([ref_state_growth[:,0,1], ref_state_growth[:,1,1], ref_state_growth[:,2,1]]).transpose()
+  xr3_vec = np.array([ref_state_growth[:,0,2], ref_state_growth[:,1,2], ref_state_growth[:,2,2]]).transpose()
 
 @jit(nopython=True, parallel=True)   
 def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
@@ -224,7 +276,7 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
       W = 0.5*mu[i]*(np.trace(left_cauchy_grad[i])/powJ23 - 3.0) + 0.5*bulk_modulus*((rel_vol_chg1[i]-1.0)*(rel_vol_chg1[i]-1.0) + (rel_vol_chg2[i]-1.0)*(rel_vol_chg2[i]-1.0) + (rel_vol_chg3[i]-1.0)*(rel_vol_chg3[i]-1.0) + (rel_vol_chg4[i]-1.0)*(rel_vol_chg4[i]-1.0))*0.25
         
         
-    else:   #need SVD
+    else:   #need SVD, does not proc on sphere5 data
       C = np.dot(deformation_grad[i].transpose(), deformation_grad[i])
       w2, v2 = np.linalg.eigh(C)
       v2 = -v2

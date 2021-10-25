@@ -160,7 +160,7 @@ def edge_length(coordinates, faces, n_faces):
 @jit(nopython=True, parallel=True)
 def volume_mesh(n_nodes, n_tets, tets, coordinates):
   '''
-  Calculate total volume of the mesh
+  Calculate total volume of the mesh, used for information only
   Args:
   n_nodes (int): number of nodes
   n_tets (int): number of tets
@@ -592,33 +592,60 @@ def mark_nogrowth(coordinates0, n_nodes):
 
   return gr
 
-# Configuration of tetrahedra at reference state (ref_state_tets)
 @jit
 def config_refer(coordinates0, tets, n_tets):
+  '''
+  Calculate the reference configuration of tetrahendrons (Ar), used for elasticity/deformation calculation
+  Args:
+  coordinates0 (numpy array): initial cartesian cooridnates of vertices
+  tets (numpy array): indices of the tetrahedrons
+  n_tets (int): number of tetrahedrons
+  Returns:
+  ref_state_tets (numpy array): Reference configuration of tetrahedrons
+  '''
   ref_state_tets = np.zeros((n_tets,3,3), dtype=np.float64)
-  ref_state_tets[:,0] = coordinates0[tets[:,1]] - coordinates0[tets[:,0]] # Reference state
+  ref_state_tets[:,0] = coordinates0[tets[:,1]] - coordinates0[tets[:,0]]
   ref_state_tets[:,1] = coordinates0[tets[:,2]] - coordinates0[tets[:,0]]
   ref_state_tets[:,2] = coordinates0[tets[:,3]] - coordinates0[tets[:,0]]
   ref_state_tets[:] = transpose_dim_3(ref_state_tets[:]) 
 
   return ref_state_tets
 
-# Configuration of a deformed tetrahedron (At)
 @jit(nopython=True)
 def config_deform(coordinates, tets, n_tets):
-  At = np.zeros((n_tets,3,3), dtype=np.float64)
-  At[:,0] = coordinates[tets[:,1]] - coordinates[tets[:,0]]
-  At[:,1] = coordinates[tets[:,2]] - coordinates[tets[:,0]]
-  At[:,2] = coordinates[tets[:,3]] - coordinates[tets[:,0]]
-  #At = np.matrix([x1, x2, x3])
-  At[:] = transpose_dim_3(At[:])
+  '''
+  Calculate the deformed configuration of tetrahendrons (At), used for elasticity/deformation calculation
+  Args:
+  coordinates (numpy array): deformed cartesian cooridnates of vertices
+  tets (numpy array): indices of the tetrahedrons
+  n_tets (int): number of tetrahedrons
+  Returns:
+  material_tets(numpy array): Deformed configuration of tetrahedrons
+  '''
+  material_tets = np.zeros((n_tets,3,3), dtype=np.float64)
+  material_tets[:,0] = coordinates[tets[:,1]] - coordinates[tets[:,0]]
+  material_tets[:,1] = coordinates[tets[:,2]] - coordinates[tets[:,0]]
+  material_tets[:,2] = coordinates[tets[:,3]] - coordinates[tets[:,0]]
+  material_tets[:] = transpose_dim_3(material_tets[:])
 
-  return At
+  return material_tets
 
-# Calculate normals of each surface triangle at each node
 @jit(forceobj=True, parallel=True) 
-def normals_surfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes,surf_node_norms):
-  '''returns node normals'''
+def normals_surfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes, surf_node_norms):
+  '''
+  TODO: Why take surf_node_norms as parameter ?
+  Calculate normal of each face and average result for each surface node with normalised length. 
+  Args:
+  coordinates0 (numpy array): deformed cartesian cooridnates of vertices
+  faces (numpy array): indices of faces
+  nodal_idx_b (numpy array): list of surface node indices
+  n_faces (int): number of faces
+  n_surface_nodes (int): number of surface nodes
+  surf_node_norms (np array): normals of surface nodes
+
+  Returns:
+  surf_node_norms (np array): normals of surface nodes
+  '''
   Ntmp = np.zeros((n_faces,3), dtype=np.float64)
   Ntmp = cross_dim_3(coordinates0[faces[:,1]] - coordinates0[faces[:,0]], coordinates0[faces[:,2]] - coordinates0[faces[:,0]])
   for i in prange(n_faces):
@@ -640,7 +667,7 @@ def tetra_normals_leg(surf_node_norms, nearest_surf_node, tets, n_tets):
 @jit(nopython=True)
 def tetra_normals(surf_node_norms, nearest_surf_node, tets, n_tets):
   """
-  Calculates the normal for each tetrahedron
+  Propagate the normal of nearest surface nodes to all tetrahedrons
   Args:
   surf_node_norms (np array): normals of surface nodes
   nearest_surf_node (np array): nearest surface node for each node
@@ -659,7 +686,17 @@ def tetra_normals(surf_node_norms, nearest_surf_node, tets, n_tets):
 @jit(nopython=True)   #cannot be //
 def calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes):
   """
-  Calculcates the undeformed and deformed nodal volume for each node. Volume per tetra is calculated and then distributed equally on each node
+  Calculates the undeformed and deformed nodal volume for each node. Volume per tetra is calculated and then distributed equally on each node
+  Args:
+  tan_growth_tensor (np array): growth tensor for each tetrahedron
+  ref_state_tets (np array): Reference state of tetrahedrons
+  tets (np array): indices of tetrahedrons
+  coordinates (np array): Cartesion coordiantes of nodes
+  n_tets (int) number of tetrahedrons
+  n_nodes (int): number of nodes
+  Returns:
+  Vn0 (np array): Inital volume of each node
+  Vn (np array): Deformed volume of each node
   """
   Vn0 = np.zeros(n_nodes, dtype=np.float64) #Initialize nodal volumes in reference state
   Vn = np.zeros(n_nodes, dtype=np.float64)  #Initialize deformed nodal volumes
@@ -677,12 +714,11 @@ def calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets,
 
   return Vn0, Vn
 
-# Midplane
+# Midplane, what is midplane_pos exactly?
 @njit(parallel=True)
 def calc_mid_plane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, midplane_pos, mesh_spacing, repuls_skin, bulk_modulus):
   '''
-  for each surface node:
-  check a box condition and restrict growth for the outer layer
+  Check a box condition and restrict growth for the outer layer for each surface node
   '''
   for i in prange(n_surface_nodes):
     pt = nodal_idx[i]
@@ -693,9 +729,16 @@ def calc_mid_plane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, mi
 
   return Ft
 
-# Calculate the longitudinal length of the real brain
 @jit
 def calc_longi_length(t):
+  '''
+  TODO: add reference for calculation
+  Calculate the expected longitudinal length of the brain depending on simulation time. Used for info and visualisation only
+  args:
+  t (float): time of simulation
+  returns:
+  longi_length (float): calculated longitudinal length of the brain
+  '''
   #L = -0.81643*t**2+2.1246*t+1.3475
   longi_length = -0.98153*t**2+3.4214*t+1.9936
   #L = -41.6607*t**2+101.7986*t+58.843 #for the case without normalisation
@@ -705,6 +748,15 @@ def calc_longi_length(t):
 # Obtain zoom parameter by checking the longitudinal length of the brain model
 @jit
 def paraZoom(coordinates, nodal_idx, longi_length):
+  '''
+  Obtain zoom parameter by checking the longitudinal length of the brain model, used for outputs
+  args:
+  coordinates (np array): cartesian coordinates of nodes
+  nodal_idx (np array): index list of surface nodes
+  longi_length (float): calculated length of the foetal brain
+  returns:
+  zoom_pos (float): zomm position used for paraview and denormalisation
+  '''
   #xmin = ymin = 1.0
   #xmax = ymax = -1.0
 
