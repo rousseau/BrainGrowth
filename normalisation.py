@@ -5,7 +5,7 @@ from numba import jit
 @jit
 def normalise_coord(coordinates0, coordinates, n_nodes, halforwholebrain):
   """
-  Normalizes inital mesh coordinates
+  Normalizes inital mesh coordinates over longest axe
   Args:
   coordinates0 (array): undeformed coordinates of vertices
   coordinates (array): deformed coordinates of vertices
@@ -14,9 +14,9 @@ def normalise_coord(coordinates0, coordinates, n_nodes, halforwholebrain):
   Returns:
   coordinates0 (array): undeformed coordinates of vertices
   coordinates (array): deformed coordinates of vertices
-  center_of_gravity (float):
-  maxd (float):
-  mind (float):
+  center_of_gravity (float): Center in x, y, z of the mesh from min and max values, used for denormalisation of data
+  maxd (float): max value for longest axe, used for denormalisation of data
+  mind (float): min value for longest axe, used for denormalisation of data
   """
   maxx = maxy = maxz = -1e9
   minx = miny = minz = 1e9

@@ -390,8 +390,11 @@ def normalize_dim_3(a):
 
   return b
 
-@jit (nopython=True) #version needed for tetraNormals2
+@jit(nopython=True) #version needed for tetraNormals2
 def normalize(a):
+    '''
+    Normalisation 
+    '''
     temp = (1/np.sqrt(a[:,0]*a[:,0] + a[:,1]*a[:,1] + a[:,2]*a[:,2]))
     a[:,0] *= temp
     a[:,1] *= temp
@@ -406,7 +409,7 @@ def dot_vec(a, b):
 
 @jit(nopython=True)
 def dot_mat_dim_3(a, b):
-  #WARNING: not a dot product per se, not equal to np.dot
+  #WARNING: not a dot product per se, not equal to np.dot TODO: rename function
   #perf leakage at this level, equal @
   #matmul not supported by numba, but @ operator is, UPDATE: not for 3D matrices
 
