@@ -245,36 +245,36 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
   #Calculate Left-Cauchy-Green gradient B
   left_cauchy_grad = dot_mat_dim_3(deformation_grad, np.transpose(deformation_grad, (0, 2, 1)))
   #relative volume change J
-  rel_vol_chg = det_dim_3(deformation_grad)
+  rel_vol_chg = det_dim_3(deformation_grad) # = J = detF = product of F eigen values.
   #averaged volume change
-  rel_vol_chg1 = Vn[tets[:,0]]/Vn0[tets[:,0]]
+  rel_vol_chg1 = Vn[tets[:,0]]/Vn0[tets[:,0]] 
   rel_vol_chg2 = Vn[tets[:,1]]/Vn0[tets[:,1]]
   rel_vol_chg3 = Vn[tets[:,2]]/Vn0[tets[:,2]]
   rel_vol_chg4 = Vn[tets[:,3]]/Vn0[tets[:,3]]
-  rel_vol_chg_av = (rel_vol_chg1 + rel_vol_chg2 + rel_vol_chg3 + rel_vol_chg4)/4.0   
+  rel_vol_chg_av = (rel_vol_chg1 + rel_vol_chg2 + rel_vol_chg3 + rel_vol_chg4)/4.0 #why dividing by 4? must correspond to J = detF = Vn/V0! whole volume. impacting line 263
     
   #decide if need SVD or not
   for i in prange (n_tets):
         
-    ll1, ll2, ll3 = EV(left_cauchy_grad[i])
+    ll1, ll2, ll3 = EV(left_cauchy_grad[i]) # eigen values
         
-    if ll3 >= eps*eps and rel_vol_chg[i] > 0.0:  # No need for SVD
+    if ll3 >= eps*eps and rel_vol_chg[i] > 0.0:  # No need for SVD  / ll3 is the lowest value of eigen value (so higher (deformation ratio)² in the deformation referentiel)
       powJ23 = np.power(rel_vol_chg[i], 2.0/3.0)
-      S = (left_cauchy_grad[i] - np.identity(3)*np.trace(left_cauchy_grad[i])/3.0)*mu[i]/(rel_vol_chg[i]*powJ23) + np.identity(3)*bulk_modulus*(rel_vol_chg_av[i]-1.0)
+      S = (left_cauchy_grad[i] - np.identity(3)*np.trace(left_cauchy_grad[i])/3.0)*mu[i]/(rel_vol_chg[i]*powJ23) + np.identity(3)*bulk_modulus*(rel_vol_chg_av[i]-1.0) #(rel_vol_chg[i]*powJ23) --> pow(rel_vol_chg[i], 5/3)
       P = np.dot(S, np.linalg.inv(deformation_grad[i].transpose()))*rel_vol_chg[i]
       W = 0.5*mu[i]*(np.trace(left_cauchy_grad[i])/powJ23 - 3.0) + 0.5*bulk_modulus*((rel_vol_chg1[i]-1.0)*(rel_vol_chg1[i]-1.0) + (rel_vol_chg2[i]-1.0)*(rel_vol_chg2[i]-1.0) + (rel_vol_chg3[i]-1.0)*(rel_vol_chg3[i]-1.0) + (rel_vol_chg4[i]-1.0)*(rel_vol_chg4[i]-1.0))*0.25
         
         
-    else:   #need SVD
-      C = np.dot(deformation_grad[i].transpose(), deformation_grad[i])
-      w2, v2 = np.linalg.eigh(C)
-      v2 = -v2
+    else:   #need SVD / small deformation OR detF <= 0
+      C = np.dot(deformation_grad[i].transpose(), deformation_grad[i]) #Right-Cauchy-Green tensor
+      w2, v2 = np.linalg.eigh(C) # eigh is applied since C is symmetric. w2: eigen values list / v2: eigen vectors matrix
+      v2 = -v2 #? not in tallinen code
     
-      l1 = sqrt(w2[0])
-      l2 = sqrt(w2[1])
+      l1 = sqrt(w2[0]) # should call it "rl1" compared to "ll1" / mean(dx²) provides measure of how the first length were modified in the x-axis whereas ll1 refers to how the first length was modified in absolute. 
+      l2 = sqrt(w2[1]) # mean(dy²)
       l3 = sqrt(w2[2])
     
-      if np.linalg.det(v2) < 0.0:
+      if np.linalg.det(v2) < 0.0: #determinant of the eighen vector referentiel
         v2[0,0] = -v2[0,0]
         v2[1,0] = -v2[1,0]
         v2[2,0] = -v2[2,0]
@@ -292,7 +292,7 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
         U[1,0] = U[2,1]*U[0,2] - U[0,1]*U[2,2]
         U[2,0] = U[0,1]*U[1,2] - U[1,1]*U[0,2]
     
-      if np.linalg.det(deformation_grad[i]) < 0.0:
+      if np.linalg.det(deformation_grad[i]) < 0.0: # if J < 0.0
         l1 = -l1
         U[0,0] = -U[0,0]
         U[1,0] = -U[1,0]
@@ -307,7 +307,7 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
       #W = 0.5*mu[i]*((eps*eps + l2*l2 + l3*l3)/pow23 - 3.0) + mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23*(l1-eps) + 0.5*k_param*(l1-eps)*(l1-eps) + 0.5*bulk_modulus*((rel_vol_chg1[i]-1.0)*(rel_vol_chg1[i]-1.0) + (rel_vol_chg2[i]-1.0)*(rel_vol_chg2[i]-1.0) + (rel_vol_chg3[i]-1.0)*(rel_vol_chg3[i]-1.0) + (rel_vol_chg4[i]-1.0)*(rel_vol_chg4[i]-1.0))/4.0
      
     # Calculate tetra face negative normals (because traction Ft=-P*n)
-    xr1 = np.array([ref_state_growth[i,0,0], ref_state_growth[i,1,0], ref_state_growth[i,2,0]])
+    xr1 = np.array([ref_state_growth[i,0,0], ref_state_growth[i,1,0], ref_state_growth[i,2,0]]) 
     xr2 = np.array([ref_state_growth[i,0,1], ref_state_growth[i,1,1], ref_state_growth[i,2,1]])
     xr3 = np.array([ref_state_growth[i,0,2], ref_state_growth[i,1,2], ref_state_growth[i,2,2]])
     N1 = np.cross(xr3, xr1)
@@ -430,7 +430,7 @@ def tetraElasticity_np(material_tets, ref_state_tets, Ft, tan_growth_tensor, bul
   return Ft
 
 @jit(nopython=True) #vectorized version
-def move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt):
+def move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt): #integration of newton elastodynamic law - PDE of the simulation.
   """
   Integrate forces and velocities to displacement, reinitialize Ft
   Args:
@@ -444,9 +444,9 @@ def move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt):
   dt (float): 
   """ 
   vol = np.reshape(np.repeat(Vn0, 3), (n_nodes, 3))
-  Ft -= Vt * damping_coef * vol
+  Ft -= Vt * damping_coef * vol #link with div(sigma)?
   Vt += Ft/(vol*mass_density)*dt
-  coordinates += Vt*dt
+  coordinates += Vt*dt 
   Ft = np.zeros((n_nodes, 3), dtype=np.float64)
     
   return Ft, coordinates, Vt
