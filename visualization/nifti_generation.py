@@ -1,7 +1,7 @@
 import os
 import nibabel as nib
 
-# interpolated deformations exported in .nii
+# interpolated deformations exported in .nii xx
 def values_to_nifti(native_nii_path, values_array, output_path, output_reg_nii_name):
     """Generate a nifti from brain values array, registered in the native mri referential"""
     # native mri parameters 

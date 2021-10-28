@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('-gm', '--gdmethod', help='griddata interpolation method: nearest; linear; cubic?', type=str, default='linear', required=False)
     args = parser.parse_args()
 
-    # TO BE PUT IN PERSONALIZED/RAISE ERROR: --input, --nativenii, --outputfolder
+    # TO BE PUT IN PERSONALIZED/RAISE ERROR: --input, --nativenii, --outputfolder xx
 
     #####################################
     # VISUALISATION INPUTS AND PARAMETERS

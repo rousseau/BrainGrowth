@@ -5,7 +5,7 @@ from scipy.interpolate import griddata
 def interpolated_values_array(coordinates, values, native_nii_path, method):
     """Interpolate the mesh nodal values onto a 3d native-image-shape grid"""
     
-    #original_img = itk.imread(native_nii_path)
+    #original_img = itk.imread(native_nii_path) xx
     native_img = nib.load(native_nii_path)
     native_header = native_img.header
     native_reso = native_header.get_zooms()[0]
@@ -21,3 +21,4 @@ def interpolated_values_array(coordinates, values, native_nii_path, method):
     interpolation_array = griddata(coordinates, values, (grid_X, grid_Y, grid_Z), method=method)
 
     return interpolation_array
+    

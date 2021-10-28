@@ -14,7 +14,7 @@ import itk
 from meshvalues_to_imagearray import interpolated_values_array
 from nifti_generation import values_to_nifti
 
-# Generation of a n_nodes array containing mri initial grey values plugged to each mesh node 
+# Generation of a n_nodes array containing mri initial grey values plugged to each mesh node  xx
 def mri_values_to_mesh(coordinates0, native_nii_path):
     '''
     Interpolates the mri initial grey values for each mesh node a t0 (before deformation)

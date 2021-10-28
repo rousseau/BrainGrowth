@@ -1,5 +1,6 @@
 import nibabel as nib
 
+# nifti analyzer
 native_path = '/home/latim/braingrowth_rousseau/FetalAtlas/mesh_to_image_testFolder/template_T2_reduced_z.nii'
 native_image = nib.load(native_path)
 native_affine = native_image.affine
