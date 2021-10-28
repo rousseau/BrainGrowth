@@ -2,7 +2,7 @@ import os
 import nibabel as nib
 
 def nifti_writing(reference_nii_path, values_array, output_path):
-    """Generate a nifti from brain values array, registered in the reference mri nifti space."""
+    """Generate a nifti from brain values array, registered in the reference mri nifti space. """
     # Get the reference image parameters 
     reference_img = nib.load(reference_nii_path)
     header_reference = reference_img.header

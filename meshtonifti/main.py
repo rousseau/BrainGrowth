@@ -14,12 +14,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # MAIN PROGRAM 
-    # load coordinates and associated values from the input vtk file
+    # load coordinates and associated values from the input vtk file.
     data = np.load(args.input, allow_pickle = True) 
     coordinates = data[1]
     brain_values = data[2]
 
-    # Generate a interpolated nifti of the nodal values  
+    # Generate a interpolated nifti of the nodal values.  
     values_array_gd = mesh_to_image(coordinates, brain_values, args.reference, args.method)
     nifti_writing(args.reference, values_array_gd, args.output)  
             

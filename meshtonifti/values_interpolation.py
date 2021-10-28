@@ -3,7 +3,7 @@ import nibabel as nib
 from scipy.interpolate import griddata 
 
 def mesh_to_image(coordinates, values, reference_nii_path, method):
-    """Interpolate the mesh nodal values onto a 3d reference-image-shape grid"""
+    """Interpolate the mesh nodal values onto a 3d reference-image-shape grid."""
     reference_img = nib.load(reference_nii_path)
     reference_header = reference_img.header
     reference_reso = reference_header.get_zooms()[0]
@@ -18,4 +18,4 @@ def mesh_to_image(coordinates, values, reference_nii_path, method):
 
     interpolation_array = griddata(coordinates, values, (grid_X, grid_Y, grid_Z), method=method)
 
-    return interpolation_array
+    return interpolation_array 
