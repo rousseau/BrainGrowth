@@ -1701,6 +1701,7 @@ res/tests/mass_density/ground_truth/pov_H0.042000AT1.829000/B155500.png
 res/tests/mass_density/ground_truth/pov_H0.042000AT1.829000/B155500.stl
 res/tests/mass_density/ground_truth/pov_H0.042000AT1.829000/B155500.txt
 bashtest
+<<<<<<< HEAD
 visualization/coordinates/coordinates_0.npy
 visualization/coordinates/coordinates_500.npy
 visualization/coordinates/coordinates_1000.npy
@@ -1812,3 +1813,24 @@ profil.prof
 requirements.txt
 test.ply
 vema.h
+=======
+res/sphere5/pov_H0.042000AT1.829000/B0.png
+>>>>>>> 870cf40bbe8897faf0c263d47d58a5d8f2fe64e2
+res/sphere5/pov_H0.042000AT1.829000/B0.png
+data/template_T2_reduced_z.mesh
+data/template_T2_reduced_z.nii
+collision_Tallinen.py
+.gitignore
+collision_Tallinen.py
+denormalization.py
+geometry.py
+growth.py
+mechanics.py
+normalisation.py
+output.py
+simulation.py
+visualization/meshvalues_to_imagearray.py
+visualization/mri_visualization.py
+visualization/nifti_analyzer.py
+visualization/nifti_generation.py
+visualization/visualization_main.py
