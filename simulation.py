@@ -3,15 +3,16 @@
   python simulation.py -i './data/Tallinen_22W_demi_anatomist.mesh' -o './res/Tallinen_22W_demi_anatomist' -hc 'half' -t 0.042 -g 1.829 -gm 'regional' -mr './data/rh.gii' -tr './data/covariateinteraction2.R.noivh.GGnorm.func.gii' -lr './data/ATLAS30.R.Fiducial.surf.fineregions.gii' -sc 0.01 -ms 0.01
   python simulation.py -i './data/week23-3M-tets.mesh' -o './res/week23-3M-tets_atlas_Garcia' -hc 'whole' -t 0.042 -g 1.829 -gm 'regional' -mr './data/rh.gii' -ml './data/lh.gii' -tr './data/covariateinteraction2.R.noivh.GGnorm.func.gii' -tl './data/covariateinteraction2.L.noivh.GGnorm.func.gii' -lr './data/ATLAS30.R.Fiducial.surf.fineregions.gii' -ll './data/ATLAS30.L.Fiducial.surf.fineregions.gii' -sc 0.01 -ms 0.01
   python simulation.py -i './data/sphere5.mesh' -o './res/sphere5' -hc 'whole' -t 0.042 -g 1.829 -gm 'global'
+  Env variables for debug:
+  NUMBA_DEBUG_ARRAY_OPT_STATS=1
   
 """
 #global modules
-#from __future__ import division
 import argparse
 import numpy as np
 import time
 import slam.io as sio
-import trimesh
+from scipy.spatial import cKDTree
 
 #global modules for tracking
 import cProfile
@@ -20,12 +21,13 @@ import io
 import sys
 
 #local modules
-from geometry import import_mesh, tetra_normals, get_vertices, get_tetra_vertices_indices, get_triangle_indices, get_nb_surface_nodes, edge_length, volume_mesh, mark_nogrowth, config_refer, config_deform, normals_surfaces, calc_vol_nodal, calc_mid_plane, calc_longi_length, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, Curve_fitting_whole
-from growth import calc_dist_2_surf, growthRate, calc_cortex_thickness, shear_modulus, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole
+from geometry import netgen_to_array, tetra_normals, get_nodes, get_tetra_indices, get_face_indices, get_nb_surface_nodes, edge_length, volume_mesh, mark_nogrowth, config_refer, config_deform, normals_surfaces, calc_vol_nodal, calc_mid_plane, calc_longi_length, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, curve_fitting_whole
+from growth import growthRate, shear_modulus, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole, calc_growth_filter
 from normalisation import normalise_coord
 from collision_Tallinen import contact_process
-from mechanics import tetra_elasticity, move
-from output import area_volume, writeTXT, writePov, mesh_to_stl, mesh_to_gifti, mesh_to_ply
+from mechanics import tetra_elasticity, move, tetra1, tetra1_np, tetra2
+from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti
+
 
 if __name__ == '__main__':
   start_time_initialization = time.time ()
@@ -48,26 +50,40 @@ if __name__ == '__main__':
   parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh', type=float, default=0.1, required=False) #increase for speed, too high brings negativ jakobians, default is 0.01
   args = parser.parse_args()
 
+<<<<<<< HEAD
   ########################
   # PARAMETERS TO CHANGE #
   ########################
   PATH_DIR = args.output # Path of results
+=======
+  # Parameters to change
+  PATH_DIR = args.output
+>>>>>>> 870cf40bbe8897faf0c263d47d58a5d8f2fe64e2
   THICKNESS_CORTEX = args.thickness
   GROWTH_RELATIVE = args.growth
 
   # Import mesh, each line as a list
-  mesh = import_mesh(args.input)
+  mesh = netgen_to_array(args.input)
 
+<<<<<<< HEAD
   # Read nodes, get undeformed coordinates (Ut0) and initialize deformed coordinates (Ut) of all nodes
   coordinates0, coordinates, n_nodes = get_vertices(mesh) 
 
   # Read element indices (tets: index of four vertices of tetrahedra) and get number of elements (ne)
   tets, n_tets = get_tetra_vertices_indices(mesh, n_nodes)
+=======
+  # Read nodes, get undeformed coordinates (Ut0) and initialize deformed coordinates (Ut) of all nodes. #X-Y switch at this point
+  coordinates, n_nodes = get_nodes(mesh) 
+  coordinates0 = coordinates.copy()
+
+  # Read element indices (tets: index of four vertices of tetrahedra) and get number of elements (ne). #Handness switch at this point
+  tets, n_tets = get_tetra_indices(mesh, n_nodes)
+>>>>>>> 870cf40bbe8897faf0c263d47d58a5d8f2fe64e2
 
   # Read surface triangle indices (faces: index of three vertices of triangles) and get number of surface triangles (nf)
   faces, n_faces = get_triangle_indices(mesh, n_nodes, n_tets)
 
-  # Determine surface nodes and index maps  n_surface_nodes: number of nodes at the surface, SN: Nodal index map from surface to full mesh, nodal_idx_b: Nodal index map from full mesh to surface)
+  # Determine surface nodes and index maps  n_surface_nodes: number of nodes at the surface, Nodal index map (legacy SN) from surface to full mesh, nodal_idx_b: Nodal index map from full mesh to surface)
   n_surface_nodes, nodal_idx, nodal_idx_b = get_nb_surface_nodes(faces, n_nodes)
 
   # Check minimum, maximum and average edge lengths (average mesh spacing) at the surface
@@ -116,11 +132,16 @@ if __name__ == '__main__':
   surf_node_norms = np.zeros((n_surface_nodes,3), dtype = np.float64)  #Normals of surface nodes
   Vt = np.zeros((n_nodes,3), dtype = np.float64)  #Velocities
   Ft = np.zeros((n_nodes,3), dtype = np.float64)  #Forces
+<<<<<<< HEAD
+=======
+  growth_filter = np.ones(n_tets, dtype = np.float64)
+>>>>>>> 870cf40bbe8897faf0c263d47d58a5d8f2fe64e2
   #Vn0 = np.zeros(nn, dtype = float) #Nodal volumes in reference state
   #Vn = np.zeros(nn, dtype = float)  #Deformed nodal volumes
   # Ue = 0 #Elastic energy
 
   NNLt = [[] for _ in range (n_surface_nodes)] #Triangle-proximity lists for surface nodes
+<<<<<<< HEAD
   coordinates_old = np.zeros( (n_surface_nodes,3), dtype = np.float64)  #Stores positions when proximity list is updated
 
   shape = (n_tets,3,3)
@@ -130,6 +151,24 @@ if __name__ == '__main__':
   ##############################################################################
   #    PARCEL  BRAIN IN LOBES : MESH GENERATION & PARAMETERS INITIALIZATION    #
   ##############################################################################
+=======
+  coordinates_old = np.zeros((n_surface_nodes,3), dtype = np.float64)  #Stores positions when proximity list is updated
+
+  tan_growth_tensor = np.ones((n_tets,3,3), dtype = np.float64) * np.identity(3)  # Initial tangential growth tensor
+
+  #tetraelasticty variables
+  ref_state_growth = np.zeros ((n_tets, 3, 3), dtype=np.float64) #Ar
+  deformation_grad = np.zeros((n_tets,3,3), dtype=np.float64)
+  left_cauchy_grad = np.zeros((n_tets,3,3), dtype=np.float64)
+  rel_vol_chg = np.zeros(n_tets, dtype=np.float64)
+  rel_vol_chg1 = np.zeros(n_tets, dtype=np.float64)
+  rel_vol_chg2 = np.zeros(n_tets, dtype=np.float64)
+  rel_vol_chg3 = np.zeros(n_tets, dtype=np.float64)
+  rel_vol_chg4 = np.zeros(n_tets, dtype=np.float64)
+  rel_vol_chg_av = np.zeros(n_tets, dtype=np.float64)
+
+  ## Parcel brain in lobes
+>>>>>>> 870cf40bbe8897faf0c263d47d58a5d8f2fe64e2
   if args.growthmethod.__eq__("regional"):
     n_clusters = 10   #Number of lobes
     method = 'User-defined lobes' #Method of parcellation in lobes
@@ -182,7 +221,8 @@ if __name__ == '__main__':
   coordinates0, coordinates, center_of_gravity, maxd, miny = normalise_coord(coordinates0, coordinates, n_nodes, args.halforwholebrain)
 
   # Find the nearest surface nodes (nearest_surf_node) to nodes and distances to them (dist_2_surf)
-  nearest_surf_node, dist_2_surf = calc_dist_2_surf(coordinates0, nodal_idx)
+  tree = cKDTree(coordinates0[nodal_idx])
+  dist_2_surf, nearest_surf_node = tree.query(coordinates0)
 
   # Configuration of tetrahedra at reference state (ref_state_tets)
   ref_state_tets = config_refer(coordinates0, tets, n_tets)
@@ -190,7 +230,7 @@ if __name__ == '__main__':
   # Mark non-growing areas
   gr = mark_nogrowth(coordinates0, n_nodes)
 
-  # Calculate normals of each surface triangle and apply these normals to surface nodes
+  # Calculate normals of each surface triangle at each node
   surf_node_norms = normals_surfaces(coordinates0, faces, nodal_idx_b, n_faces, n_surface_nodes, surf_node_norms)
 
   # list to stack all intensities of node resultant deformation at step%di
@@ -204,6 +244,7 @@ if __name__ == '__main__':
   end_time_initialization = time.time () - start_time_initialization
   print ('Time required for initialization : ' + str (end_time_initialization) )
 
+<<<<<<< HEAD
   # Export the initial parameters in npy file
   initial_parameters = np.array([n_nodes, maxd, center_of_gravity], dtype = object)
   np.save('/home/latim/anaconda3/envs/braingrowth/visualization/initial_parameters/parameters.npy', initial_parameters)
@@ -215,6 +256,17 @@ if __name__ == '__main__':
   while t < 1.0:
     
     # Calculate the relative growth rate
+=======
+  ###### data export required by the "visualization" package - for coordinates denormalization and displacements calculation ######
+  # Export the initial parameters required for 'visualization' in npy file
+  initial_parameters = np.array([n_nodes, maxd, center_of_gravity], dtype = object)
+  np.save(args.ipoutput, initial_parameters)
+
+  # Simulation loop
+  start_time_simulation = time.time ()
+  while t < 1.0: 
+    # Calculate the relative growth rate //bt not used
+>>>>>>> 870cf40bbe8897faf0c263d47d58a5d8f2fe64e2
     if args.growthmethod.__eq__("regional"):
       if args.halforwholebrain.__eq__("half"):
         at, bt = growthRate_2_half(t, n_tets, n_surface_nodes, labels_surface, labels_volume, peak, amplitude, latency, lobes)
@@ -226,8 +278,13 @@ if __name__ == '__main__':
     # Calculate the longitudinal length of the real brain
     longi_length = calc_longi_length(t)
 
+<<<<<<< HEAD
     # Calculate the thickness of growing layer
     cortex_thickness = calc_cortex_thickness(THICKNESS_CORTEX, t)
+=======
+    #update cortex thickness
+    cortex_thickness = THICKNESS_CORTEX + 0.01*t
+>>>>>>> 870cf40bbe8897faf0c263d47d58a5d8f2fe64e2
 
     # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn)
     Vn0, Vn = calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes)
@@ -241,8 +298,17 @@ if __name__ == '__main__':
     # Deformed configuration of tetrahedra (At)
     material_tets = config_deform(coordinates, tets, n_tets)
 
+<<<<<<< HEAD
     # Calculate elastic forces & deformation_grad modifAK
     Ft, deformation_grad = tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps) 
+=======
+    # Calculate elastic forces
+    Ft = tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps)
+
+    #Seperate tetraelasticity initialization and calculatin, useful for optimization purposes. 
+    #left_cauchy_grad, rel_vol_chg, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, rel_vol_chg_av, deformation_grad, ref_state_growth = tetra1(tets, tan_growth_tensor, ref_state_tets, ref_state_growth, material_tets, Vn, Vn0)
+    #Ft = tetra2(n_tets, tets, Ft, left_cauchy_grad, mu, eps, rel_vol_chg, bulk_modulus,rel_vol_chg_av, deformation_grad, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, k_param, ref_state_growth)
+>>>>>>> 870cf40bbe8897faf0c263d47d58a5d8f2fe64e2
 
     # Calculate normals of each deformed tetrahedron 
     tet_norms = tetra_normals(surf_node_norms, nearest_surf_node, tets, n_tets)
@@ -288,10 +354,21 @@ if __name__ == '__main__':
       #writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom_pos, center_of_gravity, maxd, miny, args.halforwholebrain)
 
       # Convert surface mesh structure (from simulations) to .stl format file
+<<<<<<< HEAD
       #mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
       
       # Convert surface mesh structure (from simulations) to .gii format file
       #mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
+=======
+      mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
+
+      #creation list deformation
+      node_deformation = np.zeros((n_nodes), dtype=np.float64)
+      node_deformation = np.linalg.norm(coordinates - coordinates0, axis=1)
+      
+      # Convert surface mesh structure (from simulations) to .gii format file
+      mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
+>>>>>>> 870cf40bbe8897faf0c263d47d58a5d8f2fe64e2
 
       # Convert mesh .stl to image .nii.gz
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
@@ -302,6 +379,7 @@ if __name__ == '__main__':
       # Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
       #mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, Ut, zoom_pos, center_of_gravity, maxd, nn, faces, tets, miny)
 
+<<<<<<< HEAD
       # Export the coordinates in npy file
       data = np.array([step, coordinates], dtype = object)
       np.save('/home/latim/anaconda3/envs/braingrowth/visualization/coordinates/coordinates_%d.npy'%(step), data)
@@ -312,6 +390,13 @@ if __name__ == '__main__':
 
       ###### parameters display during each simulation step ############################
       ##################################################################################
+=======
+      ###### data export required by the "visualization" package - for displacements calculation ######
+      # Export step and associated coordinates in npy files
+      data = np.array([step, coordinates], dtype = object)
+      np.save(args.coutput + 'coordinates_%d.npy'%(step), data)
+      
+>>>>>>> 870cf40bbe8897faf0c263d47d58a5d8f2fe64e2
       print('step: ' + str(step) + ' t: ' + str(t) )
 
       # Calculate surface area and mesh volume
@@ -324,6 +409,7 @@ if __name__ == '__main__':
       end_time_simulation = time.time() - start_time_simulation
       print('Time required for simulation loop : ' + str (end_time_simulation))
       start_time_simulation = time.time()
+<<<<<<< HEAD
 
       ##########################################
       #      COORDINATES DENORMALISATION       #  export functions (so to be denormalized)
@@ -367,6 +453,11 @@ if __name__ == '__main__':
     #    NEWTON DYNAMICS   #
     ########################
     Ft, coordinates, Vt = move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt) #only Ft, coordinates and Vt are updated.
+=======
+ 
+    # Newton dynamics
+    Ft, coordinates, Vt = move(n_nodes, Ft, Vt, coordinates, damping_coef, Vn0, mass_density, dt)
+>>>>>>> 870cf40bbe8897faf0c263d47d58a5d8f2fe64e2
 
     t += dt
     step += 1
@@ -377,7 +468,6 @@ if __name__ == '__main__':
 ##############################################
 ###LEGACY code for reference, safely ignore###
 ##############################################
-
 #Smoothing using slam
     if step == 0:
         #create filtering for each surface node
@@ -385,7 +475,6 @@ if __name__ == '__main__':
         stl_mesh = trimesh.load (stl_path)
         filtering = np.ones (len(stl_mesh.vertices))
         filtering = laplacian_texture_smoothing (stl_mesh, filtering, 10, dt)
-
         #Expand filtering via nearest surface node (vectorisable)
         gauss = np.ones (n_nodes, dtype = np.float64)
         for i in range (len(gauss)):
@@ -401,11 +490,12 @@ if __name__ == '__main__':
     
     #apply filter (why not before ? Because stl not available at this point)
     at *= gauss_tets
-
-
 def background(f):
     def wrapped(*args, **kwargs):
         return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
     return wrapped
+<<<<<<< HEAD
 
+=======
+>>>>>>> 870cf40bbe8897faf0c263d47d58a5d8f2fe64e2
     """

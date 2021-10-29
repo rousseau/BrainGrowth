@@ -8,7 +8,6 @@ def coordinates_denormalization(coordinates, n_nodes, center_of_gravity, maxd, m
     coordinates_denorm = np.zeros((n_nodes,3), dtype = float)
 
     coordinates_denorm[:,1] = center_of_gravity[0] - coordinates[:,0]*maxd
-    coordinates_denorm[:,0] = coordinates[:,1]*maxd + center_of_gravity[1]
     if halforwholebrain.__eq__("half"):
         coordinates_denorm[:,0] = coordinates[:,1]*maxd + miny
     else:
