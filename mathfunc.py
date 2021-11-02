@@ -3,7 +3,7 @@ import math
 from numba import jit, njit, prange
 
 # Find the closest point of triangle abc to point p, if not, p projection through the barycenter inside the triangle
-@jit
+@jit(nopython=True)
 def closestPointTriangle(p, a, b, c, u, v, w):
   ab = b - a
   ac = c - a
@@ -331,7 +331,7 @@ def Eigensystem(n, A, V, d):
 
   return d, V
 
-@jit
+@jit(nopython=True)
 def cross_dim_2(a, b):
   #pure equivalent of np.cross (a, b) when dimension maintained
   c = np.array([a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]])
@@ -368,7 +368,7 @@ def inv(a):
 
   return np.linalg.inv(a)
 
-@jit (parallel = True, nopython = True)
+@jit (parallel=True, nopython=True)
 def inv_dim_3(a):
   #pure equivalent from np.linalg.inv(a)
   b = np.zeros((len(a),3,3), dtype=np.float64)
@@ -377,7 +377,7 @@ def inv_dim_3(a):
 
   return b
 
-@jit (nopython = True)
+@jit(nopython=True)
 def norm_dim_3(a):
   b = np.zeros(len(a), dtype=np.float64)
   b[:] = np.sqrt(a[:,0]*a[:,0] + a[:,1]*a[:,1] + a[:,2]*a[:,2])
@@ -426,6 +426,15 @@ def dot_mat_dim_3(a, b):
   
   return c
 
+@jit(nopython=True, parallel=True)
+def dot_tetra(a, b):
+  '''
+  A helper function for tetraelasticity
+  '''
+  c = np.zeros((len(a), 3), dtype=np.float64)
+  for i in prange(len(a)):
+    c[i] = np.dot(a[i], b[i])
+  return c
 
 @jit
 def dot_const_mat_dim_3(a, b):

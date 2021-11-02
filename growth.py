@@ -2,7 +2,7 @@ import numpy as np
 import math
 from numba import jit, njit, prange
 
-@jit(nopython = True)
+@jit(nopython=True)
 def growthRate(GROWTH_RELATIVE, t, n_tets, filter = 1.0):
   """
   Calculates global relative growth rate for half or whole brain
@@ -18,7 +18,7 @@ def growthRate(GROWTH_RELATIVE, t, n_tets, filter = 1.0):
   at[:] = GROWTH_RELATIVE*t*filter
   return at
 
-@jit(nopython = True, parallel = True)
+@jit(nopython=True, parallel=True)
 def calc_growth_filter(growth_filter, dist_2_surf, n_tets, tets, cortex_thickness):
   for i in prange(n_tets):
     if float(dist_2_surf[tets[i][0]]) < cortex_thickness:
@@ -76,7 +76,7 @@ def growthRate_2_whole(t, n_tets, n_surface_nodes, labels_surface, labels_surfac
 
   return at, bt
 
-@njit(parallel=True)
+@njit(parallel=True, nopython=True)
 def shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):
   """
   Calculates global shear modulus for white and gray matter for each tetrahedron
@@ -100,7 +100,7 @@ def shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):
 
   return gm, mu
 
-@jit (nopython=True)
+@jit(nopython=True)
 def growth_tensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
     '''
     Calculate relative (relates to dist_2_surf) tangential growth factor G

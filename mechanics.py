@@ -1,7 +1,7 @@
 from __future__ import division
 
 from numpy.lib.function_base import vectorize
-from mathfunc import det_dim_2, det_dim_3, inv, inv_dim_3, cross_dim_2, transpose_dim_3, dot_mat_dim_3, EV, Eigensystem
+from mathfunc import det_dim_2, det_dim_3, inv, inv_dim_3, cross_dim_2, transpose_dim_3, dot_mat_dim_3, EV, Eigensystem, dot_tetra
 import numpy as np
 from math import sqrt
 from numba import jit, njit, prange
@@ -136,6 +136,7 @@ def tetra_elasticity_test(material_tets, ref_state_tets, Ft, tan_growth_tensor, 
   rel_vol_chg3 = np.zeros(n_tets, dtype=np.float64)
   rel_vol_chg4 = np.zeros(n_tets, dtype=np.float64)
   rel_vol_chg_av = np.zeros(n_tets, dtype=np.float64)
+  P_vec = np.zeros ((n_tets, 3, 3), dtype=np.float64)
     
   #Apply growth to reference state
   ref_state_growth = dot_mat_dim_3(tan_growth_tensor, ref_state_tets)
@@ -158,8 +159,8 @@ def tetra_elasticity_test(material_tets, ref_state_tets, Ft, tan_growth_tensor, 
     powJ23 = np.power(rel_vol_chg[i], 2.0/3.0)
     S = (left_cauchy_grad[i] - np.identity(3)*np.trace(left_cauchy_grad[i])/3.0)*mu[i]/(rel_vol_chg[i]*powJ23) + np.identity(3)*bulk_modulus*(rel_vol_chg_av[i]-1.0)
     P = np.dot(S, np.linalg.inv(deformation_grad[i].transpose()))*rel_vol_chg[i]
-    W = 0.5*mu[i]*(np.trace(left_cauchy_grad[i])/powJ23 - 3.0) + 0.5*bulk_modulus*((rel_vol_chg1[i]-1.0)*(rel_vol_chg1[i]-1.0) + (rel_vol_chg2[i]-1.0)*(rel_vol_chg2[i]-1.0) + (rel_vol_chg3[i]-1.0)*(rel_vol_chg3[i]-1.0) + (rel_vol_chg4[i]-1.0)*(rel_vol_chg4[i]-1.0))*0.25
-        
+    #W = 0.5*mu[i]*(np.trace(left_cauchy_grad[i])/powJ23 - 3.0) + 0.5*bulk_modulus*((rel_vol_chg1[i]-1.0)*(rel_vol_chg1[i]-1.0) + (rel_vol_chg2[i]-1.0)*(rel_vol_chg2[i]-1.0) + (rel_vol_chg3[i]-1.0)*(rel_vol_chg3[i]-1.0) + (rel_vol_chg4[i]-1.0)*(rel_vol_chg4[i]-1.0))*0.25
+    P_vec[i] = P    
     
     #W = 0.5*mu[i]*((eps*eps + l2*l2 + l3*l3)/pow23 - 3.0) + mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23*(l1-eps) + 0.5*k_param*(l1-eps)*(l1-eps) + 0.5*bulk_modulus*((rel_vol_chg1[i]-1.0)*(rel_vol_chg1[i]-1.0) + (rel_vol_chg2[i]-1.0)*(rel_vol_chg2[i]-1.0) + (rel_vol_chg3[i]-1.0)*(rel_vol_chg3[i]-1.0) + (rel_vol_chg4[i]-1.0)*(rel_vol_chg4[i]-1.0))/4.0
     # Calculate tetra face negative normals (because traction Ft=-P*n)
@@ -177,9 +178,10 @@ def tetra_elasticity_test(material_tets, ref_state_tets, Ft, tan_growth_tensor, 
     Ft[tets[i,2]] += np.dot(P, (N2 + N3 + N4).T)/6.0
     Ft[tets[i,3]] += np.dot(P, (N1 + N2 + N4).T)/6.0
         
-  return Ft
+  return Ft, P_vec
 
-@jit(nopython=True, parallel=True, nogil=True)
+#object mode checked against test version, equal
+@jit(nopython=True, parallel=True)
 def tetra_elasticity_vec(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
   """
   Calculates elastic forces
@@ -194,6 +196,7 @@ def tetra_elasticity_vec(material_tets, ref_state_tets, Ft, tan_growth_tensor, b
   rel_vol_chg3 = np.zeros(n_tets, dtype=np.float64)
   rel_vol_chg4 = np.zeros(n_tets, dtype=np.float64)
   rel_vol_chg_av = np.zeros(n_tets, dtype=np.float64)
+
     
   #Apply growth to reference state
   ref_state_growth = dot_mat_dim_3(tan_growth_tensor, ref_state_tets)
@@ -210,26 +213,42 @@ def tetra_elasticity_vec(material_tets, ref_state_tets, Ft, tan_growth_tensor, b
   rel_vol_chg4 = Vn[tets[:,3]]/Vn0[tets[:,3]]
   rel_vol_chg_av = (rel_vol_chg1 + rel_vol_chg2 + rel_vol_chg3 + rel_vol_chg4)/4.0   
 
-  powJ23 = np.power (rel_vol_chg, (2.0/3.0))
+  # # ###vectorized trace, not numba compatible
+  # trace = np.zeros (n_tets, dtype = np.float64)
+  # trace = np.trace(left_cauchy_grad, axis1=1, axis2=2)/3.0
+  # trace = np.reshape(np.repeat(trace, 9), (n_tets, 3, 3))  
 
-  ###vectorized trace
-  trace = np.trace(left_cauchy_grad, axis1=1, axis2=2)/3.0
-  trace = np.reshape(np.repeat(trace, 9), (n_tets, 3, 3))  
-  
-  
-  S = np.zeros ((n_tets, 3, 3), dtype=np.float64) 
-  P = np.zeros ((n_tets, 3, 3), dtype=np.float64)
+  trace = np.zeros (n_tets, dtype = np.float64)
+  for i in prange(n_tets):
+    trace[i] = np.trace(left_cauchy_grad[i])/3.0
+
+  S_vec = np.zeros ((n_tets, 3, 3), dtype=np.float64) 
+  P_vec = np.zeros ((n_tets, 3, 3), dtype=np.float64)
   mu_vec = np.reshape(np.repeat(mu, 9), (n_tets, 3, 3))
   rel_vol_chg_vec = np.reshape(np.repeat(rel_vol_chg, 9), (n_tets, 3, 3))
   powJ23_vec = np.power (rel_vol_chg_vec, (2.0/3.0))
   rel_vol_chg_av_vec = np.reshape(np.repeat(rel_vol_chg_av, 9), (n_tets, 3, 3))
-  S = (left_cauchy_grad - np.identity(3)*trace)*mu_vec/(rel_vol_chg_vec*powJ23_vec) + np.identity(3)*bulk_modulus*(rel_vol_chg_av_vec-1.0) #CHECKED AGAINST REAL VERSION !!!!
-  P = dot_mat_dim_3 (S, np.linalg.inv(deformation_grad.transpose(0, 2, 1))) * rel_vol_chg_vec
-  
-  #caclulate tetras negative normals(because traction)
+  S_vec = (left_cauchy_grad - np.identity(3)*trace)*mu_vec/(rel_vol_chg_vec*powJ23_vec) + np.identity(3)*bulk_modulus*(rel_vol_chg_av_vec-1.0) #CHECKED AGAINST REAL VERSION !!!!
+  P_vec = dot_mat_dim_3(S_vec, inv_dim_3(deformation_grad.transpose(0, 2, 1))) * rel_vol_chg_vec #originally np.linalg.inv
+
+  #calculate tetras negative normals(because traction)
   xr1_vec = np.array([ref_state_growth[:,0,0], ref_state_growth[:,1,0], ref_state_growth[:,2,0]]).transpose()
   xr2_vec = np.array([ref_state_growth[:,0,1], ref_state_growth[:,1,1], ref_state_growth[:,2,1]]).transpose()
   xr3_vec = np.array([ref_state_growth[:,0,2], ref_state_growth[:,1,2], ref_state_growth[:,2,2]]).transpose()
+  N1_vec = np.cross(xr3_vec, xr1_vec)
+  N2_vec = np.cross(xr2_vec, xr3_vec)
+  N3_vec = np.cross(xr1_vec, xr2_vec)
+  N4_vec = np.cross(xr2_vec - xr3_vec, xr1_vec - xr3_vec)
+
+
+  #This part cannot be vectorized
+  for i in prange(n_tets):
+    Ft[tets[i,0]] += np.dot(P_vec[i], (N1_vec[i] + N2_vec[i] + N3_vec[i]))/6.0
+    Ft[tets[i,1]] += np.dot(P_vec[i], (N1_vec[i] + N3_vec[i] + N4_vec[i]))/6.0
+    Ft[tets[i,2]] += np.dot(P_vec[i], (N2_vec[i] + N3_vec[i] + N4_vec[i]))/6.0
+    Ft[tets[i,3]] += np.dot(P_vec[i], (N1_vec[i] + N2_vec[i] + N4_vec[i]))/6.0
+
+  return Ft
 
 @jit(nopython=True, parallel=True)   
 def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):

@@ -10,6 +10,7 @@
 #global modules
 import argparse
 import numpy as np
+from numba import jit, prange
 import time
 import slam.io as sio
 from scipy.spatial import cKDTree
@@ -26,9 +27,10 @@ from geometry import netgen_to_array, tetra_normals, get_nodes, get_tetra_indice
 from growth import growthRate, shear_modulus, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole, calc_growth_filter
 from normalisation import normalise_coord
 from collision_Tallinen import contact_process
-from mechanics import tetra_elasticity, tetra_elasticity_test, move, tetra1, tetra1_np, tetra2
+from mechanics import tetra_elasticity, tetra_elasticity_test, tetra_elasticity_vec, move, tetra1, tetra1_np, tetra2
 from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti, mesh_to_vtk
 from visualization.denormalization import coordinates_denormalization
+from mathfunc import dot_mat_dim_3, inv_dim_3, det_dim_3
 
 
 if __name__ == '__main__':
@@ -136,6 +138,7 @@ if __name__ == '__main__':
   rel_vol_chg3 = np.zeros(n_tets, dtype=np.float64)
   rel_vol_chg4 = np.zeros(n_tets, dtype=np.float64)
   rel_vol_chg_av = np.zeros(n_tets, dtype=np.float64)
+  P_vec = np.zeros((n_tets, 3, 3), dtype=np.float64)
 
   ## Parcel brain in lobes
   if args.growthmethod.__eq__("regional"):
@@ -222,8 +225,6 @@ if __name__ == '__main__':
     else:
       at = growthRate(GROWTH_RELATIVE, t, n_tets, growth_filter)
       
-    # Calculate the longitudinal length of the real brain
-    longi_length = calc_longi_length(t) #negligible
     #growth_filter = calc_growth_filter(growth_filter, dist_2_surf, n_tets, tets, cortex_thickness)
 
     #update cortex thickness
@@ -244,7 +245,7 @@ if __name__ == '__main__':
     # Calculate elastic forces
     Ft = tetra_elasticity_test(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps) #~73% sim time
 
-    #Seperate tetraelasticity initialization and calculatin, useful for optimization purposes. 
+    #Seperate tetraelasticity initialization and calculation, useful for optimization purposes. 
     #left_cauchy_grad, rel_vol_chg, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, rel_vol_chg_av, deformation_grad, ref_state_growth = tetra1(tets, tan_growth_tensor, ref_state_tets, ref_state_growth, material_tets, Vn, Vn0)
     #Ft = tetra2(n_tets, tets, Ft, left_cauchy_grad, mu, eps, rel_vol_chg, bulk_modulus,rel_vol_chg_av, deformation_grad, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, k_param, ref_state_growth)
 
@@ -260,6 +261,8 @@ if __name__ == '__main__':
 
     # Output
     if step % di == 0:
+  
+      longi_length = calc_longi_length(t)
 
       # Write texture of growth in .gii files
       #writeTex(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, bt)
@@ -278,12 +281,30 @@ if __name__ == '__main__':
 
       #creation list deformation TODO: denormalisation of calculation
       node_deformation = np.zeros((n_nodes), dtype=np.float64)
-      node_deformation = np.linalg.norm(coordinates_denormalization(coordinates, n_nodes, center_of_gravity, maxd) - coordinates_denormalization(coordinates0, n_nodes, center_of_gravity, maxd), axis=1)
+      node_deformation = np.linalg.norm(coordinates_denormalization(coordinates, n_nodes, center_of_gravity, maxd, miny, args.halforwholebrain) - coordinates_denormalization(coordinates0, n_nodes, center_of_gravity, maxd, miny, args.halforwholebrain), axis=1)
       
       # Convert surface mesh structure (from simulations) to .gii format file
       mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
 
-      mesh_to_vtk(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, coordinates, faces, center_of_gravity, step, maxd, miny, node_deformation, args.halforwholebrain)
+      ####Dictionary creation for mesh_to_vtk, vtk does not support spaces for names
+      #TODO: nopython numba
+      @jit(parallel=True)
+      def tex_tets_to_nodes(n_nodes, tets, tets_texture):
+        '''
+        Helper function for visualisation. Takes a tetra texture and distributes it on the nodes
+        '''
+        tex_nodes = np.zeros((n_nodes), dtype=np.float64)
+        for i in prange(len(tets)):
+          tex_nodes[tets[i]] += 0.25 * tets_texture[i]
+        return tex_nodes
+      
+      node_textures = {}
+      node_textures['Node_deformation'] = node_deformation
+      node_textures['Distance_to_surface'] = dist_2_surf
+      node_textures['Growth'] = tex_tets_to_nodes(n_nodes, tets, gm) 
+      node_textures['Constraint'] = tex_tets_to_nodes(n_nodes, tets, np.linalg.norm(P_vec, axis=(1, 2)))
+
+      mesh_to_vtk(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, coordinates, faces, center_of_gravity, step, maxd, miny, node_textures, args.halforwholebrain) #include denormalization from AK
 
       # Convert mesh .stl to image .nii.gz
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
