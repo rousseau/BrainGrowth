@@ -29,7 +29,7 @@ from normalisation import normalise_coord
 from collision_Tallinen import contact_process
 from mechanics import tetra_elasticity, tetra_elasticity_test, tetra_elasticity_vec, move, tetra1, tetra1_np, tetra2
 from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti, mesh_to_vtk
-from visualization.denormalization import coordinates_denormalization
+from denormalization import coordinates_denormalization
 from mathfunc import dot_mat_dim_3, inv_dim_3, det_dim_3
 
 

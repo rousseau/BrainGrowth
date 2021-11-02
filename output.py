@@ -6,7 +6,7 @@ import nibabel as nib
 import trimesh
 import slam.io as sio
 import meshio
-from visualization.denormalization import coordinates_denormalization
+#from visualization.denormalization import coordinates_denormalization
 
 # Calculate surface area and mesh volume
 def area_volume(Ut, faces, gr, Vn):

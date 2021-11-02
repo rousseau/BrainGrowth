@@ -715,7 +715,7 @@ def calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets,
   return Vn0, Vn
 
 # Midplane, what is midplane_pos exactly?
-@njit(parallel=True, nopython=True)
+@njit(parallel=True, nopython=False)
 def calc_mid_plane(coordinates, coordinates0, Ft, nodal_idx, n_surface_nodes, midplane_pos, mesh_spacing, repuls_skin, bulk_modulus):
   '''
   Check a box condition and restrict growth for the outer layer for each surface node
