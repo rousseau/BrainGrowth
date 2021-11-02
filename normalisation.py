@@ -40,7 +40,8 @@ def normalise_coord(coordinates0, coordinates, n_nodes, halforwholebrain):
     coordinates0[:,2] = -(coordinates[:,2] - center_of_gravity[2])/maxd
   else:
     maxd = max(max(max(abs(maxx-center_of_gravity[0]), abs(minx-center_of_gravity[0])), max(abs(maxy-center_of_gravity[1]), abs(miny-center_of_gravity[1]))), max(abs(maxz-center_of_gravity[2]), abs(minz-center_of_gravity[2])))
-    coordinates0[:,0] = -(coordinates[:,0] - center_of_gravity[0])/maxd
+    # new coordinates in barcyenter referential and normalized compared to half maximum coordinates distance to barycenter. 
+    coordinates0[:,0] = -(coordinates[:,0] - center_of_gravity[0])/maxd 
     coordinates0[:,1] = (coordinates[:,1] - center_of_gravity[1])/maxd
     coordinates0[:,2] = -(coordinates[:,2] - center_of_gravity[2])/maxd
 

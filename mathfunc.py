@@ -63,9 +63,9 @@ def closestPointTriangle(p, a, b, c, u, v, w):
   return a + ab * v + ac * w, u, v, w
 
 @jit (nopython = True)
-def EV(X):
+def EV(X): # why not to use np.linalg.eig(X) ? l1, l2, l3 are approximative float here
   """
-  Returns eigenvectors of a 3 x 3 matrix
+  Returns eigenvalues of a 3 x 3 matrix 
   """
   c1 = X[0,0]*X[1,1] + X[0,0]*X[2,2] + X[1,1]*X[2,2] - X[0,1]*X[0,1] - X[1,2]*X[1,2] - X[0,2]*X[0,2]
   c0 = X[2,2]*X[0,1]*X[0,1] + X[0,0]*X[1,2]*X[1,2] + X[1,1]*X[0,2]*X[0,2] - X[0,0]*X[1,1]*X[2,2] - 2.0*X[0,2]*X[0,1]*X[1,2]
