@@ -181,7 +181,7 @@ def tetra_elasticity_test(material_tets, ref_state_tets, Ft, tan_growth_tensor, 
   return Ft, P_vec
 
 #object mode checked against test version, equal
-@jit(nopython=True, parallel=True)
+@jit(nopython=False, parallel=True)
 def tetra_elasticity_vec(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
   """
   Calculates elastic forces
