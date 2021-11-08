@@ -6,11 +6,19 @@ import nibabel as nib
 import trimesh
 import slam.io as sio
 import meshio
-#from visualization.denormalization import coordinates_denormalization
+from normalisation import coordinates_denormalization
 
-# Calculate surface area and mesh volume
-def area_volume(Ut, faces, gr, Vn):
-
+def area_volume(Ut, faces, Vn):
+  '''
+  Calculate surface area and mesh volume
+  Args:
+  Ut (array): Cartesian coordinates of nodes
+  faces (array): list of 3 vertices indexes
+  Vn (np array): Deformed volume of each node
+  Returns:
+  Area (float): Total area of the mesh
+  Volume (float): Total volume of the mesh
+  '''
   Area = 0.0
 
   for i in range(len(faces)):
@@ -23,8 +31,10 @@ def area_volume(Ut, faces, gr, Vn):
 
   return Area, Volume
 
-# Writes POV-Ray source files and then output in .png files
 def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom, zoom_pos):
+  '''
+  Writes POV-Ray source files and then output in .png files. This function calculates zoom_pos and thus is necessary for other outputs
+  '''
 
   povname = "%s/pov_H%fAT%f/B%d.png"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step)
 
@@ -131,8 +141,11 @@ def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, noda
 
   filepov.close()
 
-# Write surface mesh in .txt files
+
 def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom_pos, center_of_gravity, maxd, miny, halforwholebrain):
+  '''
+  Write surface mesh in .txt files
+  '''
 
   txtname = "B%d.txt"%(step)
 
@@ -165,10 +178,10 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal
     filetxt.write(str(nodal_idx_b[faces[i][0]]+1) + " " + str(nodal_idx_b[faces[i][1]]+1) + " " + str(nodal_idx_b[faces[i][2]]+1) + "\n")
   filetxt.close()
 
-
-
-# Convert surface mesh structure (from simulations) to .stl format file
 def mesh_to_stl_no_denorm(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, n_surface_nodes, faces, node_deformation):
+  '''
+  Convert surface mesh structure (from simulations) to .stl format file
+  '''
 
   stlname = "B%d_pr.ply"%(step)
 
@@ -190,9 +203,10 @@ def mesh_to_stl_no_denorm(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut,
     mesh.visual.vertex_colors[i] = [texture[i], texture[i], texture[i], 255]
   mesh.export(save_path)
 
-# Convert surface mesh structure (from simulations) to .stl format file
 def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, halforwholebrain):
-
+  '''
+  Convert surface mesh structure (from simulations) to .stl format file
+  '''
   stlname = "B%d.stl"%(step)
 
   foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
@@ -232,8 +246,11 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx
   # Write the mesh to file ".stl"
   brain.save(save_path, mode=Mode.ASCII)"""
   
-# Convert surface mesh structure (from simulations) to .gii format file
+
 def mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, halforwholebrain):
+  '''
+  Convert surface mesh structure (from simulations) to .gii format file
+  '''
 
   stlname = "B%d.gii"%(step)
 
@@ -320,8 +337,11 @@ def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename
   img = nib.Nifti1Image(outimage, aff)"""
   nib.save(outimage, file_nii_path)
 
-# Convert mesh .stl to image .nii.gz
+
 def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso):
+  '''
+  Convert mesh .stl to image .nii.gz
+  '''
 
   stlname = "B%d.stl"%(step)
 
@@ -354,9 +374,10 @@ def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii
   img = nib.Nifti1Image(outimage, aff)
   nib.save(img, file_nii_path)
 
-# Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
 def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, coordinates, zoom_pos, center_of_gravity, maxd, n_nodes, faces, tets, miny):
-
+  '''
+  Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
+  '''
   niiname = "B%d_2.nii.gz"%(step)
 
   foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
@@ -414,6 +435,9 @@ def writeTex(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, bt):
 
 #TODO: keep tetra
 def mesh_to_vtk(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, coordinates, faces, center_of_gravity, step, maxd, miny, node_textures, halforwholebrain='whole'):
+  '''
+  Create a vtk mesh object from coordinates and optional point_data. Point data can be displayed in paraview as point properties
+  '''
   vtk_name = "B%d.vtk"%(step)
   foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
   save_path = os.path.join(foldname, vtk_name)

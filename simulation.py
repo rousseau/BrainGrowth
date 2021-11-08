@@ -29,7 +29,7 @@ from normalisation import normalise_coord
 from collision_Tallinen import contact_process
 from mechanics import tetra_elasticity, tetra_elasticity_test, tetra_elasticity_vec, move, tetra1, tetra1_np, tetra2
 from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti, mesh_to_vtk
-from denormalization import coordinates_denormalization
+from normalisation import coordinates_denormalization
 from mathfunc import dot_mat_dim_3, inv_dim_3, det_dim_3
 
 
@@ -210,11 +210,11 @@ if __name__ == '__main__':
 
   # gauss = gaussian_filter (centroids)
 
-  end_time_initialization = time.time () - start_time_initialization
-  print ('Time required for initialization : ' + str (end_time_initialization) )
+  end_time_initialization = time.time() - start_time_initialization
+  print('Time required for initialization : ' + str (end_time_initialization))
 
   # Simulation loop
-  start_time_simulation = time.time ()
+  start_time_simulation = time.time()
   while t < 1.0: 
     # Calculate the relative growth rate //bt not used
     if args.growthmethod.__eq__("regional"):
@@ -302,7 +302,7 @@ if __name__ == '__main__':
       node_textures['Node_deformation'] = node_deformation
       node_textures['Distance_to_surface'] = dist_2_surf
       node_textures['Growth'] = tex_tets_to_nodes(n_nodes, tets, gm) 
-      node_textures['Constraint'] = tex_tets_to_nodes(n_nodes, tets, np.linalg.norm(P_vec, axis=(1, 2)))
+      #node_textures['Constraint'] = tex_tets_to_nodes(n_nodes, tets, np.linalg.norm(P_vec, axis=(1, 2)))
 
       mesh_to_vtk(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, coordinates, faces, center_of_gravity, step, maxd, miny, node_textures, args.halforwholebrain) #include denormalization from AK
 
@@ -318,7 +318,7 @@ if __name__ == '__main__':
       print('step: ' + str(step) + ' t: ' + str(t) )
 
       # Calculate surface area and mesh volume
-      Area, Volume = area_volume(coordinates, faces, gr, Vn)
+      Area, Volume = area_volume(coordinates, faces, Vn)
 
       print('Normalized area: ' + str(Area) + ' Normalized volume: ' + str(Volume))
 
