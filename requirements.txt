@@ -1,0 +1,10 @@
+nibabel==2.5.1 
+numba==0.53.0
+numpy==1.21.2   
+scipy==1.7.1 
+Vapory==0.1.1 
+numpy-stl==2.10.1 
+scikit-learn==0.24.2 
+trimesh 
+slam 
+networkx
