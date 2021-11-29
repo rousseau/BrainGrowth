@@ -6,19 +6,11 @@ import nibabel as nib
 import trimesh
 import slam.io as sio
 import meshio
-from normalisation import coordinates_denormalization
+from denormalization import coordinates_denormalization
 
-def area_volume(Ut, faces, Vn):
-  '''
-  Calculate surface area and mesh volume
-  Args:
-  Ut (array): Cartesian coordinates of nodes
-  faces (array): list of 3 vertices indexes
-  Vn (np array): Deformed volume of each node
-  Returns:
-  Area (float): Total area of the mesh
-  Volume (float): Total volume of the mesh
-  '''
+# Calculate surface area and mesh volume
+def area_volume(Ut, faces, gr, Vn):
+
   Area = 0.0
 
   for i in range(len(faces)):
@@ -31,10 +23,8 @@ def area_volume(Ut, faces, Vn):
 
   return Area, Volume
 
+# Writes POV-Ray source files and then output in .png files
 def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom, zoom_pos):
-  '''
-  Writes POV-Ray source files and then output in .png files. This function calculates zoom_pos and thus is necessary for other outputs
-  '''
 
   povname = "%s/pov_H%fAT%f/B%d.png"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step)
 
@@ -114,7 +104,6 @@ def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, noda
     N[nodal_idx_b[faces[i][0]]] += Ntmp
     N[nodal_idx_b[faces[i][1]]] += Ntmp
     N[nodal_idx_b[faces[i][2]]] += Ntmp
-
   for i in range(n_surface_nodes):
     N_norm = np.linalg.norm(N[i])
     N[i] *= 1.0/N_norm"""
@@ -141,11 +130,8 @@ def writePov2(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, noda
 
   filepov.close()
 
-
+# Write surface mesh in .txt files
 def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom_pos, center_of_gravity, maxd, miny, halforwholebrain):
-  '''
-  Write surface mesh in .txt files
-  '''
 
   txtname = "B%d.txt"%(step)
 
@@ -178,10 +164,10 @@ def writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal
     filetxt.write(str(nodal_idx_b[faces[i][0]]+1) + " " + str(nodal_idx_b[faces[i][1]]+1) + " " + str(nodal_idx_b[faces[i][2]]+1) + "\n")
   filetxt.close()
 
+
+
+# Convert surface mesh structure (from simulations) to .stl format file
 def mesh_to_stl_no_denorm(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, n_surface_nodes, faces, node_deformation):
-  '''
-  Convert surface mesh structure (from simulations) to .stl format file
-  '''
 
   stlname = "B%d_pr.ply"%(step)
 
@@ -203,10 +189,9 @@ def mesh_to_stl_no_denorm(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut,
     mesh.visual.vertex_colors[i] = [texture[i], texture[i], texture[i], 255]
   mesh.export(save_path)
 
+# Convert surface mesh structure (from simulations) to .stl format file
 def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, halforwholebrain):
-  '''
-  Convert surface mesh structure (from simulations) to .stl format file
-  '''
+
   stlname = "B%d.stl"%(step)
 
   foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
@@ -242,15 +227,11 @@ def mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx
   for i, f in enumerate(f_indices):
     for j in range(3):
         brain.vectors[i][j] = vertices_seg[f[j],:]
-
   # Write the mesh to file ".stl"
   brain.save(save_path, mode=Mode.ASCII)"""
   
-
+# Convert surface mesh structure (from simulations) to .gii format file
 def mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, halforwholebrain):
-  '''
-  Convert surface mesh structure (from simulations) to .gii format file
-  '''
 
   stlname = "B%d.gii"%(step)
 
@@ -283,17 +264,13 @@ def mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, nodal_i
 def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, Ut, zoom_pos, maxd, center_of_gravity, n_nodes, miny):
 
   """stlname = "B%d.stl"%(step)
-
   foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
-
   file_stl_path = os.path.join(foldname, stlname)
   
   # Load stl mesh
   m = trimesh.load(file_stl_path)
-
   # Voxelize mesh with the specific edge length of a single voxel
   v = m.voxelized(pitch=0.25)
-
   # Fill surface mesh
   v = v.fill(method='holes')"""
 
@@ -337,11 +314,8 @@ def point3d_to_voxel(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename
   img = nib.Nifti1Image(outimage, aff)"""
   nib.save(outimage, file_nii_path)
 
-
+# Convert mesh .stl to image .nii.gz
 def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso):
-  '''
-  Convert mesh .stl to image .nii.gz
-  '''
 
   stlname = "B%d.stl"%(step)
 
@@ -374,10 +348,9 @@ def stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii
   img = nib.Nifti1Image(outimage, aff)
   nib.save(img, file_nii_path)
 
+# Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
 def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso, coordinates, zoom_pos, center_of_gravity, maxd, n_nodes, faces, tets, miny):
-  '''
-  Convert volumetric mesh structure (from simulations) to image .nii.gz of a specific resolution
-  '''
+
   niiname = "B%d_2.nii.gz"%(step)
 
   foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
@@ -434,12 +407,16 @@ def writeTex(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, bt):
   sio.write_texture(bt, file_gii_path) 
 
 #TODO: keep tetra
-def mesh_to_vtk(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, coordinates, faces, center_of_gravity, step, maxd, miny, node_textures, halforwholebrain='whole'):
-  '''
-  Create a vtk mesh object from coordinates and optional point_data. Point data can be displayed in paraview as point properties
-  '''
-  vtk_name = "B%d.vtk"%(step)
-  foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+#def mesh_to_vtk(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, coordinates, faces, center_of_gravity, step, maxd, miny, node_textures, halforwholebrain):
+def mesh_to_vtk(PATH_DIR, coordinates, faces, center_of_gravity, step, maxd, miny, node_textures, halforwholebrain, initial_geometry):
+  vtk_name = str(initial_geometry) + "_%d.vtk"%(step)
+  foldname = "%s/"%(PATH_DIR)
+  #foldname = "%s/vtk_sphere_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+  try:
+    if not os.path.exists(foldname):
+      os.makedirs(foldname)
+  except OSError:
+    print ('Error: Creating directory. ' + foldname)
   save_path = os.path.join(foldname, vtk_name)
   
   #coordinates denormalisation
@@ -454,11 +431,8 @@ def mesh_to_vtk(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, coordinates, faces,
 
 '''# Convert mesh to binary .nii.gz image
 def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoom_pos, center_of_gravity, maxd, nn):
-
   nifname = "B%d.nii.gz"%(step)
-
   foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
-
   # Transform coordinates (because the coordinates are normalized at the beginning)
   vertices = np.zeros((nn,3), dtype = float)
   vertices_seg = np.zeros((nn,3), dtype = float)
@@ -466,23 +440,19 @@ def mesh_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, SN, zoo
   vertices_seg[:,1] = center_of_gravity[0] - vertices[:,0]*maxd
   vertices_seg[:,0] = vertices[:,1]*maxd + center_of_gravity[1]
   vertices_seg[:,2] = center_of_gravity[2] - vertices[:,2]*maxd
-
   # Calculate the center coordinate(x,y,z) of the mesh to define the binary image size
   center_of_gravity = np.sum(vertices_seg, axis=0)
   center_of_gravity /= nn 
-
   # Convert mesh to binary image
   outimage = np.zeros((2*int(round(center_of_gravity[0]))+1, 2*int(round(center_of_gravity[1]))+1, 2*int(round(center_of_gravity[2]))+1), dtype=np.int16)
   for i in range(nn):
     outimage[int(round(vertices_seg[i,0])), int(round(vertices_seg[i,1])), int(round(vertices_seg[i,2]))] = 1
-
   # Save binary image in a nifti file
   try:
     if not os.path.exists(foldname):
       os.makedirs(foldname)
   except OSError:
     print ('Error: Creating directory. ' + foldname)
-
   nii = nib.load('/home/x17wang/Exp/London/London-23weeks/brain_crisp_2_refilled.nii.gz')
   #out_inter = ndimage.morphology.binary_fill_holes(out1).astype(out1.dtype)
   #out_inter = ndimage.morphology.binary_dilation(out1, iterations=2).astype(out1.dtype)

@@ -24,20 +24,23 @@ import sys
 
 #local modules
 from geometry import netgen_to_array, tetra_normals, get_nodes, get_tetra_indices, get_face_indices, get_nb_surface_nodes, edge_length, volume_mesh, mark_nogrowth, config_refer, config_deform, normals_surfaces, calc_vol_nodal, calc_mid_plane, calc_longi_length, paraZoom, tetra_labels_surface_half, tetra_labels_volume_half, Curve_fitting_half, tetra_labels_surface_whole, tetra_labels_volume_whole, curve_fitting_whole
-from growth import growthRate, shear_modulus, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole, calc_growth_filter
+from growth import growthRate, shear_modulus, tangential_cortical_expansion_ratio, growth_tensor_tangen, growthRate_2_half, growthRate_2_whole, calc_growth_filter
 from normalisation import normalise_coord
 from collision_Tallinen import contact_process
-from mechanics import tetra_elasticity, tetra_elasticity_test, tetra_elasticity_vec, move, tetra1, tetra1_np, tetra2
+from mechanics import tetra_elasticity, tetra_elasticity_test, move, tetra1, tetra1_np, tetra2
 from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti, mesh_to_vtk
-from normalisation import coordinates_denormalization
-from mathfunc import dot_mat_dim_3, inv_dim_3, det_dim_3
+from denormalization import coordinates_denormalization
 
+# sphere5 (ellipse): '/home/latim/anaconda3/envs/braingrowth/data/sphere5.mesh'
+# sphere sillons: '/home/latim/anaconda3/envs/braingrowth/data/data_ak/sphere_sillons.mesh'
+# brain: '/home/latim/Database/dhcp/mesh/withTets/dhcp_ras_slic-ml_veryfine.mesh'
 
 if __name__ == '__main__':
   start_time_initialization = time.time ()
   parser = argparse.ArgumentParser(description='Dynamic simulations')
-  parser.add_argument('-i', '--input', help='Input mesh', type=str, default='./data/sphere5.mesh', required=False)
-  parser.add_argument('-o', '--output', help='Output folder', type=str, default='./res/sphere5', required=False)
+  parser.add_argument('-i', '--input', help='Input mesh', type=str, default='/home/latim/Database/dhcp/Vf/dhcpbrain_ras_invertedfaces_iso3.mesh', required=False) # TO UPDATE
+  parser.add_argument('-ig', '--initialgeometry', help='Initial geometry', type=str, default="brain_dhcp", required=False) # TO UPDATE
+  parser.add_argument('-o', '--output', help='Output folder', type=str, default='./res/dhcpbrain_veryfinemesh_vtk', required=False) # TO UPDATE
   parser.add_argument('-hc', '--halforwholebrain', help='Half or whole brain', type=str, default='whole', required=False)
   parser.add_argument('-t', '--thickness', help='Normalized cortical thickness', type=float, default=0.042, required=False)
   parser.add_argument('-g', '--growth', help='Normalized relative growth rate', type=float, default=1.829, required=False) #positive correlation between growth and folding
@@ -50,7 +53,7 @@ if __name__ == '__main__':
   parser.add_argument('-ll', '--lobesleft', help='User-defined lobes of left brain', type=str, required=False)
   parser.add_argument('-sc', '--stepcontrol', help='Step length regulation', type=float, default=0.1, required=False) #increase for speed, 0.01 is default from Tallinen, 0.1 is limit. No apparent changes in results on sphere5, but compare_stl yield small deviation
   parser.add_argument('-ms', '--meshspacing', help='Average spacing in the mesh', type=float, default=0.01, required=False) #increase for speed, default is 0.01 from Tallinen, 0.1 is limit, No apparent changes in results on sphere5, but compare_stl yield strong deviation
-  parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh', type=float, default=0.01, required=False) #increase for speed, too high brings negativ jakobians, default is 0.01, changing this value affect results even visually
+  parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh', type=float, default=0.1, required=False) #increase for speed, too high brings negativ jakobians, default is 0.01, changing this value affect results even visually
   args = parser.parse_args()
 
   # Parameters to change
@@ -138,7 +141,6 @@ if __name__ == '__main__':
   rel_vol_chg3 = np.zeros(n_tets, dtype=np.float64)
   rel_vol_chg4 = np.zeros(n_tets, dtype=np.float64)
   rel_vol_chg_av = np.zeros(n_tets, dtype=np.float64)
-  P_vec = np.zeros((n_tets, 3, 3), dtype=np.float64)
 
   ## Parcel brain in lobes
   if args.growthmethod.__eq__("regional"):
@@ -210,11 +212,11 @@ if __name__ == '__main__':
 
   # gauss = gaussian_filter (centroids)
 
-  end_time_initialization = time.time() - start_time_initialization
-  print('Time required for initialization : ' + str (end_time_initialization))
+  end_time_initialization = time.time () - start_time_initialization
+  print ('Time required for initialization : ' + str (end_time_initialization) )
 
   # Simulation loop
-  start_time_simulation = time.time()
+  start_time_simulation = time.time ()
   while t < 1.0: 
     # Calculate the relative growth rate //bt not used
     if args.growthmethod.__eq__("regional"):
@@ -225,6 +227,8 @@ if __name__ == '__main__':
     else:
       at = growthRate(GROWTH_RELATIVE, t, n_tets, growth_filter)
       
+    # Calculate the longitudinal length of the real brain
+    longi_length = calc_longi_length(t) #negligible
     #growth_filter = calc_growth_filter(growth_filter, dist_2_surf, n_tets, tets, cortex_thickness)
 
     #update cortex thickness
@@ -238,14 +242,15 @@ if __name__ == '__main__':
     
     # Calculate gray and white matter shear modulus (gm and wm) for a tetrahedron, calculate the global shear modulus
     gm, mu = shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr) #~1% sim time
+    gm_nodal, g = tangential_cortical_expansion_ratio(dist_2_surf, cortex_thickness, tets, n_nodes, gr, at)
 
     # Deformed configuration of tetrahedra (At)
     material_tets = config_deform(coordinates, tets, n_tets) #~4% sim time
 
     # Calculate elastic forces
-    Ft = tetra_elasticity_test(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps) #~73% sim time
+    Ft = tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps) #~73% sim time
 
-    #Seperate tetraelasticity initialization and calculation, useful for optimization purposes. 
+    #Seperate tetraelasticity initialization and calculatin, useful for optimization purposes. 
     #left_cauchy_grad, rel_vol_chg, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, rel_vol_chg_av, deformation_grad, ref_state_growth = tetra1(tets, tan_growth_tensor, ref_state_tets, ref_state_growth, material_tets, Vn, Vn0)
     #Ft = tetra2(n_tets, tets, Ft, left_cauchy_grad, mu, eps, rel_vol_chg, bulk_modulus,rel_vol_chg_av, deformation_grad, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, k_param, ref_state_growth)
 
@@ -261,15 +266,13 @@ if __name__ == '__main__':
 
     # Output
     if step % di == 0:
-  
-      longi_length = calc_longi_length(t)
 
       # Write texture of growth in .gii files
       #writeTex(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, bt)
 
       # Obtain zoom parameter by checking the longitudinal length of the brain model
       zoom_pos = paraZoom(coordinates, nodal_idx, longi_length)
-
+      """
       # Write .pov files and output mesh in .png files
       writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom, zoom_pos)
 
@@ -278,15 +281,16 @@ if __name__ == '__main__':
 
       # Convert surface mesh structure (from simulations) to .stl format file
       mesh_to_stl(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
-
+      """
       #creation list deformation TODO: denormalisation of calculation
-      node_deformation = np.zeros((n_nodes), dtype=np.float64)
-      node_deformation = np.linalg.norm(coordinates_denormalization(coordinates, n_nodes, center_of_gravity, maxd, miny, args.halforwholebrain) - coordinates_denormalization(coordinates0, n_nodes, center_of_gravity, maxd, miny, args.halforwholebrain), axis=1)
-      
+      nodal_displacement = np.zeros((n_nodes), dtype=np.float64)
+      nodal_displacement = np.linalg.norm(coordinates_denormalization(coordinates, n_nodes, center_of_gravity, maxd, miny, args.halforwholebrain) - coordinates_denormalization(coordinates0, n_nodes, center_of_gravity, maxd, miny, args.halforwholebrain), axis=1)
+      """
       # Convert surface mesh structure (from simulations) to .gii format file
       mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
-
+      """
       ####Dictionary creation for mesh_to_vtk, vtk does not support spaces for names
+      """
       #TODO: nopython numba
       @jit(parallel=True)
       def tex_tets_to_nodes(n_nodes, tets, tets_texture):
@@ -295,17 +299,20 @@ if __name__ == '__main__':
         '''
         tex_nodes = np.zeros((n_nodes), dtype=np.float64)
         for i in prange(len(tets)):
-          tex_nodes[tets[i]] += 0.25 * tets_texture[i]
+          tex_nodes[tets[i]] += 0.25 * tets_texture[i] #no gm vector but scalars sum! problem. not equal to resultant of gm for proximal tets. #need to mean the collected 0.25*tets_texture value!
         return tex_nodes
-      
+      """
       node_textures = {}
-      node_textures['Node_deformation'] = node_deformation
+      node_textures['Displacement'] = nodal_displacement
       node_textures['Distance_to_surface'] = dist_2_surf
-      node_textures['Growth'] = tex_tets_to_nodes(n_nodes, tets, gm) 
+      node_textures['Growth_ponderation'] = gr
+      #node_textures['Growth'] = tex_tets_to_nodes(n_nodes, tets, gm) 
+      node_textures['Tangential_growth_wg_term'] = gm_nodal 
+      node_textures['Tangential_growth'] = g 
       #node_textures['Constraint'] = tex_tets_to_nodes(n_nodes, tets, np.linalg.norm(P_vec, axis=(1, 2)))
 
-      mesh_to_vtk(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, coordinates, faces, center_of_gravity, step, maxd, miny, node_textures, args.halforwholebrain) #include denormalization from AK
-
+      #mesh_to_vtk(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, coordinates, faces, center_of_gravity, step, maxd, miny, node_textures, args.halforwholebrain) #include denormalization from AK
+      mesh_to_vtk(PATH_DIR, coordinates, faces, center_of_gravity, step, maxd, miny, node_textures, args.halforwholebrain, args.initialgeometry)
       # Convert mesh .stl to image .nii.gz
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)
 
@@ -318,7 +325,7 @@ if __name__ == '__main__':
       print('step: ' + str(step) + ' t: ' + str(t) )
 
       # Calculate surface area and mesh volume
-      Area, Volume = area_volume(coordinates, faces, Vn)
+      Area, Volume = area_volume(coordinates, faces, gr, Vn)
 
       print('Normalized area: ' + str(Area) + ' Normalized volume: ' + str(Volume))
 
