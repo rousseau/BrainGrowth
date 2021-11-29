@@ -28,8 +28,8 @@ def mesh_to_image_with_ref(coordinates, values, reference_nii_path, interpolatio
     reg_values_img = nib.Nifti1Image(interpolation_array, affine=reference_affine)
     nib.save(reg_values_img, output_path)
 
-    print(np.min(mesh_coordinates_in_image_space))
-    print(np.max(mesh_coordinates_in_image_space))
+    #print(np.min(mesh_coordinates_in_image_space))
+    #print(np.max(mesh_coordinates_in_image_space))
 
     return interpolation_array
 
@@ -123,7 +123,7 @@ if __name__ == '__main__':
     mesh_coordinates = mesh.points # list of nodes coordinates
     brain_values = mesh.point_data['Displacement'] # TO BE UDPATED BEFORE RUNNING: 'Displacement'; 'Distance_to_surface'; 'Growth_ponderation' (gr) ; 
     # 'Tangential_growth_wg_term' (gm(y)); 'Tangential_growth' (g(y,t)) 
-    
+
     """
     # REFERENCE IMAGE + griddata interpolation. Generate a interpolated nifti of the nodal values. 
     mesh_to_image_with_ref(mesh_coordinates, brain_values, args.reference, args.method, args.output)  
