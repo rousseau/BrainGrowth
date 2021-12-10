@@ -1,4 +1,3 @@
-from itk.support.extras import spacing
 import numpy as np
 import argparse
 import nibabel as nib
@@ -6,6 +5,9 @@ from scipy.interpolate import griddata
 import meshio
 from scipy.spatial import cKDTree 
 import itk
+
+from spatialorientationadapter_to_ras import apply_lps_ras_transformation
+
 
 def mesh_to_image_with_ref(coordinates, values, reference_nii_path, interpolation_method, output_path):
     """Interpolate the mesh nodal values onto a 3d reference-image-shape grid."""
@@ -28,37 +30,92 @@ def mesh_to_image_with_ref(coordinates, values, reference_nii_path, interpolatio
     reg_values_img = nib.Nifti1Image(interpolation_array, affine=reference_affine)
     nib.save(reg_values_img, output_path)
 
-    print(np.min(mesh_coordinates_in_image_space))
-    print(np.max(mesh_coordinates_in_image_space))
+    #print(np.min(mesh_coordinates_in_image_space))
+    #print(np.max(mesh_coordinates_in_image_space))
 
-    return interpolation_array
+    return 
 
-def mesh_to_image_with_ref_tq(mesh_coordinates, values, reference_nii_path, output_path):
-    """Interpolate the mesh nodal values onto a 3d image array by tree querying the array physical coordinates. (for comparison with griddata)"""
+def collect_reference_mri_values(coordinates0, reference_nii_path):
+    '''
+    Interpolate the mri initial intensities before deformation (step t=0).
+    '''
+    reference_img_itk = itk.imread(reference_nii_path)
 
-    reference_img_itk = itk.imread(reference_nii_path) 
-    shape_k_raw, shape_j_raw, shape_i_raw = np.shape(reference_img_itk) #  inversed axis by itk, compared to acquisition : (itk k, j, i) corresponds to (raw nifti i, j, k)
-    interpolation_array = np.zeros((shape_k_raw, shape_j_raw, shape_i_raw)) 
+    # Reorient the reference image coordinate system to RAS+
+    reference_img_itk_ras = apply_lps_ras_transformation(reference_img_itk)
+
+    # Interpolate the initial mri values to the coordinates (ijk space)
+    reference_mri_values = np.zeros(len(coordinates0))
+    interpolator = itk.BSplineInterpolateImageFunction.New(reference_img_itk) # NearestNeighborInterpolateImageFunction; LinearInterpolateImageFunction; BSplineInterpolateImageFunction'
+    for i in range(len(coordinates0)):
+        coordinates0_in_image_system = reference_img_itk_ras.TransformPhysicalPointToContinuousIndex(coordinates0[i]) #find the closest pixel to the vertex[i] (continuous index)
+        reference_mri_values[i] = interpolator.EvaluateAtContinuousIndex(coordinates0_in_image_system) #interpolates values of grey around the index et attribute the interpolation value to the associated mesh node
+
+    return reference_mri_values  
+
+def nib_affine_ijk_to_xyz(reference_nii_path, i, j, k):
+
+    reference_nii_nib = nib.load(reference_nii_path)
+    affine_matrix = reference_nii_nib.affine
+
+    x = affine_matrix[0,3] + affine_matrix[0,0]*i
+    y = affine_matrix[1,3] + affine_matrix[1,1]*j
+    z = affine_matrix[2,3] + affine_matrix[2,2]*k
+
+    return (x,y,z)
+
+def mesh_to_image_with_ref_tq_nib(mesh_coordinates, values, reference_nii_path, output_path):
+    reference_img_nib = nib.load(reference_nii_path)
+    shape = np.shape(reference_img_nib)
+    reference_affine = reference_img_nib.affine
+    interpolation_array = np.zeros(shape)
 
     tree = cKDTree(mesh_coordinates)
 
-    for k in range(shape_k_raw):
-        for j in range(shape_j_raw):
-            for i in range(shape_i_raw):               
+    for i in range(shape[0]):
+        for j in range(shape[1]):
+            for k in range(shape[2]):               
                 #fetch the closest mesh coordinate from the voxel
-                nearest_neighbor = tree.query(reference_img_itk.TransformIndexToPhysicalPoint((i, j, k))) #world system
+                nearest_neighbor = tree.query(nib_affine_ijk_to_xyz(reference_nii_path, i, j, k)) 
                 tex = values[nearest_neighbor[1]]
                 #plug coord to the voxel
-                interpolation_array[k][j][i] = tex # itk requires indices inversion before writing
+                interpolation_array[i][j][k] = tex 
+
+    reg_values_img = nib.Nifti1Image(interpolation_array, affine=reference_affine)
+    nib.save(reg_values_img, output_path)
+
+    return
+
+def mesh_to_image_with_ref_tq_itk(mesh_coordinates, values, reference_nii_path, output_path):
+    """Interpolate the mesh nodal values onto a 3d image array by tree querying the array physical coordinates. (for comparison with griddata)"""
+
+    reference_img_itk = itk.imread(reference_nii_path) #k,j,i (i,j,k with nibabel and numpy) # 203, 290, 290 #contains direction cosines and origin to transport ijk into LPS+ coordinate system (standard for itk)
+    shape_k, shape_j, shape_i = np.shape(reference_img_itk) # 203, 290, 290
+    interpolation_array = np.zeros((shape_k, shape_j, shape_i)) 
     
-    #itk nifti output 
-    interpolation_img = itk.GetImageFromArray(interpolation_array)
-    interpolation_img.SetSpacing(reference_img_itk.GetSpacing())
+    # Reorient the reference image coordinate system to RAS+
+    reference_img_itk_ras = apply_lps_ras_transformation(reference_img_itk)
+
+    # Interpolate the sparse values in the RAS coordinate system
+    tree = cKDTree(mesh_coordinates)
+    for i in range(shape_i):
+        for j in range(shape_j):
+            for k in range(shape_k):               
+                #fetch the closest mesh coordinate from the voxel
+                nearest_neighbor = tree.query(reference_img_itk_ras.TransformIndexToPhysicalPoint((i, j, k))) # ijk to RAS+ xyz. https://www.na-mic.org/wiki/Coordinate_System_Conversion_Between_ITK_and_Slicer3
+                tex = values[nearest_neighbor[1]]
+                #plug coord to the voxel
+                interpolation_array[k][j][i] = tex # k,j,i
+        
+    #writing interpolation image output 
+    interpolation_img = itk.GetImageFromArray(interpolation_array) # k,j,i
+    interpolation_img.SetSpacing(reference_img_itk.GetSpacing()) # RAS+ xyz to ijk
     interpolation_img.SetOrigin(reference_img_itk.GetOrigin())
     interpolation_img.SetDirection(reference_img_itk.GetDirection())
-    itk.imwrite(interpolation_img, output_path)
+
+    itk.imwrite(interpolation_img, output_path) # needs to be k,j,i (identical to reference_img_itk)
    
-    return interpolation_array  
+    return reference_img_itk, interpolation_array, interpolation_img
 
 def mesh_to_generated_image(mesh_coordinates, values, interpolation_method, output_path):
     """Interpolate the mesh nodal values onto an anisotropic generated 3d grid (Generate an isotropic nifti from sparse mesh coordinates).
@@ -107,14 +164,14 @@ def mesh_to_generated_image(mesh_coordinates, values, interpolation_method, outp
     values_img = nib.Nifti1Image(interpolation_array, affine=generated_affine) #Calculates the affine between image and coordinates : translation center of gravity
     nib.save(values_img, output_path)
 
-    return interpolation_array, shape_x, shape_y, shape_z, generated_affine
+    return 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Visualisation of brain values (nifti)')
-    parser.add_argument('-i', '--input', help='Path to input vtk file (step, coordinates, brain values)', default='/home/latim/GitHub/BrainGrowth/BrainGrowth/res/dhcpbrain_vtk/brain_dhcp_1500.vtk', type=str, required=False)
-    parser.add_argument('-r', '--reference', help='Reference  nifti', type=str, default='/home/latim/Database/dhcp/Vf/dhcp.nii', required=False)
-    parser.add_argument('-o', '--output', help='Path to output nifti file', type=str, default='/home/latim/GitHub/BrainGrowth/BrainGrowth/res/dhcpbrain_vtk/dhcpbrain_ras_1500_displ_tq.nii.gz', required=False)
-    parser.add_argument('-m', '--method', help='griddata interpolation method: nearest; linear; cubic', type=str, default='nearest', required=False)
+    parser.add_argument('-i', '--input', help='Path to input vtk file (step, coordinates, brain values)', default='../res/dhcpbrain_fine_vtk/dhcpbrain_fine_500.vtk', type=str, required=False)
+    parser.add_argument('-r', '--reference', help='Reference nifti', type=str, default='../data/data_anne/dhcp/dhcp.nii', required=False)
+    parser.add_argument('-o', '--output', help='Path to output nifti file', type=str, default='../res/dhcpbrain_fine_vtk/dhcpbrain_fine_500_torasxyz_displacements.nii.gz', required=False)
+    parser.add_argument('-m', '--method', help='griddata interpolation method: nearest; linear; cubic', type=str, default='linear', required=False)
     args = parser.parse_args()
 
     # MAIN PROGRAM 
@@ -123,20 +180,29 @@ if __name__ == '__main__':
     mesh_coordinates = mesh.points # list of nodes coordinates
     brain_values = mesh.point_data['Displacement'] # TO BE UDPATED BEFORE RUNNING: 'Displacement'; 'Distance_to_surface'; 'Growth_ponderation' (gr) ; 
     # 'Tangential_growth_wg_term' (gm(y)); 'Tangential_growth' (g(y,t)) 
-    
-    """
-    # REFERENCE IMAGE + griddata interpolation. Generate a interpolated nifti of the nodal values. 
-    mesh_to_image_with_ref(mesh_coordinates, brain_values, args.reference, args.method, args.output)  
-    print('\n The nifti "' + str(args.output) + '" has been generated. \n')
 
+    # collect step=0 mri values from reference nifti
+    mesh0 = meshio.read('../res/dhcpbrain_fine_vtk/dhcpbrain_fine_0.vtk')
+    mesh_coordinates0 = mesh0.points
+    reference_mri_values = collect_reference_mri_values(mesh_coordinates0, args.reference)
+    # REFERENCE IMAGE + griddata interpolation. Generate a interpolated nifti of the initial mri values. 
+    mesh_to_image_with_ref(mesh_coordinates0, reference_mri_values, args.reference, args.method, '../res/dhcpbrain_fine_vtk/dhcpbrain_fine_0_mrivalues.nii.gz')  
+    print('\n The nifti dhcpbrain_fine_mrivalues0.nii.gz has been generated. \n')
+
+    # REFERENCE IMAGE + griddata interpolation. Generate a interpolated nifti of the nodal values. 
     """
-    # REFERENCE IMAGE + treequery interpolation. Generate a interpolated nifti of the nodal values.
-    #output_path_reg = '/home/latim/GitHub/BrainGrowth/BrainGrowth/res/dhcpbrain_vtk/dhcpbrain_ras_1500_displ_tq_reg.nii.gz' # TO BE UDPATED BEFORE RUNNING
-    mesh_to_image_with_ref_tq(mesh_coordinates, brain_values, args.reference, args.output)
-    print('\n The nifti "' + str(args.output) + '" has been generated. \n') 
+    mesh_to_image_with_ref(mesh_coordinates, brain_values, args.reference, args.method, args.output)  
+    print('\n The nifti ' + str(args.output) + ' has been generated. \n')
+    """
     
+    # REFERENCE IMAGE + treequery interpolation. Generate a interpolated nifti of the nodal values.
+    """
+    #output_path_reg = '/home/latim/GitHub/BrainGrowth/BrainGrowth/res/dhcpbrain_vtk/dhcpbrain_ras_1500_displ_tq_reg.nii.gz' # TO BE UDPATED BEFORE RUNNING
+    reference_img_itk, interpolation_array, interpolation_img = mesh_to_image_with_ref_tq_itk(mesh_coordinates, brain_values, args.reference, args.output)
+    print('\n The nifti ' + str(args.output) + ' has been generated. \n') 
     """
     # GENERATED IMAGE + griddata interpolation. Generate a interpolated nifti of the nodal values. 
+    """
     mesh_to_generated_image(mesh_coordinates, brain_values, args.method, args.output)
-    print('\n The nifti "' + str(args.output) + '" has been generated. \n') 
+    print('\n The nifti ' + str(args.output) + ' has been generated. \n') 
     """
