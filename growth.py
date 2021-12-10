@@ -101,6 +101,38 @@ def shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):
   return gm, mu
 
 @jit(nopython=True)
+def at_tets_to_nodes(n_nodes, tets, at):
+  """ For each node, mean the 'at' biological growth term of all proximal tets. """
+  at_nodes = np.zeros(n_nodes, dtype=np.float64)
+  proximal_tets = np.zeros(n_nodes, dtype=np.float64) 
+  for i in prange(len(tets)):
+    at_nodes[tets[i,0]] += at[i] #biological growth is a time-dependant but no spatial-dependant term, so only need to mean the term over all proximal tetrahedrons around the node.
+    at_nodes[tets[i,1]] += at[i]
+    at_nodes[tets[i,2]] += at[i]
+    at_nodes[tets[i,3]] += at[i]
+    proximal_tets[tets[i,0]] += 1 #proximal_tets[nodeindice0 for teti]
+    proximal_tets[tets[i,1]] += 1
+    proximal_tets[tets[i,2]] += 1
+    proximal_tets[tets[i,3]] += 1
+  for j in prange(n_nodes): 
+    if proximal_tets[j] == 0:
+      print(j)
+    at_nodes[j] /= proximal_tets[j]
+  return at_nodes
+
+@njit(parallel=True, nopython=True)
+def tangential_cortical_expansion_ratio(dist_2_surf, cortex_thickness, tets, n_nodes, gr, at): 
+  """ Calculate the nodal (differential) tangential growth term g(y,t) for all nodes. Whereas gm(y,t) was tetrahedric. Enable to visualize the nodal growth. """
+  gm_nodal = np.zeros(n_nodes, dtype=np.float64)
+  g = np.zeros(n_nodes, dtype=np.float64)
+  at_nodes = at_tets_to_nodes(n_nodes, tets, at)
+  for i in prange(n_nodes):
+    gm_nodal[i] = gr[i]/(1.0 + math.exp(10.0*(dist_2_surf[i]/cortex_thickness - 1.0))) # grey/white matter ponderation term
+    g[i] = 1 + at_nodes[i] * gm_nodal[i] # tangential expansion gradient term
+  
+  return gm_nodal, g
+
+@jit(nopython=True)
 def growth_tensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
     '''
     Calculate relative (relates to dist_2_surf) tangential growth factor G
