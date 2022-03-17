@@ -3,7 +3,7 @@ import numpy as np
 from numba import jit
 
 # Generates point-triangle proximity lists (NNLt) using the linked cell algorithm
-@jit(forceobj=True)
+# @jit(forceobj=True)
 def createNNLtriangle(NNLt, coordinates, faces, nodal_idx, n_surface_nodes, n_faces, prox_skin, bounding_box, cell_width):
   mx = max(1, int(bounding_box/cell_width))  # = 40 cells, bounding_box=3.2, cell_width=0.08
   head = [-1]*mx*mx*mx # mx*mx*mx cells nomber, size mx*mx*mx list with all values are -1, 40*40*40 = 64000

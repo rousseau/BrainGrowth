@@ -6,7 +6,7 @@ def find_index_of_nearest_x(x_array, x_point):
     Returns the nearest point from an array, 1 dimension
     Args:
     x_array (array): array of values to be searched for
-    x_point (float): poont of interest
+    x_point (float): point of interest
     """
     distance =(x_array-x_point)**2
     idx = np.where(distance==distance.min())

@@ -198,12 +198,7 @@ def tetra_elasticity_vec(material_tets, ref_state_tets, Ft, tan_growth_tensor, b
   rel_vol_chg_av = np.zeros(n_tets, dtype=np.float64)
 
     
-  #Apply growth to reference state
-  ref_state_growth = dot_mat_dim_3(tan_growth_tensor, ref_state_tets)
-  #Calculate deformation gradient F //combine relative volume change ?
-  deformation_grad = dot_mat_dim_3(material_tets, inv_dim_3(ref_state_growth))   
-  #Calculate Left-Cauchy-Green gradient B
-  left_cauchy_grad = dot_mat_dim_3(deformation_grad, np.transpose(deformation_grad, (0, 2, 1)))
+  #Apply growth to refFt -= Vt * damping_coef * volot_mat_dim_3(deformation_grad, np.transpose(deformation_grad, (0, 2, 1)))
   #relative volume change J
   rel_vol_chg = det_dim_3(deformation_grad)
   #averaged volume change

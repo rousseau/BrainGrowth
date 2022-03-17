@@ -36,8 +36,8 @@ from mathfunc import dot_mat_dim_3, inv_dim_3, det_dim_3
 if __name__ == '__main__':
   start_time_initialization = time.time ()
   parser = argparse.ArgumentParser(description='Dynamic simulations')
-  parser.add_argument('-i', '--input', help='Input mesh', type=str, default='./data/sphere5.mesh', required=False)
-  parser.add_argument('-o', '--output', help='Output folder', type=str, default='./res/sphere5', required=False)
+  parser.add_argument('-i', '--input', help='Input mesh', type=str, default='./data/dhcpbrain_ras_iso_fine.mesh', required=False)
+  parser.add_argument('-o', '--output', help='Output folder', type=str, default='./res/dhcpbrain_ras_iso_fine', required=False)
   parser.add_argument('-hc', '--halforwholebrain', help='Half or whole brain', type=str, default='whole', required=False)
   parser.add_argument('-t', '--thickness', help='Normalized cortical thickness', type=float, default=0.042, required=False)
   parser.add_argument('-g', '--growth', help='Normalized relative growth rate', type=float, default=1.829, required=False) #positive correlation between growth and folding
@@ -48,8 +48,8 @@ if __name__ == '__main__':
   parser.add_argument('-tl', '--textureleft', help='Texture of template of left brain', type=str, required=False)
   parser.add_argument('-lr', '--lobesright', help='User-defined lobes of right brain', type=str, required=False)
   parser.add_argument('-ll', '--lobesleft', help='User-defined lobes of left brain', type=str, required=False)
-  parser.add_argument('-sc', '--stepcontrol', help='Step length regulation', type=float, default=0.1, required=False) #increase for speed, 0.01 is default from Tallinen, 0.1 is limit. No apparent changes in results on sphere5, but compare_stl yield small deviation
-  parser.add_argument('-ms', '--meshspacing', help='Average spacing in the mesh', type=float, default=0.01, required=False) #increase for speed, default is 0.01 from Tallinen, 0.1 is limit, No apparent changes in results on sphere5, but compare_stl yield strong deviation
+  parser.add_argument('-sc', '--stepcontrol', help='Step length regulation', type=float, default=0.01, required=False) #increase for speed, 0.01 is default from Tallinen, 0.1 is limit. No apparent changes in results on sphere5, but compare_stl yield small deviation
+  parser.add_argument('-ms', '--meshspacing', help='Average spacing in the mesh', type=float, default=0.06, required=False) #increase for speed, default is 0.01 from Tallinen, 0.1 is limit, No apparent changes in results on sphere5, but compare_stl yield strong deviation
   parser.add_argument('-md', '--massdensity', help='Mass density of brain mesh', type=float, default=0.01, required=False) #increase for speed, too high brings negativ jakobians, default is 0.01, changing this value affect results even visually
   args = parser.parse_args()
 
@@ -99,7 +99,7 @@ if __name__ == '__main__':
   damping_coef = 0.5 #0.1 Damping coefficent
   di = 500 #Output data once every di steps
 
-  bounding_box = 3.2 #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
+  bounding_box = 19.2 #3.2 #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
   cell_width = 8 * mesh_spacing #Width of a cell in the linked cell algorithm for proximity detection
   prox_skin = 0.6 * mesh_spacing #Thickness of proximity skin
   repuls_skin = 0.2 * mesh_spacing #Thickness of repulsive skin
@@ -243,7 +243,7 @@ if __name__ == '__main__':
     material_tets = config_deform(coordinates, tets, n_tets) #~4% sim time
 
     # Calculate elastic forces
-    Ft = tetra_elasticity_test(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps) #~73% sim time
+    Ft = tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps) #~73% sim time
 
     #Seperate tetraelasticity initialization and calculation, useful for optimization purposes. 
     #left_cauchy_grad, rel_vol_chg, rel_vol_chg1, rel_vol_chg2, rel_vol_chg3, rel_vol_chg4, rel_vol_chg_av, deformation_grad, ref_state_growth = tetra1(tets, tan_growth_tensor, ref_state_tets, ref_state_growth, material_tets, Vn, Vn0)

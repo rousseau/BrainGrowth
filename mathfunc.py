@@ -338,7 +338,7 @@ def cross_dim_2(a, b):
 
   return c
 
-@jit (nopython = True)
+@jit(nopython=True)
 def cross_dim_3(a, b):
   #pure equivalent of np.cross (a, b) when dimensions maintained
   c = np.zeros((len(a),3), dtype=np.float64)
