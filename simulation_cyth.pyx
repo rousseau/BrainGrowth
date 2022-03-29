@@ -32,9 +32,7 @@ from mechanics import tetra_elasticity, tetra_elasticity_test, tetra_elasticity_
 from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti, mesh_to_vtk
 from normalisation import coordinates_denormalization
 
-print(cython.compiled)
-
-if __name__ == '__main__':
+def main():
   start_time_initialization = time.time ()
   parser = argparse.ArgumentParser(description='Dynamic simulations')
   parser.add_argument('-i', '--input', help='Input mesh', type=str, default='./data/sphere5.mesh', required=False)
@@ -235,9 +233,10 @@ if __name__ == '__main__':
     #growth_filter = calc_growth_filter(growth_filter, dist_2_surf, n_tets, tets, cortex_thickness)
 
     #update cortex thickness
-    cortex_thickness = THICKNESS_CORTEX + 0.01*t
+    with nogil:
+      cortex_thickness = THICKNESS_CORTEX + 0.01*t
 
-    # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn) ###Potential start of pool
+      # Calculate undeformed nodal volume (Vn0) and deformed nodal volume (Vn) ###Potential start of pool
     Vn0, Vn = calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes) #~10% sim time
 
     # Calculate contact forces (Reference: Real Time Detection Collision, C. Ericson)
@@ -268,6 +267,7 @@ if __name__ == '__main__':
 
     # Output
     if step % di == 0:
+      print(cython.compiled)
   
       longi_length = calc_longi_length(t)
 
@@ -294,24 +294,24 @@ if __name__ == '__main__':
       mesh_to_gifti(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, nodal_idx, zoom_pos, center_of_gravity, maxd, n_surface_nodes, faces, nodal_idx_b, miny, args.halforwholebrain)
 
       ####Dictionary creation for mesh_to_vtk, vtk does not support spaces for names
-      #TODO: nopython numba
-      @jit(parallel=True)
-      def tex_tets_to_nodes(n_nodes, tets, tets_texture):
-        '''
-        Helper function for visualisation. Takes a tetra texture and distributes it on the nodes
-        '''
-        tex_nodes = np.zeros((n_nodes), dtype=np.float64)
-        for i in prange(len(tets)):
-          tex_nodes[tets[i]] += 0.25 * tets_texture[i]
-        return tex_nodes
+      # #TODO: nopython numba
+      # @jit(parallel=True)
+      # def tex_tets_to_nodes(n_nodes, tets, tets_texture):
+      #   '''
+      #   Helper function for visualisation. Takes a tetra texture and distributes it on the nodes
+      #   '''
+      #   tex_nodes = np.zeros((n_nodes), dtype=np.float64)
+      #   for i in prange(len(tets)):
+      #     tex_nodes[tets[i]] += 0.25 * tets_texture[i]
+      #   return tex_nodes
       
-      node_textures = {}
-      node_textures['Node_deformation'] = node_deformation
-      node_textures['Distance_to_surface'] = dist_2_surf
-      node_textures['Growth'] = tex_tets_to_nodes(n_nodes, tets, gm) 
+      # node_textures = {}
+      # node_textures['Node_deformation'] = node_deformation
+      # node_textures['Distance_to_surface'] = dist_2_surf
+      # node_textures['Growth'] = tex_tets_to_nodes(n_nodes, tets, gm) 
       #node_textures['Constraint'] = tex_tets_to_nodes(n_nodes, tets, np.linalg.norm(P_vec, axis=(1, 2)))
 
-      mesh_to_vtk(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, coordinates, faces, center_of_gravity, step, maxd, miny, node_textures, args.halforwholebrain) #include denormalization from AK
+      # mesh_to_vtk(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, coordinates, faces, center_of_gravity, step, maxd, miny, node_textures, args.halforwholebrain) #include denormalization from AK
 
       # Convert mesh .stl to image .nii.gz
       #stl_to_image(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, filename_nii_reso, reso)

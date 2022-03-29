@@ -275,17 +275,19 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
   rel_vol_chg2 = Vn[tets[:,1]]/Vn0[tets[:,1]]
   rel_vol_chg3 = Vn[tets[:,2]]/Vn0[tets[:,2]]
   rel_vol_chg4 = Vn[tets[:,3]]/Vn0[tets[:,3]]
-  rel_vol_chg_av = (rel_vol_chg1 + rel_vol_chg2 + rel_vol_chg3 + rel_vol_chg4)/4.0   
+  rel_vol_chg_av = (rel_vol_chg1 + rel_vol_chg2 + rel_vol_chg3 + rel_vol_chg4)/4.0 
+
+  identity = np.identity(3)  
     
   #decide if need SVD or not
   for i in prange (n_tets):
         
     ll1, ll2, ll3 = EV(left_cauchy_grad[i])
-    #ll1, ll3, ll2 = np.linalg.eigvals(left_cauchy_grad[i])
+    # ll1, ll3, ll2 = np.linalg.eig(left_cauchy_grad[i])
         
     if ll3 >= eps*eps and rel_vol_chg[i] > 0.0:  # No need for SVD
       powJ23 = np.power(rel_vol_chg[i], 2.0/3.0)
-      S = (left_cauchy_grad[i] - np.identity(3)*np.trace(left_cauchy_grad[i])/3.0)*mu[i]/(rel_vol_chg[i]*powJ23) + np.identity(3)*bulk_modulus*(rel_vol_chg_av[i]-1.0)
+      S = (left_cauchy_grad[i] - identity*np.trace(left_cauchy_grad[i])/3.0)*mu[i]/(rel_vol_chg[i]*powJ23) + identity*bulk_modulus*(rel_vol_chg_av[i]-1.0)
       P = np.dot(S, np.linalg.inv(deformation_grad[i].transpose()))*rel_vol_chg[i] #P = cauchy stress
       W = 0.5*mu[i]*(np.trace(left_cauchy_grad[i])/powJ23 - 3.0) + 0.5*bulk_modulus*((rel_vol_chg1[i]-1.0)*(rel_vol_chg1[i]-1.0) + (rel_vol_chg2[i]-1.0)*(rel_vol_chg2[i]-1.0) + (rel_vol_chg3[i]-1.0)*(rel_vol_chg3[i]-1.0) + (rel_vol_chg4[i]-1.0)*(rel_vol_chg4[i]-1.0))*0.25
         
@@ -304,7 +306,7 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
         v2[1,0] = -v2[1,0]
         v2[2,0] = -v2[2,0]
     
-      Fdi = np.identity(3)
+      Fdi = identity
       if l1 >= 1e-25:
         Fdi[0,0] = 1.0/l1
         Fdi[1,1] = 1.0/l2
@@ -323,7 +325,7 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
         U[1,0] = -U[1,0]
         U[2,0] = -U[2,0]
     
-      Pd = np.identity(3)
+      Pd = identity
       pow23 = np.power(eps*l2*l3, 2.0/3.0)
       Pd[0,0] = mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23 + k_param*(l1-eps) + bulk_modulus*(rel_vol_chg_av[i]-1.0)*l2*l3
       Pd[1,1] = mu[i]/3.0*(-eps*eps/l2 + 2.0*l2 - l3*l3/l2)/pow23 + mu[i]/9.0*(-4.0*eps/l2 - 4.0/eps*l2 + 2.0/eps/l2*l3*l3)/pow23*(l1-eps) + bulk_modulus*(rel_vol_chg_av[i]-1.0)*l1*l3
@@ -349,7 +351,7 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
   return Ft
 
 #pure np/python version
-def tetraElasticity_np(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
+def tetra_elasticity_np(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_modulus, k_param, mu, tets, Vn, Vn0, n_tets, eps):
 
   # Apply growth to reference state
   Ar = np.zeros((n_tets,3,3), dtype=np.float64)
