@@ -30,7 +30,7 @@ from normalisation import normalise_coord
 from collision_Tallinen import contact_process
 from mechanics import tetra_elasticity, tetra_elasticity_test, move, tetra1, tetra1_np, tetra2
 from output import area_volume, writePov, writeTXT, mesh_to_stl, mesh_to_gifti, mesh_to_vtk
-from denormalization import coordinates_denormalization
+from normalisation import coordinates_denormalization
 
 # sphere5 (ellipse): '/home/latim/anaconda3/envs/braingrowth/data/sphere5.mesh'
 # sphere sillons: '/home/latim/anaconda3/envs/braingrowth/data/data_ak/sphere_sillons.mesh'
