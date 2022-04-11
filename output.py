@@ -6,7 +6,7 @@ import nibabel as nib
 import trimesh
 import slam.io as sio
 import meshio
-from normalisation import coordinates_denormalization
+from normalisation import coordinates_denormalisation
 
 # Calculate surface area and mesh volume
 def area_volume(Ut, faces, gr, Vn):
@@ -420,7 +420,7 @@ def mesh_to_vtk(PATH_DIR, coordinates, faces, center_of_gravity, step, maxd, min
   save_path = os.path.join(foldname, vtk_name)
   
   #coordinates denormalisation
-  coordinates_denorm = coordinates_denormalization(coordinates, len(coordinates), center_of_gravity, maxd, miny, halforwholebrain)   
+  coordinates_denorm = coordinates_denormalisation(coordinates, len(coordinates), center_of_gravity, maxd, miny, halforwholebrain)   
   mesh = meshio.Mesh(coordinates_denorm, [('triangle', faces)],)
   
   #add point data
