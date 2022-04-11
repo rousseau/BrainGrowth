@@ -350,45 +350,55 @@ def Eigensystem(n, A, V, d):
 
     return d, V
 
-
-@jit(nopython=True)
+@njit
 def cross_dim_2(a, b):
-    # pure equivalent of np.cross (a, b) when dimension maintained
-    c = np.array(
-        [
-            a[1] * b[2] - a[2] * b[1],
-            a[2] * b[0] - a[0] * b[2],
-            a[0] * b[1] - a[1] * b[0],
-        ]
-    )
-
+    c = np.zeros(3)
+    c[0] = a[1] * b[2] - a[2] * b[1]
+    c[1] = a[2] * b[0] - a[0] * b[2]
+    c[2] = a[0] * b[1] - a[1] * b[0]
     return c
 
 
 @jit(nopython=True)
 def cross_dim_3(a, b):
+    size = len(a)
     # pure equivalent of np.cross (a, b) when dimensions maintained
-    c = np.zeros((len(a), 3), dtype=np.float64)
-    c[:, 0] = a[:, 1] * b[:, 2] - a[:, 2] * b[:, 1]
-    c[:, 1] = a[:, 2] * b[:, 0] - a[:, 0] * b[:, 2]
-    c[:, 2] = a[:, 0] * b[:, 1] - a[:, 1] * b[:, 0]
+    c = np.zeros((size, 3), dtype=np.float64)
+    for i in range(size):
+        c[i, 0] = a[i, 1] * b[i, 2] - a[i, 2] * b[i, 1]
+        c[i, 1] = a[i, 2] * b[i, 0] - a[i, 0] * b[i, 2]
+        c[i, 2] = a[i, 0] * b[i, 1] - a[i, 1] * b[i, 0]
 
     return c
 
+# @jit(nopython=True)
+# def det_dim_3(a):
+#     # pure equivalent of np.linalg.det (a)
+#     b = np.zeros(len(a), dtype=np.float64)
+#     b[:] = (
+#         a[:, 0, 0] * a[:, 1, 1] * a[:, 2, 2]
+#         - a[:, 0, 0] * a[:, 1, 2] * a[:, 2, 1]
+#         - a[:, 0, 1] * a[:, 1, 0] * a[:, 2, 2]
+#         + a[:, 0, 1] * a[:, 1, 2] * a[:, 2, 0]
+#         + a[:, 0, 2] * a[:, 1, 0] * a[:, 2, 1]
+#         - a[:, 0, 2] * a[:, 1, 1] * a[:, 2, 0]
+#     )
 
-@jit(nopython=True)
+#     return b
+
+@jit(nopython=True, parallel=True)
 def det_dim_3(a):
-    # pure equivalent of np.linalg.det (a)
-    b = np.zeros(len(a), dtype=np.float64)
-    b[:] = (
-        a[:, 0, 0] * a[:, 1, 1] * a[:, 2, 2]
-        - a[:, 0, 0] * a[:, 1, 2] * a[:, 2, 1]
-        - a[:, 0, 1] * a[:, 1, 0] * a[:, 2, 2]
-        + a[:, 0, 1] * a[:, 1, 2] * a[:, 2, 0]
-        + a[:, 0, 2] * a[:, 1, 0] * a[:, 2, 1]
-        - a[:, 0, 2] * a[:, 1, 1] * a[:, 2, 0]
+    size = a.shape[0]
+    b = np.zeros(size, dtype=np.float64)
+    for i in prange(size):
+        b[i] = (
+          a[i, 0, 0] * a[i, 1, 1] * a[i, 2, 2]
+        - a[i, 0, 0] * a[i, 1, 2] * a[i, 2, 1]
+        - a[i, 0, 1] * a[i, 1, 0] * a[i, 2, 2]
+        + a[i, 0, 1] * a[i, 1, 2] * a[i, 2, 0]
+        + a[i, 0, 2] * a[i, 1, 0] * a[i, 2, 1]
+        - a[i, 0, 2] * a[i, 1, 1] * a[i, 2, 0]
     )
-
     return b
 
 
@@ -406,10 +416,8 @@ def det_dim_2(a):
 
     return b
 
-
 @jit
 def inv(a):
-
     return np.linalg.inv(a)
 
 
@@ -459,42 +467,19 @@ def dot_vec(a, b):
 
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 
-
 @jit(nopython=True)
 def dot_mat_dim_3(a, b):
     # WARNING: not a dot product per se, not equal to np.dot TODO: rename function
     # perf leakage at this level, equal @
     # matmul not supported by numba, but @ operator is, UPDATE: not for 3D matrices
-
-    c = np.zeros((len(a), 3, 3), dtype=np.float64)
-    c[:, 0, 0] = (
-        a[:, 0, 0] * b[:, 0, 0] + a[:, 0, 1] * b[:, 1, 0] + a[:, 0, 2] * b[:, 2, 0]
-    )
-    c[:, 0, 1] = (
-        a[:, 0, 0] * b[:, 0, 1] + a[:, 0, 1] * b[:, 1, 1] + a[:, 0, 2] * b[:, 2, 1]
-    )
-    c[:, 0, 2] = (
-        a[:, 0, 0] * b[:, 0, 2] + a[:, 0, 1] * b[:, 1, 2] + a[:, 0, 2] * b[:, 2, 2]
-    )
-    c[:, 1, 0] = (
-        a[:, 1, 0] * b[:, 0, 0] + a[:, 1, 1] * b[:, 1, 0] + a[:, 1, 2] * b[:, 2, 0]
-    )
-    c[:, 1, 1] = (
-        a[:, 1, 0] * b[:, 0, 1] + a[:, 1, 1] * b[:, 1, 1] + a[:, 1, 2] * b[:, 2, 1]
-    )
-    c[:, 1, 2] = (
-        a[:, 1, 0] * b[:, 0, 2] + a[:, 1, 1] * b[:, 1, 2] + a[:, 1, 2] * b[:, 2, 2]
-    )
-    c[:, 2, 0] = (
-        a[:, 2, 0] * b[:, 0, 0] + a[:, 2, 1] * b[:, 1, 0] + a[:, 2, 2] * b[:, 2, 0]
-    )
-    c[:, 2, 1] = (
-        a[:, 2, 0] * b[:, 0, 1] + a[:, 2, 1] * b[:, 1, 1] + a[:, 2, 2] * b[:, 2, 1]
-    )
-    c[:, 2, 2] = (
-        a[:, 2, 0] * b[:, 0, 2] + a[:, 2, 1] * b[:, 1, 2] + a[:, 2, 2] * b[:, 2, 2]
-    )
-
+    s0 = a.shape[0]
+    c = np.zeros((s0, 3, 3), dtype=np.float64)
+    for i in range(s0):
+        for j in range(3):
+            for k in range(3):
+                for m in range(3):
+                    c[i][j][k] += a[i][j][m] * b[i][m][k]
+        
     return c
 
 
@@ -533,19 +518,21 @@ def dot_vec_dim_3(a, b):
     return c
 
 
-@jit
+@njit
 def transpose_dim_3(a):
     # Purely equal to np.transpose (a, (0, 2, 1))
-    b = np.zeros((len(a), 3, 3), dtype=np.float64)
-    b[:, 0, 0] = a[:, 0, 0]
-    b[:, 1, 0] = a[:, 0, 1]
-    b[:, 2, 0] = a[:, 0, 2]
-    b[:, 0, 1] = a[:, 1, 0]
-    b[:, 1, 1] = a[:, 1, 1]
-    b[:, 2, 1] = a[:, 1, 2]
-    b[:, 0, 2] = a[:, 2, 0]
-    b[:, 1, 2] = a[:, 2, 1]
-    b[:, 2, 2] = a[:, 2, 2]
+    size = a.shape[0]
+    b = np.zeros((size, 3, 3), dtype=np.float64)
+    for i in range(size):
+        b[i, 0, 0] = a[i, 0, 0]
+        b[i, 1, 0] = a[i, 0, 1]
+        b[i, 2, 0] = a[i, 0, 2]
+        b[i, 0, 1] = a[i, 1, 0]
+        b[i, 1, 1] = a[i, 1, 1]
+        b[i, 2, 1] = a[i, 1, 2]
+        b[i, 0, 2] = a[i, 2, 0]
+        b[i, 1, 2] = a[i, 2, 1]
+        b[i, 2, 2] = a[i, 2, 2]
 
     return b
 
@@ -572,3 +559,4 @@ def make_2D_array(lis):
     for i in range(n):
         arr[i, : lengths[i]] = lis[i]
     return arr
+
