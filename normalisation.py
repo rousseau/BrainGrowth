@@ -1,8 +1,8 @@
 import numpy as np
-from numba import jit
+from numba import jit, njit, objmode
 
 # Normalize initial mesh coordinates
-@jit
+@njit
 def normalise_coord(coordinates0, coordinates, n_nodes, halforwholebrain):
   """
   Normalizes inital mesh coordinates over longest axe
@@ -31,9 +31,12 @@ def normalise_coord(coordinates0, coordinates, n_nodes, halforwholebrain):
   center_of_gravity = np.sum(coordinates0, axis=0)
   center_of_gravity /= n_nodes # The center coordinate(x,y,z)
 
-  print ('minx is ' + str(minx) + ' maxx is ' + str(maxx) + ' miny is ' + str(miny) + ' maxy is ' + str(maxy) + ' minz is ' + str(minz) + ' maxz is ' + str(maxz))
-  
-  if halforwholebrain.__eq__("half"):
+  with objmode(): 
+    print('minx is {}, maxx is {}'.format(minx, maxx))
+    print('miny is {}, maxy is {}'.format(miny, maxy))
+    print('minz is {}, maxz is {}'.format(minz, maxz))
+
+  if halforwholebrain == "half":
     maxd = max(max(max(abs(maxx-center_of_gravity[0]), abs(minx-center_of_gravity[0])), abs(maxy-miny)), max(abs(maxz-center_of_gravity[2]), abs(minz-center_of_gravity[2])))
     coordinates0[:,0] = -(coordinates[:,0] - center_of_gravity[0])/maxd
     coordinates0[:,1] = (coordinates[:,1] - miny)/maxd
@@ -45,13 +48,16 @@ def normalise_coord(coordinates0, coordinates, n_nodes, halforwholebrain):
     coordinates0[:,1] = (coordinates[:,1] - center_of_gravity[1])/maxd
     coordinates0[:,2] = -(coordinates[:,2] - center_of_gravity[2])/maxd
 
-  print ('normalized minx is ' + str(min(coordinates0[:,0])) + ' normalized maxx is ' + str(max(coordinates0[:,0])) + ' normalized miny is ' + str(min(coordinates0[:,1])) + ' normalized maxy is ' + str(max(coordinates0[:,1])) + ' normalized minz is ' + str(min(coordinates0[:,2])) + ' normalized maxz is ' + str(max(coordinates0[:,2])))
+  with objmode(): 
+    print('normalized minx is {}, normalized maxx is {}'.format(min(coordinates0[:,0]), max(coordinates0[:,0])))
+    print('normalized miny is {}, normalized maxy is {}'.format(min(coordinates0[:,1]), max(coordinates0[:,1])))
+    print('normalized minz is {}, normalized maxz is {}'.format(min(coordinates0[:,2]), max(coordinates0[:,2])))
 
   coordinates = coordinates0.copy()
 
   return coordinates0, coordinates, center_of_gravity, maxd, miny
 
-def coordinates_denormalization(coordinates, n_nodes, center_of_gravity, maxd, miny, halforwholebrain): 
+def coordinates_denormalisation(coordinates, n_nodes, center_of_gravity, maxd, miny, halforwholebrain): 
   '''
   Operate denormalization and x<>y of the coordinates (all nodes) of the mesh before using the calculated physical values (deformation, stress, etc.)
   Code extracted from initial denormalisation code in "output.py", without considering "zoom_pos" multiplication factor". 
@@ -68,8 +74,10 @@ def coordinates_denormalization(coordinates, n_nodes, center_of_gravity, maxd, m
   coordinates_denorm = np.zeros((n_nodes,3), dtype = float)
 
   coordinates_denorm[:,1] = center_of_gravity[0] - coordinates[:,0]*maxd
-  if halforwholebrain.__eq__("half"):
+
+  if halforwholebrain == "half":
       coordinates_denorm[:,0] = coordinates[:,1]*maxd + miny
+
   else:
       coordinates_denorm[:,0] = coordinates[:,1]*maxd + center_of_gravity[1]
   coordinates_denorm[:,2] = center_of_gravity[2] - coordinates[:,2]*maxd

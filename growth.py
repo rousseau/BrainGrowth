@@ -16,7 +16,45 @@ def growthRate(GROWTH_RELATIVE, t, n_tets, filter = 1.0):
   """
   at = np.zeros(n_tets, dtype=np.float64)
   at[:] = GROWTH_RELATIVE*t*filter
+
   return at
+
+"""
+##############################################
+###LEGACY code for reference, safely ignore###
+##############################################
+#Smoothing using slam
+    if step == 0:
+        #create filtering for each surface node
+        stl_path = "./res/sphere5/pov_H0.042000AT1.829000/B0.stl"
+        stl_mesh = trimesh.load (stl_path)
+        filtering = np.ones (len(stl_mesh.vertices))
+        filtering = laplacian_texture_smoothing (stl_mesh, filtering, 10, dt)
+        #Expand filtering via nearest surface node (vectorisable)
+        gauss = np.ones (n_nodes, dtype = np.float64)
+        for i in range (len(gauss)):
+          gauss[i] = filtering[nearest_surf_node[i]]
+        
+        #conversion from node to tet length, take the average from nodes
+        gauss_tets = np.ones (n_tets, dtype = np.float64)
+        for i in range (len(tets)):
+          x = 0
+          for j in tets[i]:
+            x += gauss [j]
+          gauss_tets [i] = x/4
+    
+    #apply filter (why not before ? Because stl not available at this point)
+    at *= gauss_tets
+
+def background(f):
+    def wrapped(*args, **kwargs):
+        return asyncio.get_event_loop().run_in_executor(None, f, *args, **kwargs)
+    return wrapped
+
+#optional gaussian filtering on at
+  # centroids = calc_tets_center(coordinates, tets)
+  # gauss = gaussian_filter (centroids)
+    """
 
 @jit(nopython=True, parallel=True)
 def calc_growth_filter(growth_filter, dist_2_surf, n_tets, tets, cortex_thickness):
@@ -76,10 +114,11 @@ def growthRate_2_whole(t, n_tets, n_surface_nodes, labels_surface, labels_surfac
 
   return at, bt
 
-@njit(parallel=True, nopython=True)
+@njit(parallel=True)
 def shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):
   """
   Calculates global shear modulus for white and gray matter for each tetrahedron
+
   Args:
   dist_2_surf (array): distance to surface for each node
   cortex_thickness (float): thickness of growing layer
@@ -88,12 +127,14 @@ def shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):
   muw (float): Shear modulus of white matter
   mug (float): Shear modulus of gray matter
   gr (array): yes/no growth mask for each node.
+
   Returns:
-  gm (array): gray matter shear modulus for each tetrahedron
-  mu (array): white matter shear modulus for each tetrahedron
+  gm (array): differential growth term depending on tetrahedron initial position
+  mu (array): global shear modulus for each tetrahedron
   """
   gm = np.zeros(n_tets, dtype=np.float64)
   mu = np.zeros(n_tets, dtype=np.float64)
+
   for i in prange(n_tets):
     gm[i] = 1.0/(1.0 + math.exp(10.0*(0.25*(dist_2_surf[tets[i,0]] + dist_2_surf[tets[i,1]] + dist_2_surf[tets[i,2]] + dist_2_surf[tets[i,3]])/cortex_thickness - 1.0)))*0.25*(gr[tets[i,0]] + gr[tets[i,1]] + gr[tets[i,2]] + gr[tets[i,3]])
     mu[i] = muw*(1.0 - gm[i]) + mug*gm[i]  # Global modulus of white matter and gray matter
@@ -103,8 +144,10 @@ def shear_modulus(dist_2_surf, cortex_thickness, tets, n_tets, muw, mug, gr):
 @jit(nopython=True)
 def at_tets_to_nodes(n_nodes, tets, at):
   """ For each node, mean the 'at' biological growth term of all proximal tets. """
+
   at_nodes = np.zeros(n_nodes, dtype=np.float64)
   proximal_tets = np.zeros(n_nodes, dtype=np.float64) 
+
   for i in prange(len(tets)):
     at_nodes[tets[i,0]] += at[i] #biological growth is a time-dependant but no spatial-dependant term, so only need to mean the term over all proximal tetrahedrons around the node.
     at_nodes[tets[i,1]] += at[i]
@@ -114,18 +157,24 @@ def at_tets_to_nodes(n_nodes, tets, at):
     proximal_tets[tets[i,1]] += 1
     proximal_tets[tets[i,2]] += 1
     proximal_tets[tets[i,3]] += 1
+
   for j in prange(n_nodes): 
-    if proximal_tets[j] == 0:
-      print(j)
     at_nodes[j] /= proximal_tets[j]
+    
   return at_nodes
 
-@njit(parallel=True, nopython=True)
+@njit(parallel=True)
 def tangential_cortical_expansion_ratio(dist_2_surf, cortex_thickness, tets, n_nodes, gr, at): 
-  """ Calculate the nodal (differential) tangential growth term g(y,t) for all nodes. Whereas gm(y,t) was tetrahedric. Enable to visualize the nodal growth. """
+  """ 
+  Calculate the nodal (differential) tangential growth term g(y,t) for all nodes. Whereas gm(y,t) was tetrahedric. 
+  Enable to visualize the nodal growth. 
+  """
+  
   gm_nodal = np.zeros(n_nodes, dtype=np.float64)
   g = np.zeros(n_nodes, dtype=np.float64)
+
   at_nodes = at_tets_to_nodes(n_nodes, tets, at)
+
   for i in prange(n_nodes):
     gm_nodal[i] = gr[i]/(1.0 + math.exp(10.0*(dist_2_surf[i]/cortex_thickness - 1.0))) # grey/white matter ponderation term
     g[i] = 1 + at_nodes[i] * gm_nodal[i] # tangential expansion gradient term
@@ -155,18 +204,18 @@ def growth_tensor_tangen(tet_norms, gm, at, tan_growth_tensor, n_tets):
 
     return tan_growth_tensor
 
-@jit
+""" @jit
 def growthTensor_homo(G, n_tets, GROWTH_RELATIVE, t):
-  """
-  Calculates homogenous growth factor G
-  Args:
-  G (array): normals for each tetrahedron
-  n_tets (int): number of tetrahedrons
-  GROWTH_RELATIVE (float): constante set at simulation level
-  t (float): current time of simulation
-  Returns:
-  G (array): homogenous growth factor G
-  """
+ 
+  #Calculates homogenous growth factor G
+  #Args:
+  #G (array): normals for each tetrahedron
+  #n_tets (int): number of tetrahedrons
+  #GROWTH_RELATIVE (float): constante set at simulation level
+  #t (float): current time of simulation
+  #Returns:
+  #G (array): homogenous growth factor G
+
   for i in prange(n_tets):
     G[i] = 1.0 + GROWTH_RELATIVE*t
 
@@ -182,11 +231,11 @@ def growthTensor_homo_2(G, n_tets, GROWTH_RELATIVE):
 
 @jit
 def growthTensor_relahomo(gm, G, n_tets, GROWTH_RELATIVE, t):
-  """
-  Calculates cortical layer (related to dist_2_surf) homogenous growth factor G
-  """
+
+  #Calculates cortical layer (related to dist_2_surf) homogenous growth factor G
+
   for i in prange(n_tets):
   #G[i] = np.full((3, 3), gm*GROWTH_RELATIVE)
     G[i] = 1.0 + GROWTH_RELATIVE*t*gm
 
-  return G
+  return G """
