@@ -101,7 +101,7 @@ def get_face_indices(mesh, n_nodes, n_tets):
 
   return faces, n_faces
 
-@jit
+@njit
 def get_nb_surface_nodes(faces, n_nodes):
   """
   Define number of surface nodes and nodal indexes used for contact processing and NNLt triangle
@@ -115,13 +115,17 @@ def get_nb_surface_nodes(faces, n_nodes):
   nodal_idxb (list): nodal index map from full mesh to surface, non surface nodes are labelled with 0
   """
   n_surface_nodes = 0 
-  nodal_idx_b = np.zeros(n_nodes, dtype=int) # nodal_idx_b: Nodal index map from full mesh to surface. Initialization nodal_idx_b with all 0
+
+  nodal_idx_b = np.zeros(n_nodes, dtype=np.int64) # Successive nodes indices which are surface nodes
   nodal_idx_b[faces[:,0]] = nodal_idx_b[faces[:,1]] = nodal_idx_b[faces[:,2]] = 1
+
   for i in range(n_nodes):
     if nodal_idx_b[i] == 1:
       n_surface_nodes += 1 # Determine surface nodes
-  nodal_idx = np.zeros(n_surface_nodes, dtype=int) # nodal_idx: Nodal index map from surface to full mesh
-  p = 0 # Iterator
+
+  nodal_idx = np.zeros(n_surface_nodes, dtype=np.int64) # Successive count of surface nodes, in the total-nodes-size array
+
+  p = 0 
   for i in range(n_nodes):
     if nodal_idx_b[i] == 1:
       nodal_idx[p] = i
@@ -683,32 +687,31 @@ def tetra_normals(surf_node_norms, nearest_surf_node, tets, n_tets):
   return tet_norms
 
 # Computes the volume measured at each point of a tetrahedral mesh as the sum of 1/4 of the volume of each of the tetrahedra to which it belongs
-@jit(nopython=True)   #cannot be //
-def calc_vol_nodal(tan_growth_tensor, ref_state_tets, tets, coordinates, n_tets, n_nodes):
+@jit(nopython=True, parallel=True) 
+def calc_vol_nodal(tan_growth_tensor, ref_state_tets, material_tets, tets, n_tets, n_nodes):
   """
   Calculates the undeformed and deformed nodal volume for each node. Volume per tetra is calculated and then distributed equally on each node
+  
   Args:
   tan_growth_tensor (np array): growth tensor for each tetrahedron
   ref_state_tets (np array): Reference state of tetrahedrons
   tets (np array): indices of tetrahedrons
-  coordinates (np array): Cartesion coordiantes of nodes
+  material_tets (np array): Current configuration of the tetrahedrons
   n_tets (int) number of tetrahedrons
-  n_nodes (int): number of nodes
+
   Returns:
   Vn0 (np array): Inital volume of each node
   Vn (np array): Deformed volume of each node
   """
   Vn0 = np.zeros(n_nodes, dtype=np.float64) #Initialize nodal volumes in reference state
   Vn = np.zeros(n_nodes, dtype=np.float64)  #Initialize deformed nodal volumes
-  At = np.zeros((n_tets,3,3), dtype=np.float64)
   vol0 = np.zeros(n_tets, dtype=np.float64)
   vol = np.zeros(n_tets, dtype=np.float64)
-  At[:,0] = coordinates[tets[:,1]] - coordinates[tets[:,0]]
-  At[:,1] = coordinates[tets[:,2]] - coordinates[tets[:,0]]
-  At[:,2] = coordinates[tets[:,3]] - coordinates[tets[:,0]]
+
   vol0[:] = det_dim_3(dot_mat_dim_3(tan_growth_tensor[:], ref_state_tets[:]))/6.0
-  vol[:] = det_dim_3(transpose_dim_3(At[:]))/6.0
-  for i in range(n_tets):
+  vol[:] = det_dim_3(material_tets[:])/6.0
+  
+  for i in prange(n_tets):
     Vn0[tets[i,:]] += vol0[i]/4.0
     Vn[tets[i,:]] += vol[i]/4.0
 
