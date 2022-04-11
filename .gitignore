@@ -102,6 +102,7 @@ venv.bak/
 
 # mypy
 res/
+data/
 .mypy_cache/
 changelog.txt
 res/sphere5/pov_H0.042000AT1.829000/B0.gii

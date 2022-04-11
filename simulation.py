@@ -15,6 +15,7 @@ import time
 import slam.io as sio
 from scipy.spatial import cKDTree
 import os
+import cython
 
 #global modules for tracking
 import cProfile
@@ -34,6 +35,7 @@ from normalisation import coordinates_denormalization
 # sphere5 (ellipse): '/home/latim/anaconda3/envs/braingrowth/data/sphere5.mesh'
 # sphere sillons: '/home/latim/anaconda3/envs/braingrowth/data/data_ak/sphere_sillons.mesh'
 # brain: '/home/latim/Database/dhcp/mesh/withTets/dhcp_ras_slic-ml_veryfine.mesh'
+
 
 if __name__ == '__main__':
   start_time_initialization = time.time ()
@@ -58,20 +60,24 @@ if __name__ == '__main__':
 
   # Parameters to change
   PATH_DIR = args.output
-  THICKNESS_CORTEX = args.thickness
-  GROWTH_RELATIVE = args.growth
+  THICKNESS_CORTEX = cython.declare(cython.double, args.thickness)
+  GROWTH_RELATIVE = cython.declare(cython.double, args.growth)
+
 
   # Import mesh, each line as a list
   mesh = netgen_to_array(args.input)
 
   # Read nodes, get undeformed coordinates (Ut0) and initialize deformed coordinates (Ut) of all nodes. #X-Y switch at this point
+  n_nodes = cython.declare(cython.int)
   coordinates, n_nodes = get_nodes(mesh) 
   coordinates0 = coordinates.copy()
 
   # Read element indices (tets: index of four vertices of tetrahedra) and get number of elements (ne). #Handness switch at this point
+  n_tets = cython.declare(cython.int)
   tets, n_tets = get_tetra_indices(mesh, n_nodes)
 
   # Read surface triangle indices (faces: index of three vertices of triangles) and get number of surface triangles (nf)
+  n_faces = cython.declare(cython.int)
   faces, n_faces = get_face_indices(mesh, n_nodes, n_tets)
 
   # Determine surface nodes and index maps  n_surface_nodes: number of nodes at the surface, Nodal index map (legacy SN) from surface to full mesh, nodal_idx_b: Nodal index map from full mesh to surface)
@@ -86,34 +92,34 @@ if __name__ == '__main__':
   print('Volume of mesh is ' + str(Vm))
 
   # Calculate the total surface area of a tetrahedral mesh
-  Area = 0.0
+  Area: cython.double = 0.0
   for i in range(len(faces)):
     Ntmp = np.cross(coordinates0[faces[i,1]] - coordinates0[faces[i,0]], coordinates0[faces[i,2]] - coordinates0[faces[i,0]])
     Area += 0.5*np.linalg.norm(Ntmp)
   print('Area of mesh is ' + str(Area))
 
   # Parameters
-  cortex_thickness = THICKNESS_CORTEX  #Cortical plate thickness
+  cortex_thickness = cython.declare(cython.double, THICKNESS_CORTEX)  #Cortical plate thickness
   mug = 1.0 #65.0 Shear modulus of gray matter
   muw = 1.167 #75.86 Shear modulus of white matter
   bulk_modulus = 5.0 
   mesh_spacing = args.meshspacing #0.003 0.01 - set manually based on the average spacing in the mesh
   mass_density = args.massdensity #0.0001 - adjust to run the simulation faster or slower
   damping_coef = 0.5 #0.1 Damping coefficent
-  di = 500 #Output data once every di steps
+  di: cython.int = 500 #Output data once every di steps
 
-  bounding_box = 3.2 #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
+  bounding_box = 19.2 #3.2 #Width of a bounding box, centered at origin, that encloses the whole geometry even after growth ***** TOMODIFY
   cell_width = 8 * mesh_spacing #Width of a cell in the linked cell algorithm for proximity detection
   prox_skin = 0.6 * mesh_spacing #Thickness of proximity skin
   repuls_skin = 0.2 * mesh_spacing #Thickness of repulsive skin
   contact_stiffness = 10.0 * bulk_modulus #100.0*K Contact stiffness
-  dt = args.stepcontrol*np.sqrt(mass_density * mesh_spacing * mesh_spacing / bulk_modulus) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
+  dt = cython.declare(cython.double, args.stepcontrol*np.sqrt(mass_density * mesh_spacing * mesh_spacing / bulk_modulus)) #0.05*np.sqrt(rho*a*a/K) Time step = 1.11803e-05 // 0,000022361
   print('dt is ' + str(dt))
   eps = 0.1 #Epsilon
   k_param = 0.0
   midplane_pos = -0.004 #Midplane position
-  t = 0.0 #Current time
-  step = 0 #Current time step
+  t = cython.declare(cython.double, 0.0) #Current time
+  step = cython.declare(cython.int, 0) #Current time step
   zoom = 1.0 #Zoom variable for visualization
 
   nearest_surf_node = np.zeros(n_nodes, dtype = np.int64)  #Nearest surface nodes for all nodes
@@ -216,8 +222,10 @@ if __name__ == '__main__':
   print ('Time required for initialization : ' + str (end_time_initialization) )
 
   # Simulation loop
+
   start_time_simulation = time.time ()
   while t < 1.0: 
+
     # Calculate the relative growth rate //bt not used
     if args.growthmethod.__eq__("regional"):
       if args.halforwholebrain.__eq__("half"):
