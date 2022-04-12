@@ -402,7 +402,7 @@ def det_dim_3(a):
     return b
 
 
-@jit
+@njit
 def det_dim_2(a):
     # pure equivalent of np.linalg.det (a)
     b = (

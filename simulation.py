@@ -256,7 +256,7 @@ if __name__ == '__main__':
       # Obtain zoom parameter by checking the longitudinal length of the brain model
       zoom_pos = paraZoom(coordinates, nodal_idx, longi_length)
 
-      #Create output folder if not already
+      #Create output folder if not already 
       foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
       try:
         if not os.path.exists(foldname):
