@@ -402,7 +402,7 @@ def det_dim_3(a):
     return b
 
 
-@jit
+@njit
 def det_dim_2(a):
     # pure equivalent of np.linalg.det (a)
     b = (
@@ -459,7 +459,7 @@ def normalize(a):
     a[:, 1] *= temp
     a[:, 2] *= temp
 
-    return np.transpose(a.T)
+    return a
 
 
 @jit

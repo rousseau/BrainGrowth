@@ -712,8 +712,9 @@ def calc_vol_nodal(tan_growth_tensor, ref_state_tets, material_tets, tets, n_tet
   vol[:] = det_dim_3(material_tets[:])/6.0
   
   for i in prange(n_tets):
-    Vn0[tets[i,:]] += vol0[i]/4.0
-    Vn[tets[i,:]] += vol[i]/4.0
+    for tet in tets[i]:
+      Vn0[tet] += vol0[i]/4.0
+      Vn[tet] += vol[i]/4.0
 
   return Vn0, Vn
 

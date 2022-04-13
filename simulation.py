@@ -14,6 +14,7 @@ from numba.typed import List
 import time
 import slam.io as sio
 from scipy.spatial import cKDTree
+import os
 
 #global modules for tracking
 import cProfile
@@ -254,9 +255,17 @@ if __name__ == '__main__':
 
       # Obtain zoom parameter by checking the longitudinal length of the brain model
       zoom_pos = paraZoom(coordinates, nodal_idx, longi_length)
+
+      #Create output folder if not already 
+      foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
+      try:
+        if not os.path.exists(foldname):
+          os.makedirs(foldname)
+      except OSError:
+        print ('Error: Creating directory. ' + foldname)
       
-      # Write .pov files and output mesh in .png file
-      writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom, zoom_pos)
+      # # Write .pov files and output mesh in .png file
+      # writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom, zoom_pos)
 
       # Write surface mesh output files in .txt file
       writeTXT(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, coordinates, faces, nodal_idx, nodal_idx_b, n_surface_nodes, zoom_pos, center_of_gravity, maxd, miny, args.halforwholebrain)

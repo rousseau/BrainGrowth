@@ -30,12 +30,6 @@ def writePov(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE, step, Ut, faces, nodal
 
   foldname = "%s/pov_H%fAT%f/"%(PATH_DIR, THICKNESS_CORTEX, GROWTH_RELATIVE)
 
-  try:
-    if not os.path.exists(foldname):
-      os.makedirs(foldname)
-  except OSError:
-    print ('Error: Creating directory. ' + foldname)
-
   # Normals in deformed state
   N_init = np.zeros((n_surface_nodes,3), dtype = float)
   N = normals_surfaces(Ut, faces, nodal_idx_b, len(faces), n_surface_nodes, N_init)

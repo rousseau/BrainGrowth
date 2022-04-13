@@ -33,7 +33,7 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
   #Calculate deformation gradient F //combine relative volume change ?
   deformation_grad = dot_mat_dim_3(material_tets, inv_dim_3(ref_state_growth))   
   #Calculate Left-Cauchy-Green gradient B
-  left_cauchy_grad = dot_mat_dim_3(deformation_grad, np.transpose(deformation_grad, (0, 2, 1)))
+  left_cauchy_grad = dot_mat_dim_3(deformation_grad, transpose_dim_3(deformation_grad))
   
   #relative volume change J
   rel_vol_chg = det_dim_3(deformation_grad)
@@ -43,6 +43,8 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
   rel_vol_chg3 = Vn[tets[:,2]]/Vn0[tets[:,2]]
   rel_vol_chg4 = Vn[tets[:,3]]/Vn0[tets[:,3]]
   rel_vol_chg_av = (rel_vol_chg1 + rel_vol_chg2 + rel_vol_chg3 + rel_vol_chg4)/4.0 
+
+  identity = np.identity(3)
     
   #decide if need SVD or not
   for i in prange (n_tets):
@@ -56,7 +58,7 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
     # ll1, ll3, ll2 = np.linalg.eig(left_cauchy_grad[i])
         
     if ll3 >= eps*eps and rel_vol_chg[i] > 0.0:  # No need for SVD
-      s[i] = (left_cauchy_grad[i] - np.identity(3)  * np.trace(left_cauchy_grad[i])/3.0) * mu[i]/(rel_vol_chg[i] * np.power(rel_vol_chg[i], 2.0/3.0)) + np.identity(3)  * bulk_modulus * (rel_vol_chg_av[i]-1.0)
+      s[i] = (left_cauchy_grad[i] - identity  * np.trace(left_cauchy_grad[i])/3.0) * mu[i]/(rel_vol_chg[i] * np.power(rel_vol_chg[i], 2.0/3.0)) + identity  * bulk_modulus * (rel_vol_chg_av[i]-1.0)
       p[i] = np.dot(s[i], np.linalg.inv(deformation_grad[i].transpose()))*rel_vol_chg[i] # Piola-Kirchhoff stress
       #W = 0.5*mu[i]*(np.trace(left_cauchy_grad[i])/powJ23 - 3.0) + 0.5*bulk_modulus*((rel_vol_chg1[i]-1.0)*(rel_vol_chg1[i]-1.0) + (rel_vol_chg2[i]-1.0)*(rel_vol_chg2[i]-1.0) + (rel_vol_chg3[i]-1.0)*(rel_vol_chg3[i]-1.0) + (rel_vol_chg4[i]-1.0)*(rel_vol_chg4[i]-1.0))*0.25  
         
@@ -93,7 +95,7 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
         U[1,0] = -U[1,0]
         U[2,0] = -U[2,0]
     
-      Pd = np.identity(3)
+      Pd = identity
       pow23 = np.power(eps*l2*l3, 2.0/3.0)
       Pd[0,0] = mu[i]/3.0*(2.0*eps - l2*l2/eps - l3*l3/eps)/pow23 + k_param*(l1-eps) + bulk_modulus*(rel_vol_chg_av[i]-1.0)*l2*l3
       Pd[1,1] = mu[i]/3.0*(-eps*eps/l2 + 2.0*l2 - l3*l3/l2)/pow23 + mu[i]/9.0*(-4.0*eps/l2 - 4.0/eps*l2 + 2.0/eps/l2*l3*l3)/pow23*(l1-eps) + bulk_modulus*(rel_vol_chg_av[i]-1.0)*l1*l3
@@ -106,10 +108,10 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
     xr2 = np.array([ref_state_growth[i,0,1], ref_state_growth[i,1,1], ref_state_growth[i,2,1]])
     xr3 = np.array([ref_state_growth[i,0,2], ref_state_growth[i,1,2], ref_state_growth[i,2,2]])
 
-    """ N1 = np.cross(xr3, xr1)
-    N2 = np.cross(xr2, xr3)
-    N3 = np.cross(xr1, xr2)
-    N4 = np.cross(xr2-xr3, xr1-xr3) """
+    # N1 = cross_dim_2(xr3, xr1)  #functionalisation of cross product = loss of performance ~10ms
+    # N2 = cross_dim_2(xr2, xr3)
+    # N3 = cross_dim_2(xr1, xr2)
+    # N4 = cross_dim_2(xr2-xr3, xr1-xr3)
 
     vec1 = xr3
     vec2 = xr1
@@ -133,11 +135,11 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
     N4[1] = vec4[2] * vec5[0] - vec4[0] * vec5[2]
     N4[2] = vec4[0] * vec5[1] - vec4[1] * vec5[0]
         
-      # Distribute forces among tetra vertices, probably not vectorizable. Surprising that its //
-    Ft[tets[i,0]] += np.dot(p[i], (N1 + N2 + N3).T)/6.0
-    Ft[tets[i,1]] += np.dot(p[i], (N1 + N3 + N4).T)/6.0
-    Ft[tets[i,2]] += np.dot(p[i], (N2 + N3 + N4).T)/6.0
-    Ft[tets[i,3]] += np.dot(p[i], (N1 + N2 + N4).T)/6.0
+    # Distribute forces among tetra vertices, probably not vectorizable. Surprising that its //
+    Ft[tets[i,0]] += np.dot(p[i], (N1 + N2 + N3).transpose())/6.0
+    Ft[tets[i,1]] += np.dot(p[i], (N1 + N3 + N4).transpose())/6.0
+    Ft[tets[i,2]] += np.dot(p[i], (N2 + N3 + N4).transpose())/6.0
+    Ft[tets[i,3]] += np.dot(p[i], (N1 + N2 + N4).transpose())/6.0
         
   return Ft
 
