@@ -459,7 +459,7 @@ def normalize(a):
     a[:, 1] *= temp
     a[:, 2] *= temp
 
-    return np.transpose(a.T)
+    return a
 
 
 @jit

@@ -136,10 +136,10 @@ def tetra_elasticity(material_tets, ref_state_tets, Ft, tan_growth_tensor, bulk_
     N4[2] = vec4[0] * vec5[1] - vec4[1] * vec5[0]
         
     # Distribute forces among tetra vertices, probably not vectorizable. Surprising that its //
-    Ft[tets[i,0]] += np.dot(p[i], (N1 + N2 + N3).T)/6.0
-    Ft[tets[i,1]] += np.dot(p[i], (N1 + N3 + N4).T)/6.0
-    Ft[tets[i,2]] += np.dot(p[i], (N2 + N3 + N4).T)/6.0
-    Ft[tets[i,3]] += np.dot(p[i], (N1 + N2 + N4).T)/6.0
+    Ft[tets[i,0]] += np.dot(p[i], (N1 + N2 + N3).transpose())/6.0
+    Ft[tets[i,1]] += np.dot(p[i], (N1 + N3 + N4).transpose())/6.0
+    Ft[tets[i,2]] += np.dot(p[i], (N2 + N3 + N4).transpose())/6.0
+    Ft[tets[i,3]] += np.dot(p[i], (N1 + N2 + N4).transpose())/6.0
         
   return Ft
 
